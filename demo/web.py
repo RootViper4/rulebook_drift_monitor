@@ -374,6 +374,95 @@ def api_record():
     return jsonify({"ok": True, "recorded": entry})
 
 
+@app.route("/api/fraudtest", methods=["POST"])
+def api_fraudtest():
+    """Throw a fraud at the rulebook, live.
+
+    Body: {label, tx: {...fixture fields...}, commit?: bool}
+    Runs the deterministic engine over the supplied scenario and reports which
+    rules caught it vs which it slipped past. Optionally commits the scenario as
+    a finding so it lands in the human approval gate.
+    """
+    from agents.models import GapFinding, RunState
+    from agents.rule_engine import RuleEvaluationEngine
+    data = request.json or {}
+    label = (data.get("label") or "").strip()[:80] or "Real-time attack test"
+    raw = data.get("tx")
+    if not isinstance(raw, dict) or not raw:
+        return jsonify({"error": "missing scenario (tx)"}), 400
+    rulebook = load_rulebook()
+    engine = RuleEvaluationEngine()
+    results = engine.evaluate(rulebook, raw)
+    fired = sorted({r.rule_id for r in results if r.fired})
+    evaded = sorted({r.rule_id for r in results if not r.fired})
+    by_id = {r.id: r for r in rulebook}
+
+    def meta(ids):
+        return [{"id": i, "name": by_id[i].name, "category": by_id[i].category,
+                 "text": by_id[i].text, "trigger": by_id[i].trigger,
+                 "severity": by_id[i].risk_severity} for i in ids]
+
+    committed = None
+    if data.get("commit"):
+        fid = "UX-" + uuid.uuid4().hex[:8]
+        run = STORE["run"]
+        if run is None:
+            run = RunState(run_id=f"run-{uuid.uuid4().hex[:8]}",
+                           rulebook_version=by_id["DS-01"].source if "DS-01" in by_id else "DS rulebook",
+                           rulebook=rulebook, typologies=load_typologies(),
+                           status="awaiting_human_approval")
+            STORE["run"] = run
+        finding = GapFinding(
+            typology_id=fid,
+            typology_name=label,
+            fired_rules=fired,
+            evaded_rules=evaded,
+            evidential_basis="Real-time attack submitted by the analyst in the app (attack test)",
+            drafted_candidate_red_flag=(
+                f"No rule flagged this scenario: '{label}' carried no suspicious signals, "
+                f"so the rulebook stayed quiet. Nothing to send to review."
+                if not fired else
+                f"Draft indicator for '{label}': screen this customer for the pattern just described "
+                f"— it slipped past {len(evaded)} of {len(rulebook)} rules (DS-{', DS-'.join(evaded)}) "
+                f"and was caught by {len(fired)} (DS-{', DS-'.join(fired)})."
+            ),
+            plausible=True,
+            verified=True,
+        )
+        run.results.append(finding)
+        STORE["decisions"].setdefault(fid, "")
+        STORE["log"].append({
+            "node": "human-gate",
+            "message": f"Analyst {STORE['analyst']} submitted attack test '{label}' ({fid}) · "
+                       f"caught {len(fired)} rule(s), slipped past {len(evaded)} · sent to human gate.",
+        })
+        STORE["prev_ids"] = STORE.get("prev_ids") or [f.typology_id for f in run.results[:-1]] or []
+        committed = fid
+
+    verdict = (
+        "No rule flagged this scenario — nothing suspicious for the rules to catch "
+        f"(all {len(rulebook)} stayed quiet)."
+        if not fired
+        else (
+            f"Fully caught — every suspicious signal was flagged ({len(fired)} rule"
+            f"{'s' if len(fired)!=1 else ''} fired)."
+            if not evaded
+            else f"Partly caught — {len(fired)} rule{'s' if len(fired)!=1 else ''} fired, "
+                 f"but this attack slipped past {len(evaded)} of {len(rulebook)} rules · potential gap"
+        )
+    )
+    return jsonify({
+        "label": label,
+        "fired": meta(fired),
+        "evaded": meta(evaded),
+        "fired_ids": fired,
+        "evaded_ids": evaded,
+        "rules_total": len(rulebook),
+        "verdict": verdict,
+        "committed": committed,
+    })
+
+
 @app.route("/api/probe")
 def api_probe():
     """Adversarial red-team probe: inject a poisoned typology, show critic verdict."""

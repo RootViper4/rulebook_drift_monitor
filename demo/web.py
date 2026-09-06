@@ -158,10 +158,16 @@ def _start_background_run(trigger: str) -> None:
 # ---------------------------------------------------------------------------
 # JSON serialisation helpers
 # ---------------------------------------------------------------------------
-def _finding_json(f):
+def _finding_json(f, desc_by_id=None):
+    desc_by_id = desc_by_id or {}
+    # Plain-language attack description for the regulator-facing review screen:
+    # prefer the typology's own prose description, then the finding's evidential
+    # basis, and only fall back to the (still human-readable) typology_name.
+    attack_description = desc_by_id.get(f.typology_id) or f.evidential_basis or f.typology_name
     return {
         "typology_id": f.typology_id,
         "typology_name": f.typology_name,
+        "attack_description": attack_description,
         "fired_rules": f.fired_rules,
         "evaded_rules": f.evaded_rules,
         "mitre_atlas": f.mitre_atlas,
@@ -184,7 +190,8 @@ def _state_json():
     inst = amendments.load_instituted()
     covered = sorted(inst.get("covered", {}).keys())
     prev_ids = set(STORE.get("prev_ids") or [])
-    findings = [_finding_json(f) for f in (run.results if run else [])]
+    desc_by_id = {t.id: t.description for t in load_typologies()}
+    findings = [_finding_json(f, desc_by_id) for f in (run.results if run else [])]
     for f in findings:
         f["delta"] = "new" if f["typology_id"] not in prev_ids else "repeat"
     diff_new = [f["typology_id"] for f in findings if f["delta"] == "new"]
@@ -300,18 +307,32 @@ def api_decide():
     data = request.json or {}
     fid = data.get("fid")
     decision = data.get("decision")
+    rationale = (data.get("rationale") or "").strip()
     if not fid or decision not in ("accept", "amend", "reject"):
         return jsonify({"error": "bad request"}), 400
+    if not rationale:
+        return jsonify({"error": "A rationale is required to record this decision."}), 400
     label = {"accept": "accepted ✓", "amend": "amended ✎", "reject": "rejected ✗"}[decision]
     STORE["decisions"][fid] = label
+    STORE.setdefault("rationales", {})[fid] = rationale
     verb = {
         "accept": "Promoted to draft guidance for further review.",
         "amend": "Returned for amendment.",
         "reject": "Rejected; not promoted.",
     }[decision]
+    run = STORE["run"]
+    finding = next((f for f in (run.results if run else []) if f.typology_id == fid), None)
     STORE["log"].append({
         "node": "human-gate",
-        "message": f"Analyst {STORE['analyst']} → {label} finding '{fid}'. {verb}",
+        "message": (f"Analyst {STORE['analyst']} → {label} finding "
+                    f"'{finding.typology_name if finding else fid}'. {verb} Rationale: {rationale}"),
+        # DS/CP codes kept here for audit traceability, never surfaced as the
+        # primary log line - the plain-language `message` above is what renders.
+        "reference": {
+            "typology_id": fid,
+            "fired_rules": finding.fired_rules if finding else [],
+            "evaded_rules": finding.evaded_rules if finding else [],
+        },
     })
     return jsonify({"ok": True, "decision": label})
 
@@ -540,6 +561,8 @@ def api_dossier_pdf():
                              f"Evaded: {', '.join(f['evaded_rules']) or '—'}", small))
         est.append(Paragraph(f"Red flag: {f['red_flag']}", small))
         est.append(Paragraph(f"Evidence: {f['evidential_basis']}", small))
+        if f.get("rationale"):
+            est.append(Paragraph(f"Analyst rationale: {f['rationale']}", small))
         est.append(Spacer(1, 6))
 
     est.append(Paragraph("Prepared for demonstration purposes · all data synthetic &amp; illustrative.",
@@ -557,11 +580,13 @@ def _build_dossier() -> dict:
     decisions = STORE["decisions"]
     fc = _forecast_snapshot()
     findings = _state_json()["findings"]
+    rationales = STORE.get("rationales", {})
     approved = [
         {
             "typology_id": f["typology_id"],
             "typology_name": f["typology_name"],
             "decision": decisions.get(f["typology_id"], ""),
+            "rationale": rationales.get(f["typology_id"], ""),
             "fired_rules": f.get("fired_rules", []),
             "evaded_rules": f.get("evaded_rules", []),
             "red_flag": f.get("drafted_candidate_red_flag", ""),

@@ -69,6 +69,12 @@
         <div id="logPane"></div>
       </div>
 
+      <div class="caveat-banner" id="caveatBanner" style="display:none">
+        <span>⚠</span>
+        <span>Reminder: rule wording shown below is a <b>provisional paraphrase</b> prepared by the domain team, not verified exact regulatory text. The linked source document is authoritative — check it before relying on the wording shown here.</span>
+        <button onclick="dismissCaveat()">Got it</button>
+      </div>
+
       <div class="section-row">
         <div class="section-title" id="findingsTitle">Verified findings · awaiting human approval</div>
         <div class="legend-line" style="width:100%">
@@ -196,59 +202,68 @@ function renderLog(log, running){
   if(running && pane.lastElementChild) pane.lastElementChild.scrollIntoView({block:'nearest'});
 }
 
+let rationaleDrafts = {};
+
 function findingCard(f){
-  const decided = decisions[f.typology_id];
+  const fid = f.typology_id;
+  const decided = decisions[fid];
   const delta = f.delta==='new'?'<span class="diff-badge diff-new">NEW</span>'
               : f.delta==='repeat'?'<span class="diff-badge diff-repeat">REPEAT</span>':'';
-  const instituted = amendments.covered.includes(f.typology_id);
-  const isCustom = customIds.has(f.typology_id);
+  const instituted = amendments.covered.includes(fid);
+  const isCustom = customIds.has(fid);
   const instBtn = instituted
     ? '<span class="chip good" style="font-size:11px">✦ instituted · gap closed</span>'
     : isCustom
       ? '<span class="chip dim" style="font-size:11px">your test attack · review above</span>'
-      : `<button class="btn-sm btn-institute" onclick="institute('${f.typology_id}')" ${decided?'':'disabled title="decide first" style="opacity:.45"'} >Institute rule</button>`;
+      : `<button class="btn-sm btn-institute" onclick="institute('${esc(fid)}')" ${decided?'':'disabled title="decide first" style="opacity:.45"'} >Institute rule</button>`;
   const fired = f.fired_rules||[], evaded = f.evaded_rules||[];
-  return `<div class="finding find-clickable openable" id="f-${f.typology_id}" data-fid="${esc(f.typology_id)}" onclick="toggleDetail('${f.typology_id}')">
-    <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
-      <h3><span class="fid">${esc(f.typology_id)}</span> ${delta} ${esc(f.typology_name)} ${decided?`<span class="decided">${esc(decided)}</span>`:''}</h3>
-      <span class="hint-open">click for plain English ▾</span>
-    </div>
-    <div class="basis">${esc(f.evidential_basis)}</div>
-    <div class="chip-row mt" style="margin-top:10px">
+  const draft = rationaleDrafts[fid]||'';
+  return `<div class="finding" id="f-${esc(fid)}" data-fid="${esc(fid)}">
+    <div class="attack-desc">${esc(f.attack_description||f.typology_name)}</div>
+    <div class="ref-line">${delta} <span class="fid">ref: ${esc(fid)}</span> <span>${esc(f.typology_name)}</span> ${decided?`<span class="decided">${esc(decided)}</span>`:''}</div>
+
+    <div class="section-kd">What the rulebook did</div>
+    <div class="chip-row mt" style="margin-top:4px">
       <span class="chip good">🛡 caught by ${fired.length} rule${fired.length===1?'':'s'}</span>
       <span class="chip bad">⚠ slipped past ${evaded.length} rule${evaded.length===1?'':'s'}</span>
     </div>
-    <div class="chip-row mt" style="margin-top:5px">
-      ${fired.slice(0,6).map(rid=>ruleChip(rid,false)).join('')}${fired.length>6?'<span class="dim" style="font-size:10.5px"> +'+(fired.length-6)+' more</span>':''}
-      ${evaded.slice(0,6).map(rid=>ruleChip(rid,true)).join('')}${evaded.length>6?'<span class="dim" style="font-size:10.5px"> +'+(evaded.length-6)+' more</span>':''}
-    </div>
-    ${f.drafted_candidate_red_flag?`<div class="flag">${esc(f.drafted_candidate_red_flag)}</div>`:''}
-    <div class="find-detail" id="det-${f.typology_id}">
-      <div class="kd g">Caught by these rules (they fired — they flagged this attack)</div>
-      ${rulesDetail(fired)}
-      <div class="kd r">Slipped past these rules (they did not fire — the attack got through them)</div>
-      ${rulesDetail(evaded)}
-    </div>
-    <div class="actions">
-      <button class="btn-sm btn-accept" onclick="event.stopPropagation();decide('${f.typology_id}','accept')">Accept</button>
-      <button class="btn-sm btn-amend"  onclick="event.stopPropagation();decide('${f.typology_id}','amend')">Amend</button>
-      <button class="btn-sm btn-reject" onclick="event.stopPropagation();decide('${f.typology_id}','reject')">Reject</button>
-      ${instBtn}
+    ${rulesDetail(fired, true)}
+    ${rulesDetail(evaded, false)}
+
+    ${f.drafted_candidate_red_flag?`<div class="fix-label">Proposed fix</div><div class="flag">${esc(f.drafted_candidate_red_flag)}</div>`:''}
+
+    <div class="actions" style="flex-direction:column;align-items:stretch;gap:4px">
+      <textarea class="rationale-box" id="rat-${esc(fid)}" placeholder="Required: explain your decision in plain language (what the rulebook got right or missed, and why)." oninput="rationaleDrafts['${esc(fid)}']=this.value; this.classList.remove('err')">${esc(draft)}</textarea>
+      <div class="rationale-req">A rationale is required before Accept, Amend or Reject will be recorded.</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
+        <button class="btn-sm btn-accept" onclick="decide('${esc(fid)}','accept')">Accept</button>
+        <button class="btn-sm btn-amend"  onclick="decide('${esc(fid)}','amend')">Amend</button>
+        <button class="btn-sm btn-reject" onclick="decide('${esc(fid)}','reject')">Reject</button>
+        ${instBtn}
+      </div>
     </div>
   </div>`;
 }
 
-function toggleDetail(fid){
-  const el = $('f-'+fid);
-  if(el) el.classList.toggle('open');
-}
-
 async function decide(fid, decision){
+  const box = $('rat-'+fid);
+  const rationale = (box ? box.value : (rationaleDrafts[fid]||'')).trim();
+  if(!rationale){
+    if(box){ box.classList.add('err'); box.focus(); }
+    toast('A rationale is required before you can decide this finding.');
+    return;
+  }
   try{
-    await api('/api/decide', {method:'POST', body:JSON.stringify({fid, decision})});
+    await api('/api/decide', {method:'POST', body:JSON.stringify({fid, decision, rationale})});
+    delete rationaleDrafts[fid];
     toast('Finding '+fid+' → '+decision);
     refresh();
   }catch(e){ toast('Decide failed: '+e.message); }
+}
+
+function dismissCaveat(){
+  try{ localStorage.setItem('rd_caveat_seen','1'); }catch(e){}
+  const b=$('caveatBanner'); if(b) b.style.display='none';
 }
 
 async function institute(fid){
@@ -502,18 +517,73 @@ function ruleMeta(id){
   return r ? {name:r.name, text:r.text, category:r.category} : {name:id+' (no description)', text:'', category:''};
 }
 
-function rulesDetail(ids){
-  if(!ids.length) return '<div class="dim">—</div>';
-  return `<div class="detail-scroll">` + ids.map(id=>{
-    const r = ruleMeta(id);
-    return `<div class="rule-row"><span class="rid">${esc(id)}</span><span>
-      <span class="rname">${esc(r.name)}</span><br/><span class="rtext">${esc(r.text||'')}</span></span></div>`;
-  }).join('') + `</div>`;
+// Canonical source PDFs, keyed off the rule's `source` field. `source_ref`
+// carries the page (FATF) or paragraph (Directive 9) - read straight from the
+// rule, never hardcoded per rule.
+const FATF_URL = 'https://www.fatf-gafi.org/content/dam/fatf-gafi/reports/Virtual-Assets-Red-Flag-Indicators.pdf';
+const FIC_URL  = 'https://www.fic.gov.za/wp-content/uploads/2024/11/Directive-9-Travel-rule-relating-to-crypto-asset-transfers.pdf';
+
+function sourceSegments(rule){
+  // A rule can cite more than one source (e.g. DS-04: FATF ; FIC), each
+  // ';'-separated and paired positionally with the matching source_ref segment.
+  const srcs = (rule.source||'').split(';').map(s=>s.trim()).filter(Boolean);
+  const refs = (rule.source_ref||'').split(';').map(s=>s.trim()).filter(Boolean);
+  const n = Math.max(srcs.length, refs.length, 1);
+  const out = [];
+  for(let i=0;i<n;i++){
+    const s = srcs[i] || srcs[0] || '';
+    const label = refs[i] || refs[0] || s || 'source';
+    let url = null;
+    if(/FATF/i.test(s)) url = FATF_URL;
+    else if(/FIC|Directive/i.test(s)) url = FIC_URL;
+    out.push({label, url});
+  }
+  return out;
 }
 
-function toggleDetail(fid){
-  const el = $('f-'+fid);
-  if(el) el.classList.toggle('open');
+function sourceLinksHtml(rule){
+  return sourceSegments(rule).map(seg=>
+    seg.url
+      ? `<a href="${seg.url}" target="_blank" rel="noopener">${esc(seg.label)} ↗</a>`
+      : `<span>${esc(seg.label)}</span>`
+  ).join(' · ');
+}
+
+function cpRefSuffix(rule){
+  const cps = rule.capability_primitives||[];
+  if(!cps.length) return '';
+  return ' · relates to ' + cps.map(c=>esc(String(c).split(':')[0].trim())).join(', ');
+}
+
+function lowerFirst(s){ return s ? s.charAt(0).toLowerCase()+s.slice(1) : s; }
+
+function ruleSentence(id, fired){
+  const r = RULES_MAP[id];
+  if(!r){
+    return `<div class="rule-plain ${fired?'ok':'miss'}">
+      <div class="rp-verdict">${fired?'✓ Fired':'— Stayed silent'}</div>
+      <div class="rp-name">Rule ${esc(id)} (description not loaded)</div>
+    </div>`;
+  }
+  const verdict = fired
+    ? '✓ Fired — this rule caught the activity.'
+    : '— Stayed silent — this rule did not catch the activity.';
+  const why = (!fired && r.trigger)
+    ? `<div class="rp-why">Its trigger — “${esc(r.trigger)}” — was not met in this scenario.</div>`
+    : '';
+  return `<div class="rule-plain ${fired?'ok':'miss'}">
+    <div class="rp-verdict">${verdict}</div>
+    <div class="rp-name">The rule on ${esc(lowerFirst(r.name))}</div>
+    ${r.text?`<div class="rp-text">${esc(r.text)}</div>`:''}
+    ${why}
+    <div class="rp-source">Source: ${sourceLinksHtml(r)}</div>
+    <div class="rp-ref">ref: ${esc(id)}${cpRefSuffix(r)}</div>
+  </div>`;
+}
+
+function rulesDetail(ids, fired){
+  if(!ids.length) return '<div class="dim" style="font-size:12px;margin:4px 0">—</div>';
+  return ids.map(id=>ruleSentence(id, fired)).join('');
 }
 
 async function runProbe(){
@@ -591,6 +661,12 @@ $('resetBtn').addEventListener('click', async ()=>{
 
 $('probeBtn').addEventListener('click', runProbe);
 $('fxRun').addEventListener('click', runFx);
+
+(function initCaveat(){
+  let seen = false;
+  try{ seen = !!localStorage.getItem('rd_caveat_seen'); }catch(e){ seen = false; }
+  if(!seen){ const b=$('caveatBanner'); if(b) b.style.display='flex'; }
+})();
 
 (async function loadRules(){
   try{

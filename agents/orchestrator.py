@@ -121,8 +121,8 @@ class Orchestrator:
                 name = cand.get("typology_name", "novel evasion")
                 evaded_rule_objs = [r for r in self.rulebook if r.id in cand.get("evaded_rules", [])]
                 cand["drafted_candidate_red_flag"] = (
-                    f"Novel pattern '{name}' evades existing indicators "
-                    f"({'; '.join(r.id for r in evaded_rule_objs)}); candidate indicator: "
+                    f"Novel pattern '{name}' evades existing indicators covering "
+                    f"{'; '.join(r.name for r in evaded_rule_objs)}; candidate indicator: "
                     f"flag activity exhibiting {', '.join(cand.get('techniques', [])[:3])} "
                     f"which current rules do not explicitly detect. Submit for expert plausibility review."
                 )

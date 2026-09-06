@@ -151,5 +151,16 @@
     "findings": null,
     "discarded": null,
     "rulebook_version": "DS-01..DS-43 · 43 rules"
+  },
+  {
+    "run_id": "run-4721319f",
+    "ts": "2026-09-06T11:53:31",
+    "kind": "run",
+    "drift_index": 52.2,
+    "coverage": 0.494,
+    "ai_pressure": 0.574,
+    "findings": 35,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-43 · 43 rules"
   }
 ]

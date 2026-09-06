@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Rulebook Drift Monitor · Compare</title>
+<link rel="stylesheet" href="static/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <div class="side-logo">RD</div>
+      <div><div class="name">Rulebook Drift Monitor</div><div class="sub">Agentic Regulatory Oversight</div></div>
+    </div>
+    <nav class="side-nav">
+      <div class="nav-sec">Platform</div>
+      <a class="nav-link" href="dashboard.html"><span class="ic">◈</span>Dashboard</a>
+      <a class="nav-link" href="index.html"><span class="ic">▶</span>Run Console</a>
+      <a class="nav-link" href="rules.html"><span class="ic">⚖</span>Rule Catalog</a>
+      <a class="nav-link" href="forecast.html"><span class="ic">⌁</span>Forecast</a>
+      <div class="nav-sec">Review</div>
+      <a class="nav-link" href="compare.html"><span class="ic">⇄</span>Compare</a>
+      <a class="nav-link" href="audit.html"><span class="ic">🕮</span>Audit</a>
+    </nav>
+    <div class="side-foot">DS-01..DS-40 · 40 rules<br/>Synthetic data · hackathon demo</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title">Compare the two runs</div>
+      <div class="top-right">
+        <span class="badge-status online" id="statusPill">● Ready</span>
+        <span class="analyst-chip"><span class="avatar">AA</span><span id="analystName">A. Analyst</span></span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="hero-sm">
+        <div class="eyebrow">Side-by-side</div>
+        <h1>Known fraud vs invented fraud</h1>
+        <p class="sub">Run 1 shoots the documented typologies at the rulebook. Run 2 shoots the system's own invented frauds at it. Compare how many got through, which rules keep failing, and where the next gap is most likely to appear.</p>
+      </div>
+
+      <div class="runbar" style="flex-wrap:wrap">
+        <button class="btn btn-primary" id="runDocBtn"><span class="icon">▶</span>Run 1 · known fraud</button>
+        <button class="btn btn-primary-2" id="runGenBtn"><span class="icon">▶</span>Run 2 · invented fraud</button>
+        <button class="btn btn-ghost" id="runBothBtn">⏵ Run both</button>
+        <div class="run-meta">
+          <span>Rules <b id="cmpRules">—</b></span>
+          <span>Already reviewed &amp; excluded <b id="cmpExcl">0</b></span>
+        </div>
+      </div>
+
+      <div class="pipe" id="pipe"></div>
+      <div class="live-pane">
+        <div class="pane-title"><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good)"></span> What the agents are doing right now</div>
+        <div id="logPane"></div>
+      </div>
+
+      <div class="cmp-grid" id="cmpGrid"></div>
+      <div class="cmp-verdict-wrap" id="cmpVerdictWrap" style="display:none"><div class="cmp-verdict" id="cmpVerdict"></div></div>
+      <div class="empty blocked" id="cmpEmpty" style="display:none">Nothing to compare yet — run at least one scan above.</div>
+
+      <footer>Rulebook Drift Monitor · hackathon prototype · all data synthetic &amp; illustrative</footer>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="static/js/app.js"></script>
+<script>
+const NODE_LABEL = {
+  ingest:'Setup', reconcile:'Known-fraud scan', generate:'New-trick scan', critic:'Double-check',
+  draft:'Draft fixes', report:'Human gate', orchestrator:'Orchestrator', 'human-gate':'You',
+  probe:'Probe', error:'Error'
+};
+const MILESTONES = {ingest:0, reconcile:1, generate_meta:2, critic_meta:3, draft:4, report:5};
+let stepIndex = -1, logCache = null;
+function markStep(idx){
+  if(idx>stepIndex){
+    for(let i=0;i<=idx;i++){ const s=$('pstep'+i); if(s && stepIndex<i){ s.classList.add('done'); s.classList.remove('active'); } }
+    const cur=$('pstep'+idx); if(cur){ cur.classList.add('active'); cur.classList.remove('done'); }
+    stepIndex=idx;
+  }
+}
+const STEP_NAMES = ['Ingest corpora','Known-fraud scan','Invented-fraud scan','Critic verification','Draft candidate red flags','Human approval gate'];
+const STEP_DESC  = ['load rulebook + typologies','documented typologies through the rules','invented (generated) typologies through the rules','reproduce every claim · discard unsupported','draft candidate indicators','analyst accepts, amends or rejects'];
+function buildPipe(){
+  $('pipe').innerHTML = STEP_NAMES.map((n,i)=>`
+    <div class="pipe-step" id="pstep${i}">
+      <div style="display:flex;flex-direction:column;align-items:center">
+        <div class="pipe-dot" id="pdot${i}">${i+1}</div>
+        ${i<STEP_NAMES.length-1?'<div class="pipe-line"></div>':''}
+      </div>
+      <div><div class="pipe-label">${n}</div><div class="dim" style="font-size:12px">${STEP_DESC[i]}</div></div>
+    </div>`).join('');
+}
+function renderLog(log, running){
+  if(log===logCache) return;
+  logCache=log;
+  const pane=$('logPane'); if(!pane) return;
+  let maxIdx=-1;
+  (log||[]).forEach(l=>{ const s=MILESTONES[l.node]; if(s!=null) maxIdx=Math.max(maxIdx,s); });
+  if(maxIdx>=0) markStep(maxIdx);
+  pane.innerHTML=(log||[]).map(l=>`<div class="logline"><span class="ln">[${l.ts||''}]</span> <b>${esc(NODE_LABEL[l.node]||l.node)}</b>: ${esc(l.message)}</div>`).join('');
+  if(!log.length) pane.innerHTML='<div class="logline"><span class="ln">[—]</span> idle · click Run 1 or Run 2 to scan</div>';
+  if(running && pane.lastElementChild) pane.lastElementChild.scrollIntoView({block:'nearest'});
+}
+
+const RULES_MAP = {};
+function ruleChip(id, miss){
+  const r = RULES_MAP[id]||{};
+  const tip = (r.name?('DS-'+id.replace('DS-','')+' · '+r.name+' — '+(r.text||'')) : id);
+  return `<span class="rule-chip ${miss?'miss':''}" title="${esc(tip)}">${esc(id)}</span>`;
+}
+
+function sideCard(key){
+  const s = cmp && cmp[key];
+  if(!s) return `<div class="cmp-card empty-side">
+    <div class="cmp-kicker">${key==='documented'?'Run 1':'Run 2'} · ${key==='documented'?'known fraud':'invented fraud'}</div>
+    <div class="cmp-title">Not run yet</div>
+    <p class="dim">Run ${key==='documented'?'1':'2'} from above to populate this side.</p>
+  </div>`;
+  const rows = s.findings||[];
+  return `<div class="cmp-card">
+    <div class="cmp-head">
+      <div><span class="cmp-kicker">${key==='documented'?'Run 1 · known fraud':'Run 2 · invented fraud'} · <span class="mono">${esc(s.run_id||'')}</span></span>
+      <div class="cmp-title">${s.total} verified finding${s.total===1?'':'s'}</div></div>
+      <div class="cmp-status ${s.status}">${esc(s.status||'—')}</div>
+    </div>
+    <div class="cmp-stats">
+      <div><b>${s.avg_evaded}</b><span>avg rules slipped past</span></div>
+      <div><b>${s.avg_fired}</b><span>avg rules fired</span></div>
+      <div><b>${s.reviewed}/${s.total}</b><span>reviewed</span></div>
+      <div><b>${s.discarded}</b><span>discarded by critic</span></div>
+    </div>
+    <div class="cmp-rule-title">Most-slipped rules (potential gaps)</div>
+    <div>${(s.top_evaded||[]).slice(0,5).map(t=>ruleChip(t.id,true)+` <span class="dim" style="font-size:11px">×${t.count}</span>`).join(' ')||'<span class="dim">—</span>'}</div>
+    <div class="cmp-rule-title">Findings</div>
+    <div class="cmp-list">${rows.map(f=>`<div class="cmp-row"><span class="fid">${esc(f.typology_id)}</span> ${esc(f.typology_name)}<span class="dim" style="margin-left:auto">⚠ ${f.evaded} · 🛡 ${f.fired}</span></div>`).join('') || '<span class="dim">none</span>'}</div>
+  </div>`;
+}
+
+function renderCompare(){
+  const left = sideCard('documented'), right = sideCard('generated');
+  $('cmpGrid').innerHTML = left + right;
+  $('cmpEmpty').style.display = (cmp && (cmp.documented||cmp.generated)) ? 'none' : 'block';
+  $('cmpRules').textContent = cmp ? cmp.rules_total : '—';
+  $('cmpExcl').textContent = cmp ? (cmp.excluded&&cmp.excluded.count)||0 : 0;
+  const verdict = verdictLine();
+  $('cmpVerdict').innerHTML = verdict;
+  $('cmpVerdictWrap').style.display = verdict ? 'block' : 'none';
+}
+
+function verdictLine(){
+  const d = cmp&&cmp.documented ? (cmp.documented.avg_evaded||0) : null;
+  const g = cmp&&cmp.generated ? (cmp.generated.avg_evaded||0) : null;
+  if(!cmp || (d==null && g==null)) return '';
+  let txt;
+  if(d!=null && g!=null){
+    const diff = g - d;
+    txt = diff > 0.15
+      ? `<b>Generated fraud gets through more easily</b> — the invented attacks slip past <b>${g.toFixed(1)}</b> rules on average vs <b>${d.toFixed(1)}</b> for known frauds. The rulebook is creepier against yesterday's tricks than against the ones the AI makes up next.`
+      : diff < -0.15
+      ? `<b>Known fraud is the bigger gap</b> — documented typologies slip past <b>${d.toFixed(1)}</b> rules on average, more than invented attacks (<b>${g.toFixed(1)}</b>).`
+      : `<b>Fairly even</b> — invented frauds (${g.toFixed(1)}) and known frauds (${d.toFixed(1)}) slip past a similar number of rules on average.`;
+  } else {
+    const v = d!=null ? d : g;
+    txt = `One scan populated. Average evasions: <b>${v.toFixed(1)}</b> rules slipped per finding. Run the other side to compare.`;
+  }
+  return `<div class="cmp-verdict">${txt}</div>`;
+}
+
+let cmp = null, running = false;
+async function refresh(){
+  try{
+    cmp = await api('/api/compare');
+  }catch(e){ $('statusPill').textContent='● Offline'; return; }
+  running = Boolean(cmp.running);
+  renderCompare();
+  let s = null;
+  try{ s = await api('/api/state'); }catch(e){}
+  $('analystName').textContent = (s&&s.analyst) || 'A. Analyst';
+  renderLog(s ? (s.log||[]) : (cmp.running?[]:[{node:'orchestrator', message:'connect…', ts:''}]), running);
+  const b1=$('runDocBtn'), b2=$('runGenBtn'), bb=$('runBothBtn');
+  b1.disabled=running; b2.disabled=running; bb.disabled=running;
+  if(running){
+    b1.querySelector('.icon').innerHTML='<span class="spinner"></span>';
+    b2.querySelector('.icon').innerHTML='<span class="spinner"></span>';
+  }else{
+    b1.querySelector('.icon').textContent='▶'; b2.querySelector('.icon').textContent='▶';
+  }
+}
+
+$('runDocBtn').addEventListener('click', ()=>go('documented'));
+$('runGenBtn').addEventListener('click', ()=>go('generated'));
+$('runBothBtn').addEventListener('click', ()=>go('both'));
+async function go(mode){
+  try{
+    stepIndex=-1; logCache=null;
+    await api('/api/run', {method:'POST', body:JSON.stringify({trigger:'manual', mode})});
+    refresh();
+  }catch(e){ toast('Could not start run: '+e.message); }
+}
+
+(async function loadRules(){
+  try{
+    const r = await api('/api/rules');
+    (r.rules||[]).forEach(x=>RULES_MAP[x.id]=x);
+  }catch(e){}
+})();
+buildPipe();
+refresh();
+setInterval(async ()=>{ try{ await refresh(); }catch(e){} }, running?900:3500);
+</script>
+</body>
+</html>

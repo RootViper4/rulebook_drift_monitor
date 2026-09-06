@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from typing import Optional
 
 import requests
 
-OLLAMA_URL = "http://localhost:11434"
-MODEL = "llama3.2:1b"
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2:1b")
 
 
 class LocalLLMClient:

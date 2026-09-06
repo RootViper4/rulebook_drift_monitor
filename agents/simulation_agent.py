@@ -26,7 +26,15 @@ class SimulationAgent:
         self.llm = llm
 
     def run_reconciliation(self, typologies: list[Typology], rulebook: list[Rule]) -> list[dict]:
+        """Reconciliation arm over documented typologies (backwards-compatible wrapper)."""
+        return self.run_scan(typologies, rulebook, mode="reconciliation")
+
+    def run_scan(self, typologies: list[Typology], rulebook: list[Rule],
+                 mode: str = "documented") -> list[dict]:
         """Return a list of gap candidates, one per fixture that evades >=1 relevant rule.
+
+        `mode` tags the origin of the pool: "documented"/"reconciliation" for the
+        known-typology arm, "generated" for the generated (novel) arm.
 
         A 'relevant' rule is one whose semantics overlap the typology's methods
         (by keyword) yet fails to fire on the adversarial fixture - i.e. the rule
@@ -48,7 +56,8 @@ class SimulationAgent:
                 fired = {r.rule_id for r in results if r.fired}
                 evaded = [r.id for r in relevant_rules if r.id not in fired]
                 if len(evaded) >= 1:
-                    findings.append({
+                    is_generated = mode == "generated"
+                    d = {
                         "typology_id": typology.id,
                         "typology_name": typology.name,
                         "source": typology.source,
@@ -57,8 +66,15 @@ class SimulationAgent:
                         "evaded_rules": evaded,
                         "mitre_atlas": typology.mitre_atlas,
                         "techniques": typology.techniques,
-                        "mode": "reconciliation",
-                    })
+                        "mode": mode,
+                        "novel": is_generated,
+                        "speculative": False,
+                    }
+                    if is_generated:
+                        d["evidential_basis"] = (
+                            "self-generated from AI capability primitives (novel, unverified)"
+                        )
+                    findings.append(d)
         return findings
 
     @staticmethod

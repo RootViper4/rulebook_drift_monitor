@@ -1,0 +1,618 @@
+{
+  "version": "1.0",
+  "source_notes": "20 generated (novel) typologies seeded from AI-fraud capability synthesis. Each verified to fire >=1 rule and evade >=1 relevant rule in the demo engine.",
+  "generated": [
+    {
+      "id": "GEN-01",
+      "name": "Aggregator-route pass-through sweep",
+      "fired": 0,
+      "evaded_primary": "DS-05"
+    },
+    {
+      "id": "GEN-01",
+      "name": "Nominee beneficial-ownership shell",
+      "fired": 0,
+      "evaded_primary": "DS-04"
+    },
+    {
+      "id": "GEN-01",
+      "name": "Fresh-wallet mule herd under the thresholds",
+      "fired": 0,
+      "evaded_primary": "DS-02"
+    },
+    {
+      "id": "GEN-01",
+      "name": "Stolen-card funds converted to plastic",
+      "fired": 0,
+      "evaded_primary": "DS-16"
+    },
+    {
+      "id": "GEN-01",
+      "name": "High-velocity layering in a short window",
+      "fired": 0,
+      "evaded_primary": "DS-02"
+    },
+    {
+      "id": "GEN-01",
+      "name": "Unregistered-exchange off-ramp funnel",
+      "fired": 0,
+      "evaded_primary": "DS-04"
+    },
+    {
+      "id": "GEN-01",
+      "name": "Deepfake-audio authorised beneficiary swap",
+      "fired": 0,
+      "evaded_primary": "DS-03"
+    },
+    {
+      "id": "GEN-01",
+      "name": "Synthetic-identity laddering into private custody",
+      "fired": 0,
+      "evaded_primary": "DS-06"
+    },
+    {
+      "id": "GEN-01",
+      "name": "Relocation to a no-rationale shell office",
+      "fired": 0,
+      "evaded_primary": "DS-19"
+    },
+    {
+      "id": "GEN-01",
+      "name": "Cross-border cascade with missing identifying info",
+      "fired": 0,
+      "evaded_primary": "DS-24"
+    },
+    {
+      "id": "GEN-01",
+      "name": "Round-amount netting dressed as salary",
+      "fired": 0,
+      "evaded_primary": "DS-12"
+    },
+    {
+      "id": "GEN-01",
+      "name": "Shared-credential zombie account goldmine",
+      "fired": 0,
+      "evaded_primary": "DS-13"
+    },
+    {
+      "id": "GEN-01",
+      "name": "Crypto-naive mule with limited digital literacy",
+      "fired": 0,
+      "evaded_primary": "DS-25"
+    },
+    {
+      "id": "GEN-01",
+      "name": "Darkweb drug vendor single-address settlement",
+      "fired": 0,
+      "evaded_primary": "DS-16"
+    },
+    {
+      "id": "GEN-01",
+      "name": "Payroll-sized transfer to a low-history beneficiary wallet",
+      "fired": 0,
+      "evaded_primary": "DS-03"
+    },
+    {
+      "id": "GEN-01",
+      "name": "PEP moving value through an unmonitored corridor",
+      "fired": 0,
+      "evaded_primary": "DS-19"
+    },
+    {
+      "id": "GEN-01",
+      "name": "Cash-network card loadouts just under limits",
+      "fired": 0,
+      "evaded_primary": "DS-02"
+    },
+    {
+      "id": "GEN-01",
+      "name": "Mixer-settled tranche to unhosted cold storage",
+      "fired": 0,
+      "evaded_primary": "DS-04"
+    },
+    {
+      "id": "GEN-01",
+      "name": "Anonymised geo-jump from a sanctioned mirador",
+      "fired": 0,
+      "evaded_primary": "DS-16"
+    },
+    {
+      "id": "GEN-01",
+      "name": "Fan-in consolidation of many small wallets",
+      "fired": 0,
+      "evaded_primary": "DS-12"
+    }
+  ],
+  "typologies": [
+    {
+      "id": "GEN-01",
+      "name": "Aggregator-route pass-through sweep",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "pass-through",
+        "fan-out",
+        "layering"
+      ],
+      "mitre_atlas": [
+        "TA0007 Evasion",
+        "T1071 Layer"
+      ],
+      "risk_severity": "high",
+      "expected_gap": "DS-05",
+      "test_fixtures": [
+        {
+          "tx": {
+            "pass_through": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-02",
+      "name": "Nominee beneficial-ownership shell",
+      "description": "Legal-person nominees hide the real owner; the underlying counterparty is unvetted.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "beneficial ownership",
+        "ubo",
+        "legal person",
+        "weak counterparty",
+        "vasp"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-04",
+      "test_fixtures": [
+        {
+          "tx": {
+            "ubo_not_established": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-03",
+      "name": "Fresh-wallet mule herd under the thresholds",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "fresh wallet",
+        "new wallet",
+        "mule",
+        "coached",
+        "crypto-naive",
+        "structuring",
+        "no history"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-02",
+      "test_fixtures": [
+        {
+          "tx": {
+            "fresh_wallet": true,
+            "wallet_age_days": 1,
+            "coached_mule": true,
+            "crypto_naive": true,
+            "amount": 200
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-04",
+      "name": "Stolen-card funds converted to plastic",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "stolen card",
+        "crypto-to-plastic",
+        "risk list",
+        "darknet",
+        "extortion"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-16",
+      "test_fixtures": [
+        {
+          "tx": {
+            "crypto_to_plastic": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-05",
+      "name": "High-velocity layering in a short window",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "velocity",
+        "high-value",
+        "baseline",
+        "24-hour",
+        "clustered"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-02",
+      "test_fixtures": [
+        {
+          "tx": {
+            "velocity": true,
+            "high_value": true,
+            "quick_succession": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-06",
+      "name": "Unregistered-exchange off-ramp funnel",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "unregistered exchange",
+        "high-risk jurisdiction",
+        "grey list",
+        "vasp"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-04",
+      "test_fixtures": [
+        {
+          "tx": {
+            "unregistered_exchange": true,
+            "counterparty_jurisdiction": "regulated"
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-07",
+      "name": "Deepfake-audio authorised beneficiary swap",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "deepfake",
+        "liveness",
+        "impersonation",
+        "travel rule",
+        "cross-border",
+        "missing information"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-03",
+      "test_fixtures": [
+        {
+          "tx": {
+            "identity_markers": [
+              "liveness_bypass"
+            ],
+            "cross_border": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-08",
+      "name": "Synthetic-identity laddering into private custody",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "synthetic identity",
+        "self-custody",
+        "unhosted wallet",
+        "unregulated jurisdiction",
+        "attribution"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-06",
+      "test_fixtures": [
+        {
+          "tx": {
+            "ai_orchestrated_onboarding": true,
+            "unhosted_wallet": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-09",
+      "name": "Relocation to a no-rationale shell office",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "unregulated jurisdiction",
+        "no rationale",
+        "beneficial ownership",
+        "ubo",
+        "legal person"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-19",
+      "test_fixtures": [
+        {
+          "tx": {
+            "offices_relocation": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-10",
+      "name": "Cross-border cascade with missing identifying info",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "cross-border",
+        "travel rule",
+        "originator",
+        "beneficiary",
+        "identifying information",
+        "missing information"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-24",
+      "test_fixtures": [
+        {
+          "tx": {
+            "missing_orig_benef": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-11",
+      "name": "Round-amount netting dressed as salary",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "round amount",
+        "no rationale",
+        "mule",
+        "coached"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-12",
+      "test_fixtures": [
+        {
+          "tx": {
+            "coached_mule": true,
+            "round_amount": true,
+            "economic_rationale": "salary"
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-12",
+      "name": "Shared-credential zombie account goldmine",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "shared credentials",
+        "shared ip",
+        "changed credentials",
+        "identity"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-13",
+      "test_fixtures": [
+        {
+          "tx": {
+            "shared_credentials": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-13",
+      "name": "Crypto-naive mule with limited digital literacy",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "crypto-naive",
+        "mule",
+        "coached",
+        "unfamiliar",
+        "victim",
+        "small set"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-25",
+      "test_fixtures": [
+        {
+          "tx": {
+            "crypto_naive": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-14",
+      "name": "Darkweb drug vendor single-address settlement",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "threat intelligence",
+        "risk list",
+        "darkweb forum",
+        "illegal activity",
+        "public forum",
+        "darknet",
+        "extortion"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-16",
+      "test_fixtures": [
+        {
+          "tx": {
+            "threat_list_hit": true,
+            "osint_illegal": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-15",
+      "name": "Payroll-sized transfer to a low-history beneficiary wallet",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "low history",
+        "beneficiary",
+        "material transfer",
+        "fresh wallet",
+        "no history"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-03",
+      "test_fixtures": [
+        {
+          "tx": {
+            "low_history_wallet": true,
+            "amount": 5000
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-16",
+      "name": "PEP moving value through an unmonitored corridor",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "pep",
+        "enhanced due diligence",
+        "high-risk jurisdiction",
+        "grey list",
+        "geographic"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-19",
+      "test_fixtures": [
+        {
+          "tx": {
+            "is_pep": true,
+            "pep_activity_unusual": true,
+            "counterparty_jurisdiction": "regulated"
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-17",
+      "name": "Cash-network card loadouts just under limits",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "crypto-to-plastic",
+        "cash deposit",
+        "round amount",
+        "sub-threshold",
+        "structuring"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-02",
+      "test_fixtures": [
+        {
+          "tx": {
+            "cash_deposit_cards": true,
+            "economic_rationale": "wages"
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-18",
+      "name": "Mixer-settled tranche to unhosted cold storage",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "mixer",
+        "tumbler",
+        "sanitisation",
+        "unhosted wallet",
+        "privacy coin",
+        "self-custody"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-04",
+      "test_fixtures": [
+        {
+          "tx": {
+            "uses_mixer": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-19",
+      "name": "Anonymised geo-jump from a sanctioned mirador",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "vpn",
+        "tor",
+        "geo mismatch",
+        "anonymisation",
+        "proxy",
+        "sanctions",
+        "freeze",
+        "screening"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-16",
+      "test_fixtures": [
+        {
+          "tx": {
+            "uses_vpn_tor": true,
+            "counterparty_jurisdiction": "regulated"
+          }
+        }
+      ]
+    },
+    {
+      "id": "GEN-20",
+      "name": "Fan-in consolidation of many small wallets",
+      "description": "Speculative AI-fraud pattern synthesised from capability primitives.",
+      "source": "Generation arm · AI capability-primitive synthesis (novel, unverified)",
+      "techniques": [
+        "fan-in",
+        "consolidation",
+        "multiple senders",
+        "clustering",
+        "subset of individuals",
+        "fresh wallet"
+      ],
+      "mitre_atlas": [],
+      "risk_severity": "high",
+      "expected_gap": "DS-12",
+      "test_fixtures": [
+        {
+          "tx": {
+            "fan_in": true,
+            "small_wallet_set": true
+          }
+        }
+      ]
+    }
+  ]
+}

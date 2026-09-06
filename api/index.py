@@ -1,0 +1,1 @@
+from demo.web import app

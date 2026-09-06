@@ -15,9 +15,11 @@ import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from typing import Optional
+
 from flask import Flask, jsonify, request, send_from_directory
 
-from agents.loader import load_rulebook, load_typologies
+from agents.loader import load_rulebook, load_typologies, load_generated
 from agents.orchestrator import Orchestrator
 from agents.forecaster import Forecaster
 import agents.rule_amendment as amendments
@@ -28,17 +30,101 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(BASE, "static")
 DATA_DIR = os.path.join(os.path.dirname(BASE), "data")
 HISTORY_PATH = os.path.join(DATA_DIR, "run_history.json")
+DECISIONS_PATH = os.path.join(DATA_DIR, "decisions.json")
+AUDIT_PATH = os.path.join(DATA_DIR, "audit.json")
+
+# Vercel/serverless mode: runs complete synchronously inside the request and
+# disk state only lives for the life of the function instance.
+SERVERLESS = os.environ.get("SERVERLESS", "") == "1" or os.environ.get("VERCEL", "") == "1"
 
 # In-memory store.
 STORE = {
-    "run": None,            # completed RunState or None
+    "run": None,            # console RunState (last completed run) or None
+    "runs": {},             # mode -> RunState | None, for the compare view
     "analyst": "A. Analyst",
-    "decisions": {},        # fid -> decision label
+    "decisions": {},        # fid -> {decision, label, reason, ts}
     "running": False,       # a run is in progress
     "started_at": None,
     "log": [],
     "abort": False,         # request the background worker to stop cleanly
+    "mode": "documented",   # last mode requested
+    "storage": "writable",  # flipped to "readonly" if disk writes are refused
 }
+
+
+# ---------------------------------------------------------------------------
+# Durability helper — serverless function filesystems are read-only (except
+# /tmp), so persistence best-effort: keep the in-memory state and degrade
+# gracefully instead of crashing a deploy.
+# ---------------------------------------------------------------------------
+def _write_json(path: str, data, note: str = "") -> bool:
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+    except (OSError, IOError):
+        STORE["storage"] = "readonly"
+        if note:
+            STORE["log"].append({"node": "error", "message": f"{note}"})
+        return False
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Decisions registry (resolved findings) — persisted so already-reviewed
+# typologies are never presented to the analyst again in a later run.
+# ---------------------------------------------------------------------------
+def _load_decisions() -> dict:
+    try:
+        with open(DECISIONS_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("decisions", {})
+    except Exception:
+        return {}
+
+
+def _save_decisions(decisions: dict) -> None:
+    _write_json(DECISIONS_PATH, {"version": 1, "decisions": decisions},
+                note="Decisions registry is disk-readonly on this host — keeping in memory for this session only.")
+
+
+def _blank_decision():
+    return {"decision": "", "label": "", "reason": "", "ts": None}
+
+
+def _decided(entry) -> bool:
+    return bool((entry or {}).get("decision"))
+
+
+# ---------------------------------------------------------------------------
+# Audit trail — an append-only, human-readable record for the audit page.
+# ---------------------------------------------------------------------------
+def _audit(event: str, actor: str = "", detail: str = "", meta: dict = None) -> dict:
+    entry = {
+        "id": f"ae-{uuid.uuid4().hex[:8]}",
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "event": event,
+        "actor": actor or STORE["analyst"],
+        "detail": detail,
+        "meta": meta or {},
+    }
+    try:
+        with open(AUDIT_PATH, "r", encoding="utf-8") as f:
+            arr = json.load(f)
+    except Exception:
+        arr = []
+    arr.append(entry)
+    _write_json(AUDIT_PATH, arr)
+    return entry
+
+
+def _load_audit() -> list[dict]:
+    try:
+        with open(AUDIT_PATH, "r", encoding="utf-8") as f:
+            arr = json.load(f)
+        return [e for e in arr if isinstance(e, dict)]
+    except Exception:
+        return []
 
 # Pipeline steps shown in the animation, in order.
 PIPELINE_STEPS = [
@@ -64,9 +150,8 @@ def _load_history() -> list[dict]:
 
 
 def _save_history(entries: list[dict]) -> None:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    with open(HISTORY_PATH, "w", encoding="utf-8") as f:
-        json.dump(entries, f, indent=2, ensure_ascii=False)
+    _write_json(HISTORY_PATH, entries,
+                note="Run history is disk-readonly on this host — checkpoint kept in memory for this session only.")
 
 
 def _forecast_snapshot() -> dict:
@@ -74,10 +159,10 @@ def _forecast_snapshot() -> dict:
     return Forecaster(load_rulebook(), load_typologies()).forecast()
 
 
-def _record_history(run=None, kind: str = "run", note: str = "") -> dict:
+def _record_history(run=None, kind: str = "run", note: str = "", findings: int = None) -> dict:
     """Append a measured checkpoint to run_history.json. Auto (per run) or manual."""
     fc = _forecast_snapshot()
-    findings = len(run.results) if run is not None else None
+    findings = len(run.results) if (findings is None and run is not None) else findings
     discarded = len(run.discarded) if run is not None else None
     entry = {
         "run_id": (run.run_id if run is not None else f"checkpoint-{uuid.uuid4().hex[:8]}"),
@@ -102,13 +187,36 @@ def _record_history(run=None, kind: str = "run", note: str = "") -> dict:
 # ---------------------------------------------------------------------------
 # Background run worker
 # ---------------------------------------------------------------------------
-def _run_worker(trigger: str):
+def _seed_decisions() -> None:
+    """Ensure the in-memory decisions registry mirrors the persisted one."""
+    if not STORE.get("_decisions_seeded"):
+        STORE["decisions"] = dict(_load_decisions())
+        STORE["_decisions_seeded"] = True
+
+
+def _persist_decisions() -> None:
+    _save_decisions(STORE["decisions"])
+
+
+def _resolved_ids() -> set:
+    """Typologies already decided or covered are excluded from future runs."""
+    covered = amendments.covered_typology_ids()
+    resolved = {fid for fid, d in STORE["decisions"].items() if _decided(d)}
+    return set(covered) | resolved
+
+
+def _run_worker(trigger: str, mode: str = "documented"):
     STORE["running"] = True
     STORE["abort"] = False
     STORE["started_at"] = time.time()
     STORE["log"] = []
-    # Diff: snapshot which typologies the PREVIOUS completed run flagged.
+    STORE["mode"] = mode
+    # Diff baseline: which typologies the PREVIOUS console run flagged.
     STORE["prev_ids"] = [f.typology_id for f in (STORE["run"].results or [])] if STORE["run"] else []
+    comb_audit: list[dict] = []
+    pre_lines: list[dict] = []      # ingest/skip lines shown above the run audit
+    total_findings = 0
+    _audit("run_started", detail=f"Run triggered ({mode})", meta={"mode": mode})
 
     def live_progress(phase: str, message: str):
         STORE["log"].append({"node": phase, "message": message,
@@ -117,40 +225,73 @@ def _run_worker(trigger: str):
     def should_abort() -> bool:
         return bool(STORE["abort"])
 
+    arms = []
+    if mode in ("documented", "both"):
+        arms.append("documented")
+    if mode in ("generated", "both"):
+        arms.append("generated")
+
     try:
         rulebook = load_rulebook()
         all_typologies = load_typologies()
-        covered = amendments.covered_typology_ids()
-        # Gap backlog: typologies whose approved indicators now cover their
-        # detected gap set are excluded from the next reconciliation scan.
-        typologies = [t for t in all_typologies if t.id not in covered]
-        if covered:
-            STORE["log"].append({"node": "ingest",
-                                 "message": f"Gap backlog reduced: {len(covered)} typologies covered by institutionalised indicators · scanning {len(typologies)} remaining"})
-        orch = Orchestrator(rulebook, typologies)
-        state = orch.run(trigger=trigger, analyst=STORE["analyst"],
-                         on_progress=live_progress, abort_check=should_abort)
-        if state.status == "aborted":
-            STORE["log"].append({"node": "orchestrator",
-                                 "message": "Run aborted by analyst before completion."})
-            STORE["run"] = None
-            STORE["decisions"] = {}
-        else:
+        gen_pool_all = load_generated()
+        excluded = _resolved_ids()
+        documented_pool = [t for t in all_typologies if t.id not in excluded]
+        generated_pool = [t for t in gen_pool_all if t.id not in excluded]
+        if excluded:
+            pre_lines.append({"node": "ingest",
+                              "message": f"Skipping {len(excluded)} already-reviewed/covered typolog"
+                                         f"{'y' if len(excluded) == 1 else 'ies'} · scanning "
+                                         f"{len(documented_pool)} known + {len(generated_pool)} invented"})
+            _audit("run_skip", detail=f"{len(excluded)} already-reviewed typologies excluded",
+                   meta={"excluded": len(excluded)})
+
+        state = None
+        for arm in arms:
+            pre_lines.append({"node": "ingest",
+                              "message": f"Launching {arm} arm · pool of "
+                                         f"{len(documented_pool if arm == 'documented' else generated_pool)} "
+                                         f"typologies"})
+            orch = Orchestrator(rulebook, documented_pool)
+            state = orch.run(trigger=trigger, analyst=STORE["analyst"],
+                             on_progress=live_progress, abort_check=should_abort,
+                             mode=arm, generated_typologies=generated_pool)
+            if state.status == "aborted":
+                STORE["log"].append({"node": "orchestrator",
+                                     "message": "Run aborted by analyst before completion."})
+                STORE["run"] = None
+                break
+            STORE["runs"][arm] = state
             STORE["run"] = state
-            STORE["decisions"] = {}
-            STORE["log"] = list(state.audit) if state else []
-            _record_history(state)
+            comb_audit += list(state.audit)
+            total_findings += len(state.results) if state else 0
+
+        if state and state.status != "aborted":
+            STORE["log"] = pre_lines + comb_audit
+            _record_history(state, kind="run", note=f"mode={mode}",
+                            findings=total_findings or None)
+            _audit("run_finished",
+                   detail=f"Completed ({mode}) · {total_findings} findings to review",
+                   meta={"mode": mode, "findings": total_findings})
+        else:
+            _audit("run_aborted", detail=f"Run aborted ({mode})", meta={"mode": mode})
     except Exception as exc:
         STORE["log"].append({"node": "error", "message": f"Run failed: {exc}"})
         STORE["run"] = None
+        _audit("run_error", detail=f"Run failed: {exc}", meta={"mode": mode})
     finally:
         STORE["abort"] = False
         STORE["running"] = False
 
 
-def _start_background_run(trigger: str) -> None:
-    """Start a background thread doing a real run; returns immediately."""
-    t = threading.Thread(target=_run_worker, args=(trigger,), daemon=True)
+def _start_background_run(trigger: str, mode: str = "documented") -> None:
+    """Start a background thread doing a real run; returns immediately.
+    In SERVERLESS mode the function cannot keep a thread alive after the
+    request, so the run is executed inline (synchronously) instead."""
+    if SERVERLESS:
+        _run_worker(trigger, mode)
+        return
+    t = threading.Thread(target=_run_worker, args=(trigger, mode), daemon=True)
     t.start()
 
 
@@ -166,6 +307,8 @@ def _finding_json(f):
         "mitre_atlas": f.mitre_atlas,
         "evidential_basis": f.evidential_basis or "documented typology",
         "drafted_candidate_red_flag": f.drafted_candidate_red_flag,
+        "trace": f.trace or [],
+        "mode": getattr(f, "mode", "documented") or "documented",
     }
 
 
@@ -178,6 +321,7 @@ def _discarded_json(d):
 
 
 def _state_json():
+    _seed_decisions()
     run = STORE["run"]
     decisions = STORE["decisions"]
     inst = amendments.load_instituted()
@@ -189,9 +333,11 @@ def _state_json():
     diff_new = [f["typology_id"] for f in findings if f["delta"] == "new"]
     diff_repeat = [f["typology_id"] for f in findings if f["delta"] == "repeat"]
     diff_regressed = [t for t in (prev_ids - {f["typology_id"] for f in findings})]
-    reviewed = sum(1 for f in findings if f["typology_id"] in decisions)
+    reviewed = sum(1 for f in findings if _decided(decisions.get(f["typology_id"])))
     total = len(findings)
     all_decided = bool(total) and reviewed == total
+
+    excluded = _resolved_ids()
 
     status = None
     if run is not None:
@@ -208,6 +354,8 @@ def _state_json():
     return {
         "running": STORE["running"],
         "started_at": STORE["started_at"],
+        "serverless": SERVERLESS,
+        "storage": STORE.get("storage", "writable"),
         "analyst": STORE["analyst"],
         "has_run": run is not None,
         "run_id": run.run_id if run else None,
@@ -223,6 +371,13 @@ def _state_json():
         "audit": list(run.audit) if run else [],
         "log": STORE["log"],
         "pipeline": PIPELINE_STEPS,
+        "mode": STORE.get("mode", "documented"),
+        "excluded": {
+            "count": len(excluded),
+            "ids": sorted(excluded),
+            "documented_pool": len([t for t in load_typologies() if t.id not in excluded]),
+            "generated_pool": len([t for t in load_generated() if t.id not in excluded]),
+        },
         "amendments": {
             "covered": covered,
             "resolved_findings": inst.get("resolved_findings", []),
@@ -270,14 +425,79 @@ def forecast_page():
     return send_from_directory(STATIC, "forecast.html")
 
 
-@app.route("/docs.html")
-def docs_page():
-    return send_from_directory(STATIC, "docs.html")
+@app.route("/compare.html")
+def compare_page():
+    return send_from_directory(STATIC, "compare.html")
+
+
+@app.route("/audit.html")
+def audit_page():
+    return send_from_directory(STATIC, "audit.html")
 
 
 @app.route("/static/<path:path>")
 def static_files(path: str):
     return send_from_directory(STATIC, path)
+
+
+# ---------------------------------------------------------------------------
+# Compare + Audit APIs
+# ---------------------------------------------------------------------------
+def _run_summary(state) -> Optional[dict]:
+    if state is None:
+        return None
+    results = state.results or []
+    fired_total = sum(len(f.fired_rules) for f in results)
+    evaded_total = sum(len(f.evaded_rules) for f in results)
+    top: dict[str, int] = {}
+    for f in results:
+        for rid in f.evaded_rules:
+            top[rid] = top.get(rid, 0) + 1
+    by_id = {r.id: r for r in load_rulebook()}
+    top_evaded = [{"id": i, "name": by_id[i].name if i in by_id else i, "count": c}
+                  for i, c in sorted(top.items(), key=lambda kv: -kv[1])[:8]]
+    return {
+        "run_id": state.run_id,
+        "status": state.status,
+        "total": len(results),
+        "reviewed": sum(1 for f in results if _decided(STORE["decisions"].get(f.typology_id))),
+        "avg_evaded": round(evaded_total / len(results), 2) if results else 0,
+        "avg_fired": round(fired_total / len(results), 2) if results else 0,
+        "fired_total": fired_total,
+        "evaded_total": evaded_total,
+        "top_evaded": top_evaded,
+        "discarded": len(state.discarded or []),
+        "findings": [
+            {"typology_id": f.typology_id, "typology_name": f.typology_name,
+             "fired": len(f.fired_rules), "evaded": len(f.evaded_rules),
+             "mode": getattr(f, "mode", "documented")}
+            for f in results
+        ],
+    }
+
+
+@app.route("/api/compare")
+def api_compare():
+    _seed_decisions()
+    return jsonify({
+        "documented": _run_summary(STORE["runs"].get("documented")),
+        "generated": _run_summary(STORE["runs"].get("generated")),
+        "mode": STORE.get("mode"),
+        "running": STORE["running"],
+        "excluded": {
+            "count": len(_resolved_ids()),
+            "documented_remaining": len([t for t in load_typologies() if t.id not in _resolved_ids()]),
+            "generated_remaining": len([t for t in load_generated() if t.id not in _resolved_ids()]),
+        },
+        "rules_total": len(load_rulebook()),
+    })
+
+
+@app.route("/api/audit")
+def api_audit():
+    _seed_decisions()
+    audits = sorted(_load_audit(), key=lambda e: e.get("ts", ""), reverse=True)
+    return jsonify({"entries": audits})
 
 
 @app.route("/api/state")
@@ -289,20 +509,38 @@ def api_state():
 def api_run():
     if STORE["running"]:
         return jsonify({"error": "A run is already in progress."}), 409
+    _seed_decisions()
     trigger = (request.json or {}).get("trigger", "manual")
-    _start_background_run(trigger)
-    return jsonify({"started": True})
+    mode = (request.json or {}).get("mode", "documented")
+    if mode not in ("documented", "generated", "both"):
+        return jsonify({"error": "mode must be documented | generated | both"}), 400
+    _start_background_run(trigger, mode)
+    if SERVERLESS:
+        return jsonify({"started": True, "mode": mode, "sync": True, "state": _state_json()})
+    return jsonify({"started": True, "mode": mode})
 
 
 @app.route("/api/decide", methods=["POST"])
 def api_decide():
+    """Human-approval-gate decision. A written reason is REQUIRED before any
+    decision is recorded - a logged approval, not a rubber stamp."""
     data = request.json or {}
     fid = data.get("fid")
     decision = data.get("decision")
+    reason = str(data.get("reason") or "").strip()
     if not fid or decision not in ("accept", "amend", "reject"):
         return jsonify({"error": "bad request"}), 400
+    if len(reason) < 3:
+        return jsonify({"error": "Please add a short reason (at least 3 characters) before deciding - the review must be a logged approval, not a rubber stamp."}), 422
+    _seed_decisions()
     label = {"accept": "accepted ✓", "amend": "amended ✎", "reject": "rejected ✗"}[decision]
-    STORE["decisions"][fid] = label
+    STORE["decisions"][fid] = {
+        "decision": decision,
+        "label": label,
+        "reason": reason,
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
+    _persist_decisions()
     verb = {
         "accept": "Promoted to draft guidance for further review.",
         "amend": "Returned for amendment.",
@@ -310,9 +548,12 @@ def api_decide():
     }[decision]
     STORE["log"].append({
         "node": "human-gate",
-        "message": f"Analyst {STORE['analyst']} → {label} finding '{fid}'. {verb}",
+        "message": f"Analyst {STORE['analyst']} → {label} finding '{fid}'. Reason: {reason}. {verb}",
     })
-    return jsonify({"ok": True, "decision": label})
+    _audit("finding_decided",
+           detail=f"{label} {fid}",
+           meta={"fid": fid, "decision": decision, "reason": reason})
+    return jsonify({"ok": True, "decision": label, "reason": reason})
 
 
 @app.route("/api/institute", methods=["POST"])
@@ -323,11 +564,15 @@ def api_institute():
     fid = data.get("fid")
     if not fid:
         return jsonify({"error": "bad request"}), 400
+    reason = str(data.get("reason") or "").strip()
+    if len(reason) < 3:
+        return jsonify({"error": "Please add a short reason before instituting the rule."}), 422
+    _seed_decisions()
     run = STORE["run"]
     finding = next((f for f in (run.results if run else []) if f.typology_id == fid), None)
     if finding is None:
         return jsonify({"error": "finding not found"}), 404
-    typology = next((t for t in load_typologies() if t.id == fid), None)
+    typology = next((t for t in load_typologies() + load_generated() if t.id == fid), None)
     if typology is None:
         return jsonify({"error": "typology not found"}), 404
 
@@ -335,14 +580,23 @@ def api_institute():
     if not res.get("ok"):
         return jsonify({"error": res.get("error", "could not institute")}), 400
 
-    STORE["decisions"][fid] = "instituted ✓"
+    STORE["decisions"][fid] = {
+        "decision": "institute",
+        "label": "instituted ✓",
+        "reason": reason,
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
+    _persist_decisions()
     STORE["log"].append({
         "node": "human-gate",
-        "message": f"Analyst {STORE['analyst']} → instituted {res['rule']} for '{fid}' · gap closed, drift re-scanned.",
+        "message": f"Analyst {STORE['analyst']} → instituted {res['rule']} for '{fid}' · gap closed, drift re-scanned. Reason: {reason}",
     })
     entry = _record_history(kind="checkpoint",
                             note=f"post-amendment re-scan after instituting {res['rule']} ({fid})")
     fc = _forecast_snapshot()
+    _audit("rule_instituted",
+           detail=f"{res['rule']} instituted · covers {fid}",
+           meta={"rule": res["rule"], "fid": fid, "reason": reason})
     return jsonify({
         "ok": True,
         **res,
@@ -357,13 +611,18 @@ def api_reset():
     if STORE["running"]:
         STORE["abort"] = True
         return jsonify({"ok": True, "aborted": True})
+    _seed_decisions()
     STORE["run"] = None
+    STORE["runs"] = {}
     STORE["decisions"] = {}
+    _persist_decisions()
     STORE["log"] = []
     STORE["started_at"] = None
     STORE["prev_ids"] = []
+    STORE["mode"] = "documented"
     # Roll the rulebook back to the shipped DS-01..DS-40 baseline (demo idempotency).
     restored = amendments.restore_baseline()
+    _audit("console_reset", detail="Console state cleared ; baseline restored")
     return jsonify({"ok": True, "aborted": False, "restored": restored.get("removed", [])})
 
 
@@ -371,6 +630,9 @@ def api_reset():
 def api_record():
     """Manually record a forecast checkpoint from the current corpus scan."""
     entry = _record_history(kind="checkpoint")
+    _audit("checkpoint_recorded",
+           detail=f"Checkpoint {entry.get('run_id')} recorded · drift {entry.get('drift_index')}",
+           meta={"run_id": entry.get("run_id")})
     return jsonify({"ok": True, "recorded": entry})
 
 
@@ -430,13 +692,15 @@ def api_fraudtest():
             verified=True,
         )
         run.results.append(finding)
-        STORE["decisions"].setdefault(fid, "")
         STORE["log"].append({
             "node": "human-gate",
             "message": f"Analyst {STORE['analyst']} submitted attack test '{label}' ({fid}) · "
                        f"caught {len(fired)} rule(s), slipped past {len(evaded)} · sent to human gate.",
         })
         STORE["prev_ids"] = STORE.get("prev_ids") or [f.typology_id for f in run.results[:-1]] or []
+        _audit("attack_submitted",
+               detail=f"Attack test '{label}' ({fid}) · caught {len(fired)}, slipped past {len(evaded)}",
+               meta={"fid": fid, "label": label, "fired": fired, "evaded": evaded})
         committed = fid
 
     verdict = (
@@ -477,6 +741,9 @@ def api_probe():
         "message": (f"Red-team probe → {res['verdict']} (victim {res['victim']['id']}, "
                     f"claim {len(res['claim'])} rules vs actual {len(res['actual_evaded'])})"),
     })
+    _audit("red_team_probe",
+           detail=f"Probe → {res['verdict']} · victim {res['victim']['id']}",
+           meta={"victim": res["victim"]["id"], "verdict": res["verdict"]})
     return jsonify(res)
 
 
@@ -535,6 +802,7 @@ def api_dossier_pdf():
     for f in approved:
         est.append(Paragraph(f"<b>{f['typology_id']}</b> · {f['typology_name']} "
                              f"· <i>{f['decision']}</i>", body))
+        est.append(Paragraph(f"Rationale: {f['reason'] or '—'}", small))
         est.append(Paragraph(f"Fired: {', '.join(f['fired_rules']) or '—'} · "
                              f"Evaded: {', '.join(f['evaded_rules']) or '—'}", small))
         est.append(Paragraph(f"Red flag: {f['red_flag']}", small))
@@ -560,14 +828,16 @@ def _build_dossier() -> dict:
         {
             "typology_id": f["typology_id"],
             "typology_name": f["typology_name"],
-            "decision": decisions.get(f["typology_id"], ""),
+            "decision": (decisions.get(f["typology_id"]) or {}).get("label", ""),
+            "reason": (decisions.get(f["typology_id"]) or {}).get("reason", ""),
             "fired_rules": f.get("fired_rules", []),
             "evaded_rules": f.get("evaded_rules", []),
             "red_flag": f.get("drafted_candidate_red_flag", ""),
             "evidential_basis": f.get("evidential_basis", ""),
         }
         for f in findings
-        if decisions.get(f["typology_id"]) and "reject" not in decisions[f["typology_id"]]
+        if _decided(decisions.get(f["typology_id"]))
+        and (decisions.get(f["typology_id"]) or {}).get("decision") != "reject"
     ]
     return {
         "run_id": run.run_id if run else None,

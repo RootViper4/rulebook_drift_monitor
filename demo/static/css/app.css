@@ -6,7 +6,7 @@
   --bg:#f3f5fa; --panel:#ffffff; --panel-2:#f8fafc; --panel-3:#eef2f8;
   --border:#e3e8f0; --border-2:#d3dbe8;
   --text:#16233b; --muted:#52627c; --dim:#8a96ad;
-  --accent:#2563eb; --accent-2:#7c3aed; --accent-soft:#eef4ff;
+  --accent:#2563eb; --accent-2:#7c3aed; --accent-soft:#eef4ff; --accent-2-soft:#f3eefe;
   --good:#059669; --good-soft:#e6f6f0; --bad:#dc2626; --bad-soft:#fdecec;
   --warn:#d97706; --warn-soft:#fdf3e3; --info:#0284c7; --info-soft:#e8f4fb;
   --sidebar:#0d1526; --sidebar-2:#131e33; --sidebar-text:#c6d0e4; --sidebar-dim:#7886a3;
@@ -382,3 +382,68 @@ span.nnum{display:inline-flex;align-items:center;justify-content:center;min-widt
 .find-clickable{cursor:pointer}
 .find-clickable:hover{border-color:#a5b4fc}
 .hint-open{font-size:10.5px;color:#4b5563;font-style:italic}
+
+/* --- Per-finding agent trace --- */
+.f-trace{background:#f7f9fd;border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-top:10px}
+.f-trace-title{font-size:10.5px;font-weight:800;color:#4b5563;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.f-trace-step{display:flex;gap:8px;align-items:flex-start;padding:3px 0;font-size:12px;line-height:1.5}
+.f-trace-step .nnum{flex:none}
+
+/* --- Run 2 / invented-fraud arm --- */
+.btn-primary-2{background:var(--accent-2);color:#fff;box-shadow:0 4px 12px rgba(217,70,239,.25)}
+.btn-primary-2:hover:not(:disabled){background:#b71fd1}
+.btn-primary-2:disabled,.btn-primary-2[disabled]{opacity:.5;cursor:not-allowed;box-shadow:none}
+.btn-primary-2 .icon{display:inline-block;min-width:12px}
+
+/* --- Finding run-mode badge --- */
+.mode-chip{margin-left:4px;font-size:10px;letter-spacing:.03em;vertical-align:middle}
+.mode-chip.mode-documented{background:var(--accent-soft);color:var(--accent)}
+.mode-chip.mode-reconciliation{background:var(--accent-soft);color:var(--accent)}
+.mode-chip.mode-generated{background:var(--accent-2-soft);color:#b71fd1}
+.mode-chip.mode-generation{background:var(--accent-2-soft);color:#b71fd1}
+
+/* --- Reason-required decisions --- */
+.reason-input{width:100%;box-sizing:border-box;margin-bottom:8px;padding:7px 10px;font-size:12px;font-family:var(--sans);color:var(--text);background:var(--panel-3);border:1px solid var(--border);border-radius:8px}
+.reason-input::placeholder{color:var(--muted)}
+.reason-input:focus{outline:none;border-color:var(--accent)}
+.reason-input.err{border-color:#e25563;box-shadow:0 0 0 3px rgba(226,85,99,.15)}
+.reason-input[readonly]{background:var(--panel-2);color:var(--dim)}
+.dec-reason{width:100%;font-size:11.5px;color:var(--muted);padding:2px 2px 0;font-style:italic}
+
+/* --- Compare page --- */
+.cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}
+@media (max-width:920px){.cmp-grid{grid-template-columns:1fr}}
+.cmp-card{border:1px solid var(--border);border-radius:var(--radius);background:var(--panel);padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 3px rgba(10,14,30,.04)}
+.cmp-card.empty-side{justify-content:center;align-items:center;text-align:center;min-height:180px;border-style:dashed;background:var(--panel-2)}
+.cmp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.cmp-kicker{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.cmp-title{font-size:19px;font-weight:800;letter-spacing:-.3px;color:var(--text)}
+.cmp-status{font-family:var(--mono);font-size:10.5px;padding:3px 8px;border-radius:6px;background:var(--panel-3);color:var(--dim)}
+.cmp-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cmp-stats div{background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;text-align:center}
+.cmp-stats b{display:block;font-size:17px;font-weight:800;color:var(--accent)}
+.cmp-stats span{font-size:10px;color:var(--muted);font-weight:600}
+.cmp-rule-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-top:2px}
+.cmp-list{display:flex;flex-direction:column;gap:4px;max-height:300px;overflow:auto}
+.cmp-row{display:flex;gap:8px;align-items:center;font-size:12.5px;padding:4px 6px;border-radius:6px;background:var(--panel-2);border:1px solid var(--border)}
+.cmp-row .dim{font-family:var(--mono)}
+.cmp-verdict-wrap{margin-top:14px}
+.cmp-verdict{background:linear-gradient(135deg,var(--panel-3),var(--panel-2));border:1px solid var(--border-2);border-left:4px solid var(--accent-2);border-radius:10px;padding:14px 16px;font-size:14px;line-height:1.55;color:var(--text)}
+.cmp-verdict b{color:var(--accent-2)}
+
+/* --- Audit page --- */
+.aud-filter{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 14px}
+.aud-timeline{position:relative;display:flex;flex-direction:column;gap:0}
+.aud-line{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--border)}
+.aud-line:first-child{border-top:none}
+.aud-dot{flex:none;width:10px;height:10px;border-radius:50%;margin-top:5px;box-shadow:0 0 0 3px var(--panel-2)}
+.aud-body{flex:1;min-width:0}
+.aud-head{display:flex;align-items:center;gap:8px;font-size:12px}
+.aud-ts{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.aud-k{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:6px}
+.pill-run{background:var(--accent-soft);color:var(--accent)}
+.pill-decision{background:rgba(225,161,53,.15);color:#b45309}
+.pill-institute{background:var(--good-soft);color:var(--good)}
+.pill-probe{background:var(--accent-2-soft);color:#b71fd1}
+.pill-risk{background:var(--panel-3);color:var(--dim)}
+.aud-reason{font-size:12px;color:var(--muted);background:var(--panel-2);border-left:3px solid var(--border-2);border-radius:6px;padding:8px 10px;margin-top:6px;margin-bottom:2px}

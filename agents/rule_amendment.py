@@ -47,10 +47,18 @@ def load_instituted(inst_path: Optional[str] = None) -> dict:
         return {"rules": [], "covered": {}, "resolved_findings": []}
 
 
-def save_instituted(data: dict) -> None:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    with open(INSTITUTED_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+def save_instituted(data: dict) -> bool:
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(INSTITUTED_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        return True
+    except (OSError, IOError):
+        return False
+
+
+_READONLY_MSG = ("Rulebook is read-only on this host (serverless deployment) — "
+                 "institutionalised rules cannot be persisted here.")
 
 
 def covered_typology_ids() -> set[str]:
@@ -66,7 +74,10 @@ def backup_base_rulebook() -> None:
     """Snapshot the shipped DS-01..DS-40 baseline once, for demo rollback."""
     if os.path.exists(BASE_RULEBOOK_PATH):
         return
-    shutil.copy(RULEBOOK_PATH, BASE_RULEBOOK_PATH)
+    try:
+        shutil.copy(RULEBOOK_PATH, BASE_RULEBOOK_PATH)
+    except (OSError, IOError):
+        pass
 
 
 def load_rulebook_with_instituted(path: Optional[str] = None) -> list[Rule]:
@@ -89,10 +100,11 @@ def _make_signature(typology: Typology) -> dict[str, object]:
     for fx in fixtures:
         pairs = {(k, v) for k, v in fx.items() if isinstance(v, (str, int, float, bool)) and v not in ("", None)}
         common = pairs if common is None else (common & pairs)
-    # Order deterministically, skip volatile numerics to keep the predicate robust.
+    # Order deterministically, skip volatile numerics to keep the predicate robust
+    # (booleans are kept: they are the hard signal for flag-style fixtures).
     sig = {}
     for k, v in sorted(common, key=lambda kv: kv[0]):
-        if isinstance(v, (int, float)):
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
             continue
         sig[k] = v
     return sig
@@ -165,10 +177,13 @@ def institute(typology: Typology, finding, run_id: str) -> dict:
 
     rules = load_rulebook_with_instituted()
     rules.append(rule)
-    with open(RULEBOOK_PATH, "w", encoding="utf-8") as f:
-        json.dump({"version": "drift-sentinel-institutionalised", "count": len(rules),
-                   "rules": [r.__dict__ if hasattr(r, "__dict__") else _rule_to_dict(r) for r in rules]},
-                  f, indent=2, ensure_ascii=False)
+    try:
+        with open(RULEBOOK_PATH, "w", encoding="utf-8") as f:
+            json.dump({"version": "drift-sentinel-institutionalised", "count": len(rules),
+                       "rules": [r.__dict__ if hasattr(r, "__dict__") else _rule_to_dict(r) for r in rules]},
+                      f, indent=2, ensure_ascii=False)
+    except (OSError, IOError):
+        return {"ok": False, "error": _READONLY_MSG}
 
     inst["rules"].append(_rule_to_dict(rule))
     inst["covered"].setdefault(typology.id, []).append(rule.id)
@@ -208,12 +223,15 @@ def restore_baseline() -> dict:
             with open(RULEBOOK_PATH, encoding="utf-8") as f:
                 current = json.load(f).get("rules", [])
             removed = [r.get("id") for r in current if r.get("institutionalised")]
-        except Exception:
-            removed = []
-        with open(RULEBOOK_PATH, "w", encoding="utf-8") as f:
-            f.write(open(BASE_RULEBOOK_PATH, encoding="utf-8").read())
+            with open(RULEBOOK_PATH, "w", encoding="utf-8") as f:
+                f.write(open(BASE_RULEBOOK_PATH, encoding="utf-8").read())
+        except (OSError, IOError):
+            return {"ok": False, "error": _READONLY_MSG, "removed": []}
     if os.path.exists(INSTITUTED_PATH):
-        os.remove(INSTITUTED_PATH)
+        try:
+            os.remove(INSTITUTED_PATH)
+        except (OSError, IOError):
+            pass
     if removed:
         from agents.rule_engine import RuleEvaluationEngine
         for rid in removed:

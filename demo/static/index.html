@@ -19,7 +19,9 @@
       <a class="nav-link" href="index.html"><span class="ic">▶</span>Run Console</a>
       <a class="nav-link" href="rules.html"><span class="ic">⚖</span>Rule Catalog</a>
       <a class="nav-link" href="forecast.html"><span class="ic">⌁</span>Forecast</a>
-      <a class="nav-link" href="docs.html"><span class="ic">?</span>Docs</a>
+      <div class="nav-sec">Review</div>
+      <a class="nav-link" href="compare.html"><span class="ic">⇄</span>Compare</a>
+      <a class="nav-link" href="audit.html"><span class="ic">🕮</span>Audit</a>
     </nav>
     <div class="side-foot">DS-01..DS-40 · 40 rules<br/>Synthetic data · hackathon demo</div>
   </aside>
@@ -37,19 +39,22 @@
       <div class="hero">
         <div class="eyebrow">Agentic pipeline</div>
         <h1>Drift detection run</h1>
-        <p class="sub">A scan that stress-tests every rule in the book against fraud, two ways: known tricks from the catalogue, and brand-new tricks the system thinks up on its own. Every result is double-checked before it reaches you.</p>
+        <p class="sub">Two scans in one system: <b>Run 1</b> fires the documented typologies at the rulebook, <b>Run 2</b> fires the system's own invented frauds at it. Every result is double-checked before it reaches you — check <a href="compare.html" style="color:var(--accent)">Compare</a> to see how the two kinds of gap stack up.</p>
       </div>
 
       <div class="runbar">
-        <button class="btn btn-primary" id="runBtn"><span class="icon" id="runBtnIcon">▶</span>New run</button>
+        <button class="btn btn-primary" id="runBtn1"><span class="icon">▶</span>Run 1 · known fraud</button>
+        <button class="btn btn-primary-2" id="runBtn2"><span class="icon">▶</span>Run 2 · invented fraud</button>
         <button class="btn btn-ghost" id="resetBtn">Reset</button>
         <button class="btn btn-ghost-2" onclick="exportDossier('json')">Export dossier JSON</button>
         <button class="btn btn-ghost-2" onclick="exportDossier('pdf')">Export dossier PDF</button>
         <div class="run-meta">
           <span>Run <b class="mono" id="runId">none</b></span>
+          <span>Arm <b id="runMode">known</b></span>
           <span>Rulebook <b id="rulebookVersion">—</b></span>
           <span>Status <b id="runStatus">ready</b></span>
           <span>Findings <b id="findingCount">0</b></span>
+          <span>Already reviewed <b id="exclCount">0</b></span>
         </div>
       </div>
 
@@ -183,6 +188,9 @@ const NODE_LABEL = {
   draft:'Draft fixes', report:'Human gate', orchestrator:'Orchestrator', 'human-gate':'You',
   probe:'Probe', error:'Error'
 };
+const AGENT_LABEL = {retriever:'Retriever agent', simulator:'Attack simulator', critic:'Critic agent', drafter:'Drafting agent'};
+const MODE_LABEL = {documented:'Known fraud', reconciliation:'Known fraud', generated:'Invented fraud', generation:'Invented fraud'};
+const ARM_LABEL  = {documented:'known', generated:'invented', both:'both'};
 
 function renderLog(log, running){
   if(log===logCache) return;
@@ -197,7 +205,10 @@ function renderLog(log, running){
 }
 
 function findingCard(f){
-  const decided = decisions[f.typology_id];
+  const dec = decisions[f.typology_id];
+  const decided = !!(dec && dec.label);
+  const reason = dec ? (dec.reason||'') : '';
+  const modeLabel = MODE_LABEL[f.mode] || 'Known fraud';
   const delta = f.delta==='new'?'<span class="diff-badge diff-new">NEW</span>'
               : f.delta==='repeat'?'<span class="diff-badge diff-repeat">REPEAT</span>':'';
   const instituted = amendments.covered.includes(f.typology_id);
@@ -206,14 +217,22 @@ function findingCard(f){
     ? '<span class="chip good" style="font-size:11px">✦ instituted · gap closed</span>'
     : isCustom
       ? '<span class="chip dim" style="font-size:11px">your test attack · review above</span>'
-      : `<button class="btn-sm btn-institute" onclick="institute('${f.typology_id}')" ${decided?'':'disabled title="decide first" style="opacity:.45"'} >Institute rule</button>`;
+      : `<button class="btn-sm btn-institute" onclick="institute('${f.typology_id}')" ${decided?'':'disabled title="decide first (with a reason)" style="opacity:.45"'} >Institute rule</button>`;
   const fired = f.fired_rules||[], evaded = f.evaded_rules||[];
   return `<div class="finding find-clickable openable" id="f-${f.typology_id}" data-fid="${esc(f.typology_id)}" onclick="toggleDetail('${f.typology_id}')">
     <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
-      <h3><span class="fid">${esc(f.typology_id)}</span> ${delta} ${esc(f.typology_name)} ${decided?`<span class="decided">${esc(decided)}</span>`:''}</h3>
+      <h3><span class="fid">${esc(f.typology_id)}</span> ${delta}
+        <span class="chip mode-chip mode-${esc(f.mode)}">${esc(modeLabel)}</span>
+        ${esc(f.typology_name)} ${decided?`<span class="decided">${esc(dec.label)}</span>`:''}</h3>
       <span class="hint-open">click for plain English ▾</span>
     </div>
     <div class="basis">${esc(f.evidential_basis)}</div>
+    <div class="f-trace" id="trace-${esc(f.typology_id)}">
+      <div class="f-trace-title">How the system got here — who did what</div>
+      ${(f.trace||[]).map((st,i)=>`<div class="f-trace-step"><span class="nnum">${i+1}</span><div>
+        <b style="color:#4f46e5">${esc(AGENT_LABEL[st.agent]||st.agent)}</b>
+        <span style="color:#374151"> — ${st.msg}</span></div></div>`).join('')}
+    </div>
     <div class="chip-row mt" style="margin-top:10px">
       <span class="chip good">🛡 caught by ${fired.length} rule${fired.length===1?'':'s'}</span>
       <span class="chip bad">⚠ slipped past ${evaded.length} rule${evaded.length===1?'':'s'}</span>
@@ -223,19 +242,28 @@ function findingCard(f){
       ${evaded.slice(0,6).map(rid=>ruleChip(rid,true)).join('')}${evaded.length>6?'<span class="dim" style="font-size:10.5px"> +'+(evaded.length-6)+' more</span>':''}
     </div>
     ${f.drafted_candidate_red_flag?`<div class="flag">${esc(f.drafted_candidate_red_flag)}</div>`:''}
-    <div class="find-detail" id="det-${f.typology_id}">
+    <div class="find-detail" id="det-${esc(f.typology_id)}">
       <div class="kd g">Caught by these rules (they fired — they flagged this attack)</div>
       ${rulesDetail(fired)}
       <div class="kd r">Slipped past these rules (they did not fire — the attack got through them)</div>
       ${rulesDetail(evaded)}
     </div>
     <div class="actions">
-      <button class="btn-sm btn-accept" onclick="event.stopPropagation();decide('${f.typology_id}','accept')">Accept</button>
-      <button class="btn-sm btn-amend"  onclick="event.stopPropagation();decide('${f.typology_id}','amend')">Amend</button>
-      <button class="btn-sm btn-reject" onclick="event.stopPropagation();decide('${f.typology_id}','reject')">Reject</button>
-      ${instBtn}
+      <input class="reason-input" id="rz-${esc(f.typology_id)}" placeholder="Add a reason — required before you accept, amend or reject" value="${decided?esc(reason):''}" ${decided?'readonly':''}/>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;width:100%">
+        <button class="btn-sm btn-accept" onclick="event.stopPropagation();decide('${f.typology_id}','accept')" ${decided?'disabled':''}>Accept</button>
+        <button class="btn-sm btn-amend"  onclick="event.stopPropagation();decide('${f.typology_id}','amend')" ${decided?'disabled':''}>Amend</button>
+        <button class="btn-sm btn-reject" onclick="event.stopPropagation();decide('${f.typology_id}','reject')" ${decided?'disabled':''}>Reject</button>
+        ${instBtn}
+      </div>
+      ${decided?`<div class="dec-reason">↳ ${esc(reason)}</div>`:''}
     </div>
   </div>`;
+}
+
+function findReason(fid){
+  const el = $('rz-'+fid);
+  return el ? el.value.trim() : '';
 }
 
 function toggleDetail(fid){
@@ -244,16 +272,28 @@ function toggleDetail(fid){
 }
 
 async function decide(fid, decision){
+  const reason = findReason(fid);
+  if(reason.length < 3){
+    const el = $('rz-'+fid);
+    if(el){ el.classList.add('err'); el.focus(); setTimeout(()=>el.classList.remove('err'), 1600); }
+    toast('Add a short reason before committing your decision');
+    return;
+  }
   try{
-    await api('/api/decide', {method:'POST', body:JSON.stringify({fid, decision})});
-    toast('Finding '+fid+' → '+decision);
+    await api('/api/decide', {method:'POST', body:JSON.stringify({fid, decision, reason})});
+    toast('Finding '+fid+' → '+decision+' (reason logged)');
     refresh();
   }catch(e){ toast('Decide failed: '+e.message); }
 }
 
 async function institute(fid){
+  const reason = findReason(fid) || 'Close the gap: institutionalise an indicator for this typology.';
+  if(reason.length < 3){
+    toast('Add a reason before instituting the rule');
+    return;
+  }
   try{
-    const r = await api('/api/institute', {method:'POST', body:JSON.stringify({fid})});
+    const r = await api('/api/institute', {method:'POST', body:JSON.stringify({fid, reason})});
     toast(r.ok ? '✦ '+r.rule+' instituted for '+fid+' · drift → '+r.drift_index.toFixed(1)
                : 'Institute failed: '+(r.error||'?'));
     refresh();
@@ -287,8 +327,10 @@ function setFilter(tab){
 function matchesFilter(f){
   const d = decisions[f.typology_id];
   if(filterTab==='all') return true;
-  if(filterTab==='undecided') return !d;
-  const kind = (d||'').includes('✓')?'accepted':(d||'').includes('✎')?'amended':(d||'').includes('✗')?'rejected':null;
+  if(filterTab==='undecided') return !(d && d.label);
+  const kind = (d && d.label.includes('✓'))?'accepted'
+             : (d && d.label.includes('✎'))?'amended'
+             : (d && d.label.includes('✗'))?'rejected':null;
   return kind===filterTab;
 }
 
@@ -297,10 +339,10 @@ function renderFindings(){
   const counts = {all:all.length, accepted:0, amended:0, rejected:0, undecided:0};
   all.forEach(f=>{
     const d = decisions[f.typology_id];
-    if(!d){ counts.undecided++; return; }
-    if(d.includes('✓')) counts.accepted++;
-    else if(d.includes('✎')) counts.amended++;
-    else if(d.includes('✗')) counts.rejected++;
+    if(!d || !d.label){ counts.undecided++; return; }
+    if(d.label.includes('✓')) counts.accepted++;
+    else if(d.label.includes('✎')) counts.amended++;
+    else if(d.label.includes('✗')) counts.rejected++;
   });
   ['All','Accepted','Amended','Rejected','Undecided'].forEach(k=>{
     const el=$('c'+k); if(el) el.textContent = counts[k.toLowerCase()];
@@ -315,12 +357,17 @@ let amendments = {rules:[], covered:[], resolved_findings:[]};
 async function refresh(){
   let s;
   try{ s = await api('/api/state'); }catch(e){ $('statusPill').textContent='● Offline'; return; }
+  applyState(s);
+}
+function applyState(s){
   decisions = s.decisions||{};
   running = Boolean(s.running);
   allFindings = s.findings||[];
   amendments = s.amendments||{rules:[], covered:[], resolved_findings:[]};
   $('runId').textContent = s.run_id||'none';
   $('rulebookVersion').textContent = s.rulebook_version||'—';
+  $('runMode').textContent = ARM_LABEL[s.mode]||'known';
+  $('exclCount').textContent = (s.excluded&&s.excluded.count)||0;
   const st = s.status||'ready';
   const statusMap = {
     awaiting_human_approval: (s.total?'Awaiting approval · 0/'+s.total+' decided':'Awaiting approval'),
@@ -335,13 +382,17 @@ async function refresh(){
   $('findingsTitle').textContent = 'Verified findings · ' +
     ((s.reviewed||0)+'/'+(s.total||0)+' reviewed');
 
+  const modo = ARM_LABEL[s.mode]||'known';
+  const b1 = $('runBtn1'), b2 = $('runBtn2');
   if(s.running){
-    $('runBtn').disabled = true;
-    $('runBtnIcon').innerHTML = '<span class="spinner"></span>';
+    $('runBtn1').disabled = true; $('runBtn2').disabled = true;
+    if(b1) b1.querySelector('.icon').innerHTML = (modo==='known'||modo==='both')?'<span class="spinner"></span>':'▶';
+    if(b2) b2.querySelector('.icon').innerHTML = (modo==='invented'||modo==='both')?'<span class="spinner"></span>':'▶';
     runFinishedShown = false;
   }else{
-    $('runBtn').disabled = false;
-    $('runBtnIcon').textContent = '▶';
+    $('runBtn1').disabled = false; $('runBtn2').disabled = false;
+    if(b1) b1.querySelector('.icon').textContent = '▶';
+    if(b2) b2.querySelector('.icon').textContent = '▶';
     if(!runFinishedShown && (s.total||0)>0){
       runFinishedShown = true;
       markStep(5);
@@ -556,15 +607,27 @@ async function tick(){
   setTimeout(tick, running?600:3000);
 }
 
-$('runBtn').addEventListener('click', async ()=>{
+async function startRun(mode){
+  const btn = mode==='generated' ? $('runBtn2') : $('runBtn1');
+  const btn2 = mode==='generated' ? $('runBtn1') : $('runBtn2');
   try{
-    $('runBtn').disabled = true; $('runBtnIcon').innerHTML='<span class="spinner"></span>';
+    btn.disabled = true; btn.querySelector('.icon').innerHTML='<span class="spinner"></span>';
+    btn2.disabled = true;
     stepIndex=-1; logCache=null; runFinishedShown=false;
     decisions={}; allFindings=[];
     buildPipe();
-    await api('/api/run', {method:'POST', body:JSON.stringify({trigger:'manual'})});
-  }catch(e){ toast('Could not start run: '+e.message); $('runBtn').disabled=false; $('runBtnIcon').textContent='▶'; }
-});
+    const r = await api('/api/run', {method:'POST', body:JSON.stringify({trigger:'manual', mode})});
+    if(r && r.sync && r.state){
+      // Serverless run completed inside the POST — render it straight away,
+      // the poller will continue to refresh from /api/state while the
+      // function instance stays warm.
+      runFinishedShown = true;
+      applyState(r.state);
+    }
+  }catch(e){ toast('Could not start run: '+e.message); btn.disabled=false; btn.querySelector('.icon').textContent='▶'; btn2.disabled=false; }
+}
+$('runBtn1').addEventListener('click', ()=>startRun('documented'));
+$('runBtn2').addEventListener('click', ()=>startRun('generated'));
 
 $('resetBtn').addEventListener('click', async ()=>{
   try{
@@ -573,7 +636,7 @@ $('resetBtn').addEventListener('click', async ()=>{
     if(r.aborted){
       toast('Aborting running scan…');
       $('runStatus').textContent = 'aborting…';
-      $('runBtn').disabled = true; $('runBtnIcon').innerHTML='<span class="spinner"></span>';
+      $('runBtn1').disabled = true; $('runBtn2').disabled = true;
       const wait = async ()=>{
         const s = await api('/api/state');
         if(!s.running){ doResetUI(); toast('Run aborted · state cleared'); }

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Rulebook Drift Monitor · Audit</title>
+<link rel="stylesheet" href="static/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <div class="side-logo">RD</div>
+      <div><div class="name">Rulebook Drift Monitor</div><div class="sub">Agentic Regulatory Oversight</div></div>
+    </div>
+    <nav class="side-nav">
+      <div class="nav-sec">Platform</div>
+      <a class="nav-link" href="dashboard.html"><span class="ic">◈</span>Dashboard</a>
+      <a class="nav-link" href="index.html"><span class="ic">▶</span>Run Console</a>
+      <a class="nav-link" href="rules.html"><span class="ic">⚖</span>Rule Catalog</a>
+      <a class="nav-link" href="forecast.html"><span class="ic">⌁</span>Forecast</a>
+      <div class="nav-sec">Review</div>
+      <a class="nav-link" href="compare.html"><span class="ic">⇄</span>Compare</a>
+      <a class="nav-link" href="audit.html"><span class="ic">🕮</span>Audit</a>
+    </nav>
+    <div class="side-foot">DS-01..DS-40 · 40 rules<br/>Synthetic data · hackathon demo</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title">Audit trail</div>
+      <div class="top-right">
+        <span class="badge-status online" id="statusPill">● Ready</span>
+        <span class="analyst-chip"><span class="avatar">AA</span><span id="analystName">A. Analyst</span></span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="hero-sm">
+        <div class="eyebrow">Immutable-by-convention log</div>
+        <h1>Who did what, and why</h1>
+        <p class="sub">Every run, every decision (with the analyst's written reason), every instituted rule, red-team probe and attack test — in one append-only timeline, newest first.</p>
+      </div>
+
+      <div class="aud-filter">
+        <button class="tab active" data-ev="all" onclick="setEv('all')">All</button>
+        <button class="tab" data-ev="run" onclick="setEv('run')">Runs</button>
+        <button class="tab" data-ev="decision" onclick="setEv('decision')">Decisions</button>
+        <button class="tab" data-ev="institute" onclick="setEv('institute')">Institutions</button>
+        <button class="tab" data-ev="probe" onclick="setEv('probe')">Red-team probes</button>
+        <button class="tab" data-ev="risk" onclick="setEv('risk')">Other</button>
+        <div style="margin-left:auto;font-size:12px;color:var(--muted)"><b id="audCount">0</b> events</div>
+      </div>
+      <div id="audTimeline" class="aud-timeline"></div>
+      <div id="audEmpty" class="empty blocked" style="display:none">No audit events yet — run a scan or make a decision to populate the trail.</div>
+
+      <footer>Rulebook Drift Monitor · hackathon prototype · all data synthetic &amp; illustrative</footer>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="static/js/app.js"></script>
+<script>
+const EVENT_META = {
+  run_started:     {l:'Run started',    k:'run', c:'var(--accent)'},
+  run_finished:    {l:'Run completed',  k:'run', c:'var(--good)'},
+  run_aborted:     {l:'Run aborted',    k:'run', c:'#e25563'},
+  run_error:       {l:'Run error',      k:'run', c:'#e25563'},
+  run_skip:        {l:'Skipped',        k:'run', c:'var(--muted)'},
+  finding_decided: {l:'Finding decided',k:'decision', c:'#e1a135'},
+  rule_instituted: {l:'Rule instituted',k:'institute', c:'var(--good)'},
+  red_team_probe:  {l:'Red-team probe', k:'probe', c:'var(--accent-2)'},
+  attack_submitted:{l:'Attack test',    k:'probe', c:'var(--muted)'},
+  checkpoint_recorded:{l:'Checkpoint',  k:'risk', c:'var(--accent-2)'},
+  console_reset:   {l:'Console reset',  k:'risk', c:'var(--muted)'},
+};
+function evDefault(e){ return EVENT_META[e] || {l:e, k:'risk', c:'var(--muted)'}; }
+
+let evFilter = 'all', entries = [];
+function setEv(k){
+  evFilter = k;
+  document.querySelectorAll('.aud-filter .tab').forEach(b=>b.classList.toggle('active', b.dataset.ev===k));
+  renderAudit();
+}
+
+function renderAudit(){
+  const shown = entries.filter(e => { const m = evDefault(e.event); return evFilter==='all' || m.k===evFilter; });
+  $('audCount').textContent = shown.length;
+  $('audEmpty').style.display = shown.length ? 'none' : 'block';
+  $('audTimeline').innerHTML = shown.map(e=>{
+    const m = evDefault(e.event);
+    const detail = esc(e.detail||'');
+    let extra = '';
+    const meta = e.meta||{};
+    if(e.event==='finding_decided') extra = `<div class="aud-reason">Reason: “${esc(meta.reason||'')}”</div>`;
+    if(e.event==='rule_instituted') extra = `<div class="aud-reason">Reason: “${esc(meta.reason||'')}” · now covers ${esc(meta.fid||'')}</div>`;
+    if(e.event==='red_team_probe') extra = `<div class="aud-reason">Victim ${esc(meta.victim||'')}</div>`;
+    if(e.event==='run_finished') extra = `<div class="aud-reason">${esc(meta.findings||0)} finding(s) to review</div>`;
+    return `<div class="aud-line">
+      <div class="aud-dot" style="background:${m.c}"></div>
+      <div class="aud-body">
+        <div class="aud-head"><span class="aud-ts">${esc(e.ts||'')}</span>
+          <span class="aud-k pill-${esc(m.k)}">${esc(m.l)}</span>
+          <span class="dim" style="margin-left:auto">${esc(e.actor||'')}</span></div>
+        ${detail?`<div>${detail}</div>`:''}
+        ${extra}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function refresh(){
+  try{
+    const r = await api('/api/audit');
+    entries = r.entries||[];
+  }catch(err){ $('statusPill').textContent='● Offline'; return; }
+  let s = null;
+  try{ s = await api('/api/state'); }catch(e){}
+  $('analystName').textContent = (s&&s.analyst) || 'A. Analyst';
+  renderAudit();
+}
+
+refresh();
+setInterval(refresh, 4000);
+</script>
+</body>
+</html>

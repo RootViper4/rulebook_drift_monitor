@@ -65,6 +65,8 @@ class GapFinding:
     drafted_candidate_red_flag: str = ""
     plausible: bool = True
     verified: bool = False
+    trace: list = field(default_factory=list)
+    mode: str = "documented"
 
 
 @dataclass

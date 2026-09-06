@@ -1,7 +1,7 @@
 {
   "version": "2026.09.06-real-corpus-v0",
   "jurisdiction": "South Africa — FIC Act 38 of 2001, Directive 9 (crypto-asset Travel Rule); FATF (2020) Virtual Asset Red Flag Indicators; FATF Recommendations 15 & 16",
-  "source_notes": "ACTIVE rulebook. Real regulatory corpus prepared by the domain team, replacing the 40-rule placeholder demo set (preserved unmodified in data/rulebook.legacy.json for diffing). Only DS-01..DS-05 are populated so far; DS-06 onward will be added once the schema (rule_type indicator/obligation, trigger_schema grammar) holds on these five. ALL rule text in the `text` field is a PROVISIONAL PARAPHRASE by the domain team, NOT verified exact regulatory wording - do not present it as authoritative without checking the cited source_ref. Demonstration/development data only.",
+  "source_notes": "ACTIVE rulebook. Real regulatory corpus prepared by the domain team, replacing the 40-rule placeholder demo set (preserved unmodified in data/rulebook.legacy.json for diffing). All 20 rules (DS-01..DS-20) are populated, covering FATF (2020) Virtual Asset Red Flag Indicators and FIC (2024) Directive 9. ALL rule text in the `text` field is a PROVISIONAL PARAPHRASE by the domain team, NOT verified exact regulatory wording - do not present it as authoritative without checking the cited source_ref. Demonstration/development data only.",
   "rules": [
     {
       "id": "DS-01",

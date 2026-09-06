@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Rulebook Drift Monitor · Rule Catalog</title>
+<link rel="stylesheet" href="static/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <div class="side-logo">RD</div>
+      <div><div class="name">Rulebook Drift Monitor</div><div class="sub">Agentic Regulatory Oversight</div></div>
+    </div>
+    <nav class="side-nav">
+      <div class="nav-sec">Platform</div>
+      <a class="nav-link" href="dashboard.html"><span class="ic">◈</span>Dashboard</a>
+      <a class="nav-link" href="index.html"><span class="ic">▶</span>Run Console</a>
+      <a class="nav-link" href="rules.html"><span class="ic">⚖</span>Rule Catalog</a>
+      <a class="nav-link" href="forecast.html"><span class="ic">⌁</span>Forecast</a>
+      <a class="nav-link" href="docs.html"><span class="ic">?</span>Docs</a>
+    </nav>
+    <div class="side-foot">DS-01..DS-40 · 40 rules<br/>Synthetic data · hackathon demo</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title" id="pageTitle">Rule Catalog</div>
+      <div class="top-right">
+        <span class="badge-status online" id="statusPill">● Ready</span>
+        <span class="analyst-chip"><span class="avatar">AA</span><span id="analystName">A. Analyst</span></span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="hero">
+        <div class="eyebrow">Drift Sentinel · DSM-40</div>
+        <h1>Rule catalog</h1>
+        <p class="sub">The 40 Drift Sentinel rules transcribed from the example rule set and extended across FATF (2020), Directive 9 and Recommendation themes. Each rule carries a trigger, source reference, MITRE ATLAS mapping and AI-relevance flag.</p>
+      </div>
+
+      <div class="filterbar">
+        <input class="search" id="search" type="search" placeholder="Search rules, triggers, sources…"/>
+        <select class="select" id="fType"><option value="">All types</option><option>indicator</option><option>obligation</option><option>mixed</option></select>
+        <select class="select" id="fSev"><option value="">All severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option></select>
+        <select class="select" id="fAI"><option value="">AI-relevance</option><option value="yes">AI-relevant</option><option value="no">Not AI-relevant</option></select>
+        <span class="chip-dim">✦ dedicated indicators appear here after an approved finding is instituted</span>
+        <span class="dim" style="margin-left:auto;font-size:12.5px" id="count">—</span>
+      </div>
+
+      <div class="inst-banner" id="instBanner" style="display:none">
+        <div class="ib-icon">✦</div>
+        <div>
+          <div class="ib-title" id="instTitle">Institutionalised indicators</div>
+          <div class="ib-sub" id="instSub"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead><tr><th>ID</th><th>Rule</th><th>Category</th><th>Type</th><th>Severity</th><th>AI</th><th>Source</th></tr></thead>
+          <tbody id="ruleRows"></tbody>
+        </table>
+      </div>
+
+      <div class="rules-detail" id="detail">
+        <div class="rulebar">
+          <div style="display:flex;align-items:center;gap:14px">
+            <div style="width:36px;height:36px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:15px">⚖</div>
+            <div>
+              <div class="rule-title" id="dName"></div>
+              <div class="flex" style="gap:8px;margin-top:3px">
+                <span class="rule-id" id="dId"></span>
+                <span class="type" id="dType"></span>
+                <span class="sev" id="dSev"></span>
+                <span class="ai-flag" id="dAI"></span>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="$('detail').classList.remove('open'); $('detail').style.display='none'">Close ×</button>
+        </div>
+        <p class="muted" style="margin-top:14px;font-size:14px" id="dText"></p>
+        <div class="detail-grid">
+          <div class="d"><b>Trigger</b><span id="dTrigger"></span></div>
+          <div class="d"><b>Category</b><span id="dCategory"></span></div>
+          <div class="d"><b>Regulatory source</b><span id="dSource"></span></div>
+          <div class="d"><b>Source reference</b><span class="mono" id="dRef"></span></div>
+          <div class="d"><b>MITRE ATLAS</b><div class="chip-row" id="dAtlas"></div></div>
+          <div class="d"><b>Capability primitives</b><div class="chip-row" id="dPrim"></div></div>
+          <div class="d" style="grid-column:1/-1"><b>Keywords</b><div class="chip-row" id="dKw"></div></div>
+        </div>
+      </div>
+
+      <footer>Rulebook Drift Monitor · hackathon prototype · all data synthetic &amp; illustrative</footer>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="static/js/app.js"></script>
+<script>
+let RULES = [];
+const SHA = s => Promise.resolve().then(()=>{ // tiny in-page hash for stable counts
+  let h=0; for(const c of s){h=(h*31+c.charCodeAt(0))>>>0;} return h.toString(16);
+});
+
+function showDetail(r){
+  $('dName').textContent = r.name;
+  $('dId').textContent = r.id; $('dText').textContent = r.text;
+  $('dType').textContent = r.rule_type; $('dType').className = 'type '+r.rule_type;
+  $('dSev').textContent = r.risk_severity; $('dSev').className = 'sev '+r.risk_severity;
+  $('dAI').textContent = r.ai_relevant ? 'AI-relevant' : 'standard'; $('dAI').className = 'ai-flag '+(r.ai_relevant?'yes':'no');
+  $('dTrigger').textContent = r.trigger || '—';
+  $('dCategory').textContent = r.category;
+  $('dSource').textContent = r.source;
+  $('dRef').textContent = r.source_ref || '—';
+  $('dAtlas').innerHTML = (r.mitre_atlas||[]).map(a=>`<span class="chip bad">${esc(a)}</span>`).join('')||'<span class="dim">not yet mapped</span>';
+  $('dPrim').innerHTML = (r.capability_primitives||[]).map(p=>`<span class="chip good">${esc(p)}</span>`).join('')||'<span class="dim">—</span>';
+  $('dKw').innerHTML = (r.keywords||[]).map(k=>`<span class="chip">${esc(k)}</span>`).join('');
+  const d = $('detail'); d.style.display='block'; requestAnimationFrame(()=>d.classList.add('open'));
+  d.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function render(){
+  const q = ($('search').value||'').toLowerCase();
+  const ty = $('fType').value, sev = $('fSev').value, ai = $('fAI').value;
+  const rows = RULES.filter(r =>
+    (!ty || r.rule_type===ty) && (!sev || r.risk_severity===sev) &&
+    (ai==='' || (ai==='yes'?r.ai_relevant:!r.ai_relevant)) &&
+    (!q || [r.id,r.name,r.text,r.trigger,r.source,r.category,r.source_ref,r.rule_type].join(' ').toLowerCase().includes(q)));
+  $('count').textContent = rows.length+' of '+RULES.length+' rules';
+  $('ruleRows').innerHTML = rows.map(r=>`
+    <tr onclick="showDetail(${(JSON.stringify(r).replace(/"/g,'&quot;'))})">
+      <td><span class="ln">${r.id}</span></td>
+      <td style="font-weight:600;color:var(--text)">${esc(r.name)}</td>
+      <td>${esc(r.category)}</td>
+      <td><span class="type ${r.rule_type}">${r.rule_type}</span></td>
+      <td><span class="sev ${r.risk_severity}">${r.risk_severity}</span></td>
+      <td><span class="ai-flag ${r.ai_relevant?'yes':'no'}">${r.ai_relevant?'AI':'std'}</span></td>
+      <td class="rule-source">${esc(r.source_ref||r.source)}${r.institutionalised?` <span class="chip good" title="instituted from finding ${esc(r.source_finding)}">✦ instituted</span>`:''}</td>
+    </tr>`).join('');
+}
+['search','fType','fSev','fAI'].forEach(id=>{ const el=$(id); el.addEventListener('change',render); el.addEventListener('input',render); });
+
+async function load(){
+  try{
+    const d = await api('/api/rules');
+    RULES = d.rules;
+    const s = await api('/api/state');
+    $('analystName').textContent = s.analyst;
+    const am = s.amendments||{};
+    const banner = $('instBanner');
+    if((am.rules||[]).length){
+      banner.style.display = 'flex';
+      $('instTitle').textContent = 'Institutionalised indicators · '+(am.covered||[]).length+' gap(s) closed';
+      $('instSub').textContent = am.rules.map(r=>r.id+' · '+r.name).join('  ·  ');
+    }else{
+      banner.style.display = 'none';
+    }
+    render();
+  }catch(e){ toast('Catalog load failed: '+e.message); }
+}
+load();
+</script>
+</body>
+</html>

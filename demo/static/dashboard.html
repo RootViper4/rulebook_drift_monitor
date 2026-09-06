@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Rulebook Drift Monitor · Dashboard</title>
+<link rel="stylesheet" href="static/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <div class="side-logo">RD</div>
+      <div><div class="name">Rulebook Drift Monitor</div><div class="sub">Agentic Regulatory Oversight</div></div>
+    </div>
+    <nav class="side-nav">
+      <div class="nav-sec">Platform</div>
+      <a class="nav-link" href="dashboard.html"><span class="ic">◈</span>Dashboard</a>
+      <a class="nav-link" href="index.html"><span class="ic">▶</span>Run Console</a>
+      <a class="nav-link" href="rules.html"><span class="ic">⚖</span>Rule Catalog</a>
+      <a class="nav-link" href="forecast.html"><span class="ic">⌁</span>Forecast</a>
+      <a class="nav-link" href="docs.html"><span class="ic">?</span>Docs</a>
+    </nav>
+    <div class="side-foot">DS-01..DS-40 · 40 rules<br/>Synthetic data · hackathon demo</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title" id="pageTitle">Dashboard</div>
+      <div class="top-right">
+        <span class="badge-status online" id="statusPill">● Ready</span>
+        <span class="analyst-chip"><span class="avatar">AA</span><span id="analystName">A. Analyst</span></span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="hero">
+        <div class="eyebrow">Drift Sentinel · DSM-40</div>
+        <h1>Rulebook performance &amp; synthetic-data coverage</h1>
+        <p class="sub">Deterministic library scan of 35 documented typologies against 40 Drift Sentinel rules. Coverage gaps, AI-evasion pressure and forecasting are computed from this measured baseline.</p>
+      </div>
+
+      <div class="grid kpis">
+        <div class="card card-pad kpi"><span class="icon k-accent" style="background:var(--accent-soft)">◔</span>
+          <span class="k-label">Rulebook coverage</span><span class="k-value k-accent" id="kpiCoverage">—</span>
+          <span class="k-sub" id="kpiCoverageSub">of relevant rule-typology pairs fire</span></div>
+        <div class="card card-pad kpi"><span class="icon k-warn" style="background:var(--warn-soft)">⌁</span>
+          <span class="k-label">Drift index</span><span class="k-value k-warn" id="kpiDrift">—</span>
+          <span class="k-sub" id="kpiBand">forecast band</span></div>
+        <div class="card card-pad kpi"><span class="icon k-good" style="background:var(--good-soft)">✓</span>
+          <span class="k-label">Verified gaps (last run)</span><span class="k-value k-good" id="kpiGaps">0</span>
+          <span class="k-sub" id="kpiRunMeta">no completed run yet</span></div>
+        <div class="card card-pad kpi"><span class="icon k-bad" style="background:var(--bad-soft)">AI</span>
+          <span class="k-label">AI-evasion pressure</span><span class="k-value k-bad" id="kpiAI">—</span>
+          <span class="k-sub" id="kpiAISub">share of evasions on AI-relevant rules</span></div>
+      </div>
+
+      <div class="section-title">Rulebook profile</div>
+      <div class="grid cards">
+        <div class="card card-pad">
+          <div class="card-title">Rules per risk category</div>
+          <div class="card-sub">40 Drift Sentinel rules by internal category</div>
+          <div class="bars" id="catBars"></div>
+          <div class="dot-legend"><span class="li"><span class="sw" style="background:var(--accent)"></span>rules</span></div>
+        </div>
+        <div class="card card-pad">
+          <div class="card-title">Rule mix</div>
+          <div class="card-sub">Indicator vs obligation vs mixed</div>
+          <div class="flex" style="gap:24px">
+            <div id="donutType"></div>
+            <div style="flex:1">
+              <div class="rulebar"><span style="font-weight:700">Type distribution</span></div>
+              <div class="muted" style="font-size:12.5px;margin-top:4px" id="typeLegend"></div>
+              <div class="rulebar mt" style="justify-content:space-between"><span class="dim" style="font-size:12px">Severity mix</span><span id="sevText"></span></div>
+              <div class="stackbar mt" id="sevStack"></div>
+            </div>
+          </div>
+        </div>
+        <div class="card card-pad">
+          <div class="card-title">AI-relevance of the rulebook</div>
+          <div class="card-sub">Rules mapped to AI-orchestrated evasion</div>
+          <div class="flex" style="gap:24px">
+            <div id="donutAI"></div>
+            <div style="flex:1;font-size:13px;color:var(--muted)" id="aiText"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Detection architecture</div>
+      <div class="stages" id="stages"></div>
+
+      <div class="section-title">Evasion heatmap <span class="sec-sub">rows sorted by severity then total evasion · a row's green border marks a covered typology</span></div>
+      <div class="card card-pad" id="heatmapCard">
+        <div id="evasionHeat" class="mt"></div>
+      </div>
+
+      <div class="section-title">Forecast snapshot</div>
+      <div class="grid two">
+        <div class="card card-pad">
+          <div class="card-title">Drift index now</div>
+          <div class="card-sub" id="fcMethod"></div>
+          <div class="gauge" style="height:20px"><div class="fill" id="gaugeDrift" style="width:0%"></div></div>
+          <div class="flex mt"><span class="sev" id="bandLabel"></span><span class="dim" style="font-size:12px">0 = full coverage · 100 = maximum drift exposure</span></div>
+          <div class="card-title mt2">Projected drift · next 6 review cycles</div>
+          <div id="trendSvg"></div>
+        </div>
+        <div class="card card-pad">
+          <div class="card-title">Predicted at-risk typologies</div>
+          <div class="card-sub">Combined evasion pressure + AI evasion + severity weight</div>
+          <div class="hotlist" id="atRiskList"></div>
+          <div class="dim mt" style="font-size:11.5px">Ranking is a decision-support label model, not a statistical forecast.</div>
+        </div>
+      </div>
+
+      <div class="section-title">Latest run</div>
+      <div class="runbar">
+        <div><span class="mono" id="runId">No run yet</span> · <span id="rulebookVersion">—</span></div>
+        <button class="btn btn-ghost" id="resetBtn">Reset state</button>
+        <div class="run-meta">
+          <span>Status <b id="runStatus">—</b></span>
+          <span>Findings <b id="runFindings">0</b></span>
+          <span>Discarded <b id="runDiscarded">0</b></span>
+        </div>
+      </div>
+
+      <footer>Rulebook Drift Monitor · hackathon prototype · all data synthetic &amp; illustrative</footer>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="static/js/app.js"></script>
+<script>
+function sevColor(s){ return {critical:'var(--bad)',high:'var(--warn)',medium:'var(--info)',low:'var(--panel-3)'}[s]||'var(--accent)'; }
+
+async function load(){
+  try{
+    const [d, f] = await Promise.all([api('/api/dashboard'), api('/api/forecast')]);
+    const rules = d.rules;
+    $('kpiCoverage').textContent = (f.coverage.overall*100).toFixed(0)+'%';
+    $('kpiCoverageSub').textContent = f.coverage.covered_pairs+' of '+f.coverage.pairs+' relevant rule-typology pairs fire';
+    $('kpiDrift').textContent = f.drift_index.toFixed(0);
+    $('kpiBand').textContent = f.drift_band+' band · '+f.trend.direction;
+    $('kpiAI').textContent = (f.ai_pressure.share*100).toFixed(0)+'%';
+    $('kpiAISub').textContent = f.ai_pressure.evaded_ai_rules.slice(0,3).join(', ')||'…';
+    $('gaugeDrift').style.width = f.drift_index+'%';
+    $('gaugeDrift').style.background = f.drift_index>75?'var(--bad)':f.drift_index>50?'var(--warn)':'var(--accent)';
+    $('bandLabel').textContent = f.drift_band;
+    $('bandLabel').className = 'sev '+(f.drift_band==='Critical'?'critical':f.drift_band==='High'?'high':f.drift_band==='Elevated'?'medium':'low');
+    $('fcMethod').textContent = 'Drift index measured from library scan · ' + (f.trend.kind==='measured_history'
+      ? 'projection fitted to '+f.trend.history_count+' recorded runs/checkpoints'
+      : f.trend.source);
+    renderForecast('trendSvg', f.trend);
+    $('atRiskList').innerHTML = f.at_risk.slice(0,8).map((a,i)=>{
+      const rankCls = i===0?'r1':i===1?'r2':i===2?'r3':'';
+      return `<div class="hot-row">
+        <span class="hot-rank ${rankCls}">${a.rank}</span>
+        <span class="hot-name"><span class="mono" style="color:var(--accent)">${a.typology_id}</span><br/><span style="font-weight:600;font-size:12.5px">${esc(a.name)}</span></span>
+        <span class="hot-score">${a.hot_score.toFixed(2)}</span>
+        <span class="hot-bar"><span class="fill" style="width:${Math.min(100,a.hot_score*100)}%"></span></span>
+      </div>`;
+    }).join('');
+
+    // Category bars
+    renderBars('catBars', rules.by_category, 'var(--accent)');
+    // Type donut
+    const typeCols = {indicator:'var(--accent)', obligation:'var(--warn)', mixed:'var(--accent-2)'};
+    renderDonut('donutType', {indicator:rules.by_type.indicator||0, obligation:rules.by_type.obligation||0, mixed:rules.by_type.mixed||0}, typeCols);
+    $('typeLegend').innerHTML = `<span class="lv" style="display:flex;flex-wrap:wrap;gap:14px">
+      <span><span class="sw" style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--accent)"></span> indicator ${rules.by_type.indicator||0}</span>
+      <span><span class="sw" style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--warn)"></span> obligation ${rules.by_type.obligation||0}</span>
+      <span><span class="sw" style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--accent-2)"></span> mixed ${rules.by_type.mixed||0}</span></span>`;
+    // Severity stack
+    const sevOrder = ['low','medium','high','critical'];
+    const sevSum = sevOrder.reduce((a,k)=>a+(rules.by_severity[k]||0),0)||1;
+    $('sevStack').innerHTML = sevOrder.filter(k=>(rules.by_severity[k]||0)>0).map(k=>
+      `<div style="flex:${rules.by_severity[k]||0};background:${sevColor(k)}" title="${k}:${rules.by_severity[k]||0}"></div>`).join('');
+    $('sevText').textContent = sevOrder.map(k=>`${k} ${rules.by_severity[k]||0}`).join(' · ');
+    // AI donut
+    renderDonut('donutAI', {yes:rules.ai_relevant, no:rules.total-rules.ai_relevant}, {yes:'var(--good)', no:'var(--panel-3)'}, rules.ai_relevant);
+    $('aiText').innerHTML = `${rules.ai_relevant} of ${rules.total} rules carry the AI-relevant flag. <b>${(f.ai_pressure.share*100).toFixed(0)}%</b> of current evasions occur on AI-relevant rules — the fastest-moving part of this rulebook.`;
+
+    // Architecture stages
+    const stages = [['1','Scenario corpus','35 documented typologies, source-cited'],['2','Reconciliation','each typology stepped through 40 rules'],['3','Critic','independent reproduction & discard'],['4','Human gate','analyst accept / amend / reject'],['5','Forecast','drift index & at-risk ranking']];
+    $('stages').innerHTML = stages.map(([n,t,d])=>`<div class="stage"><div class="n">0${n}</div><div class="t">${t}</div><div class="d">${d}</div></div>`).join('');
+
+    // Evasion heatmap (typology × category)
+    renderHeatmap('evasionHeat', d.evasion_matrix,
+                  (d.state&&d.state.amendments&&d.state.amendments.covered)||[]);
+
+    // Run state
+    const s = d.state;
+    $('analystName').textContent = s.analyst;
+    $('runId').textContent = s.run_id ? ('run ' + s.run_id) : 'No run started';
+    $('rulebookVersion').textContent = s.rulebook_version || '—';
+    const stMap = {
+      awaiting_human_approval: 'Awaiting approval',
+      under_review: 'Under review · '+(s.reviewed||0)+'/'+(s.total||0)+' decided',
+      review_complete: 'Review complete',
+      aborted: 'Run aborted',
+    };
+    $('runStatus').textContent = stMap[s.status] || s.status || 'ready';
+    $('runFindings').textContent = s.findings.length;
+    $('runDiscarded').textContent = s.discarded.length;
+    $('kpiGaps').textContent = s.findings.length;
+    $('kpiRunMeta').textContent = s.run_id ? ('reported to '+s.analyst+' · '+(s.reviewed||0)+'/'+(s.total||0)+' reviewed') : 'no completed run yet';
+
+    // Institutionalised amendments strip
+    const amRules = (s.amendments&&s.amendments.rules)||[];
+    const coveredCount = ((s.amendments&&s.amendments.covered)||[]).length;
+    const heatCard = $('heatmapCard');
+    if(heatCard && amRules.length){
+      const strip = document.createElement('div');
+      strip.className = 'chips mt';
+      strip.style.marginTop='14px';
+      strip.innerHTML = amRules.map(r=>`<span class="chip chip-good mono" title="closes ${esc(r.source_finding)} gap · ${esc(r.category)} · ${esc(r.risk_severity)}">✦ ${esc(r.id)} · ${esc(r.name)}</span>`).join('');
+      heatCard.appendChild(strip);
+    }
+    const amPill = $('kpiCoverageSub');
+    if(amPill && coveredCount) amPill.textContent = ', '+coveredCount+' typology gap(s) closed by instituted indicators';
+  }catch(e){ toast('Dashboard load failed: '+e.message); }
+}
+
+$('resetBtn').addEventListener('click', async ()=>{
+  try{
+    const r = await api('/api/reset', {method:'POST', body:'{}'});
+    toast(r.aborted ? 'Aborting running scan…' : 'State reset');
+    load();
+  }catch(e){ toast('Reset failed: '+e.message); }
+});
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Rulebook Drift Monitor · Run Console</title>
+<link rel="stylesheet" href="static/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <div class="side-logo">RD</div>
+      <div><div class="name">Rulebook Drift Monitor</div><div class="sub">Agentic Regulatory Oversight</div></div>
+    </div>
+    <nav class="side-nav">
+      <div class="nav-sec">Platform</div>
+      <a class="nav-link" href="dashboard.html"><span class="ic">◈</span>Dashboard</a>
+      <a class="nav-link" href="index.html"><span class="ic">▶</span>Run Console</a>
+      <a class="nav-link" href="rules.html"><span class="ic">⚖</span>Rule Catalog</a>
+      <a class="nav-link" href="forecast.html"><span class="ic">⌁</span>Forecast</a>
+      <a class="nav-link" href="docs.html"><span class="ic">?</span>Docs</a>
+    </nav>
+    <div class="side-foot">DS-01..DS-40 · 40 rules<br/>Synthetic data · hackathon demo</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title" id="pageTitle">Run Console</div>
+      <div class="top-right">
+        <span class="badge-status online" id="statusPill">● Ready</span>
+        <span class="analyst-chip"><span class="avatar">AA</span><span id="analystName">A. Analyst</span></span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="hero">
+        <div class="eyebrow">Agentic pipeline</div>
+        <h1>Drift detection run</h1>
+        <p class="sub">Orchestrated run over the DS-01..DS-40 rulebook: reconciliation of 35 documented typologies + generation of novel AI evasion paths, independent critic verification, and a human approval gate before findings promote.</p>
+      </div>
+
+      <div class="runbar">
+        <button class="btn btn-primary" id="runBtn"><span class="icon" id="runBtnIcon">▶</span>New run</button>
+        <button class="btn btn-ghost" id="resetBtn">Reset</button>
+        <button class="btn btn-ghost-2" onclick="exportDossier('json')">Export dossier JSON</button>
+        <button class="btn btn-ghost-2" onclick="exportDossier('pdf')">Export dossier PDF</button>
+        <div class="run-meta">
+          <span>Run <b class="mono" id="runId">none</b></span>
+          <span>Rulebook <b id="rulebookVersion">—</b></span>
+          <span>Status <b id="runStatus">ready</b></span>
+          <span>Findings <b id="findingCount">0</b></span>
+        </div>
+      </div>
+
+      <div class="inst-banner" id="instBanner" style="display:none">
+        <div class="ib-icon">✦</div>
+        <div>
+          <div class="ib-title" id="instTitle">Institutionalised indicators in force</div>
+          <div class="ib-sub" id="instSub"></div>
+        </div>
+        <div style="margin-left:auto"><span class="chip-chip" id="instDrift" style="font-family:var(--mono);font-weight:800;font-size:12px"></span></div>
+      </div>
+
+      <div class="pipe" id="pipe"></div>
+
+      <div class="live-pane">
+        <div class="pane-title"><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good)"></span> Live pipeline trace</div>
+        <div id="logPane"></div>
+      </div>
+
+      <div class="section-row">
+        <div class="section-title" id="findingsTitle">Verified findings · awaiting human approval</div>
+        <div class="diff-summary" id="diffSummary" style="display:none"></div>
+        <div class="filterbar" id="reviewTabs">
+          <button class="tab" data-f="all" onclick="setFilter('all')">All <span id="cAll"></span></button>
+          <button class="tab" data-f="accepted" onclick="setFilter('accepted')">Accepted <span id="cAccepted"></span></button>
+          <button class="tab" data-f="amended" onclick="setFilter('amended')">Amended <span id="cAmended"></span></button>
+          <button class="tab" data-f="rejected" onclick="setFilter('rejected')">Rejected <span id="cRejected"></span></button>
+          <button class="tab" data-f="undecided" onclick="setFilter('undecided')">Undecided <span id="cUndecided"></span></button>
+        </div>
+      </div>
+      <div id="findings" class="grid cards"></div>
+      <div id="emptyFilter" class="empty blocked" style="display:none">No findings match this filter.</div>
+
+      <div class="section-title">Adversarial red-team probe</div>
+      <div class="probe-card">
+        <div class="rulebar">
+          <div style="font-weight:800;font-size:13.5px">Poisoned-typology injection test</div>
+          <button class="btn-sm btn-ghost" id="probeBtn">Run probe</button>
+        </div>
+        <div class="dim" style="font-size:12px;margin-top:4px">Hands the platform a typology that smuggles a prompt-injection payload and over-claims its evasion set; the critic re-runs the engine live and the unreproducible claim is discarded.</div>
+        <div id="probeResult"></div>
+      </div>
+
+      <div class="section-title" id="rejTitle" style="display:none">Rejected by critic</div>
+      <div id="rejected" class="grid cards"></div>
+
+      <footer>Rulebook Drift Monitor · hackathon prototype · all data synthetic &amp; illustrative</footer>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="static/js/app.js"></script>
+<script>
+const MILESTONES = {ingest:0, reconcile:1, generate_meta:2, critic_meta:3, draft:4, report:5};
+const STEP_NAMES = ['Ingest corpora', 'Reconciliation arm', 'Generation arm', 'Critic verification', 'Draft candidate red flags', 'Human approval gate'];
+const STEP_DESC  = ['load 40 rules · 35 typologies', 'step documented typologies through the rulebook', 'spawn novel AI evasion paths', 'reproduce every claim · discard unsupported', 'draft candidate indicators (LLM assist)', 'analyst accepts, amends or rejects'];
+
+let stepIndex = -1;
+let logCache = null;
+let decisions = {};
+let filterTab = 'all';
+let runFinishedShown = false;
+
+function buildPipe(){
+  $('pipe').innerHTML = STEP_NAMES.map((n,i)=>`
+    <div class="pipe-step" id="pstep${i}">
+      <div style="display:flex;flex-direction:column;align-items:center">
+        <div class="pipe-dot" id="pdot${i}">${i+1}</div>
+        ${i<STEP_NAMES.length-1?'<div class="pipe-line"></div>':''}
+      </div>
+      <div><div class="pipe-label">${n}</div>
+      <div class="dim" style="font-size:12px">${STEP_DESC[i]}</div></div>
+    </div>`).join('');
+}
+
+function markStep(idx){
+  if(idx>stepIndex){
+    for(let i=0;i<=idx;i++){
+      const s=$('pstep'+i);
+      if(s && stepIndex<i){ s.classList.add('done'); s.classList.remove('active'); }
+    }
+    const cur=$('pstep'+idx);
+    if(cur){ cur.classList.add('active'); cur.classList.remove('done'); }
+    stepIndex=idx;
+  }
+}
+
+function renderLog(log, running){
+  if(log===logCache) return;
+  logCache=log;
+  const pane=$('logPane'); if(!pane) return;
+  let maxIdx=-1;
+  (log||[]).forEach(l=>{ const s=MILESTONES[l.node]; if(s!=null) maxIdx=Math.max(maxIdx,s); });
+  if(maxIdx>=0) markStep(maxIdx);
+  pane.innerHTML=(log||[]).map(l=>`<div class="logline"><span class="ln">[${l.ts||''}]</span> ${l.node}: ${esc(l.message)}</div>`).join('');
+  if(!log.length) pane.innerHTML='<div class="logline"><span class="ln">[—]</span> idle · click New run to start a drift detection scan</div>';
+  if(running && pane.lastElementChild) pane.lastElementChild.scrollIntoView({block:'nearest'});
+}
+
+function findingCard(f){
+  const decided = decisions[f.typology_id];
+  const delta = f.delta==='new'?'<span class="diff-badge diff-new">NEW</span>'
+              : f.delta==='repeat'?'<span class="diff-badge diff-repeat">REPEAT</span>':'';
+  const instituted = amendments.covered.includes(f.typology_id);
+  const instBtn = instituted
+    ? '<span class="chip good" style="font-size:11px">✦ instituted · gap closed</span>'
+    : `<button class="btn-sm btn-institute" onclick="institute('${f.typology_id}')" ${decided?'':'disabled title="decide first" style="opacity:.45"'} >Institute rule</button>`;
+  return `<div class="finding" id="f-${f.typology_id}" data-fid="${esc(f.typology_id)}">
+    <h3><span class="fid">${esc(f.typology_id)}</span> ${delta} ${esc(f.typology_name)} ${decided?`<span class="decided">${esc(decided)}</span>`:''}</h3>
+    <div class="atlas">${(f.mitre_atlas||[]).map(a=>esc(a)).join('<span class="dim"> · </span>')}</div>
+    <div class="basis">${esc(f.evidential_basis)}</div>
+    <div class="chip-row mt" style="margin-top:10px">
+      <span class="chip good">fired ${(f.fired_rules||[]).join(', ')}</span>
+      <span class="chip bad">evaded ${(f.evaded_rules||[]).join(', ')}</span>
+    </div>
+    ${f.drafted_candidate_red_flag?`<div class="flag">${esc(f.drafted_candidate_red_flag)}</div>`:''}
+    <div class="actions">
+      <button class="btn-sm btn-accept" onclick="decide('${f.typology_id}','accept')">Accept</button>
+      <button class="btn-sm btn-amend"  onclick="decide('${f.typology_id}','amend')">Amend</button>
+      <button class="btn-sm btn-reject" onclick="decide('${f.typology_id}','reject')">Reject</button>
+      ${instBtn}
+    </div>
+  </div>`;
+}
+
+async function decide(fid, decision){
+  try{
+    await api('/api/decide', {method:'POST', body:JSON.stringify({fid, decision})});
+    toast('Finding '+fid+' → '+decision);
+    refresh();
+  }catch(e){ toast('Decide failed: '+e.message); }
+}
+
+async function institute(fid){
+  try{
+    const r = await api('/api/institute', {method:'POST', body:JSON.stringify({fid})});
+    toast(r.ok ? '✦ '+r.rule+' instituted for '+fid+' · drift → '+r.drift_index.toFixed(1)
+               : 'Institute failed: '+(r.error||'?'));
+    refresh();
+  }catch(e){ toast('Institute failed: '+e.message); }
+}
+
+async function exportDossier(kind){
+  const fn = function(){ try{ window.location = '/api/dossier'+(kind==='pdf'?'.pdf':''); }catch(e){} };
+  try{
+    const r = await api('/api/dossier');
+    if(kind==='json'){
+      const blob = new Blob([JSON.stringify(r, null, 2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'drift-dossier.json';
+      a.click();
+      toast('Dossier exported · '+r.approved_findings.length+' approved findings');
+    }else{
+      fn();
+      toast('Downloading '+r.run_id+' dossier PDF…');
+    }
+  }catch(e){ toast('Dossier export failed: '+e.message); }
+}
+
+function setFilter(tab){
+  filterTab = tab;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.f===tab));
+  renderFindings();
+}
+
+function matchesFilter(f){
+  const d = decisions[f.typology_id];
+  if(filterTab==='all') return true;
+  if(filterTab==='undecided') return !d;
+  const kind = (d||'').includes('✓')?'accepted':(d||'').includes('✎')?'amended':(d||'').includes('✗')?'rejected':null;
+  return kind===filterTab;
+}
+
+function renderFindings(){
+  const all = allFindings||[];
+  const counts = {all:all.length, accepted:0, amended:0, rejected:0, undecided:0};
+  all.forEach(f=>{
+    const d = decisions[f.typology_id];
+    if(!d){ counts.undecided++; return; }
+    if(d.includes('✓')) counts.accepted++;
+    else if(d.includes('✎')) counts.amended++;
+    else if(d.includes('✗')) counts.rejected++;
+  });
+  ['All','Accepted','Amended','Rejected','Undecided'].forEach(k=>{
+    const el=$('c'+k); if(el) el.textContent = counts[k.toLowerCase()];
+  });
+  const shown = all.filter(matchesFilter);
+  $('findings').innerHTML = shown.map(findingCard).join('');
+  $('emptyFilter').style.display = shown.length?'none':'block';
+}
+
+let allFindings = [];
+let amendments = {rules:[], covered:[], resolved_findings:[]};
+async function refresh(){
+  let s;
+  try{ s = await api('/api/state'); }catch(e){ $('statusPill').textContent='● Offline'; return; }
+  decisions = s.decisions||{};
+  running = Boolean(s.running);
+  allFindings = s.findings||[];
+  amendments = s.amendments||{rules:[], covered:[], resolved_findings:[]};
+  $('runId').textContent = s.run_id||'none';
+  $('rulebookVersion').textContent = s.rulebook_version||'—';
+  const st = s.status||'ready';
+  const statusMap = {
+    awaiting_human_approval: (s.total?'Awaiting approval · 0/'+s.total+' decided':'Awaiting approval'),
+    under_review: 'Under review · '+(s.reviewed||0)+'/'+(s.total||0)+' decided',
+    review_complete: 'Review complete · all '+(s.total||0)+' findings decided',
+    aborted: 'Run aborted',
+    ready_no_findings: 'ready',
+  };
+  $('runStatus').textContent = s.running?'running':(statusMap[st]||st||'ready');
+  $('findingCount').textContent = (s.findings||[]).length;
+  $('analystName').textContent = s.analyst;
+  $('findingsTitle').textContent = 'Verified findings · ' +
+    ((s.reviewed||0)+'/'+(s.total||0)+' reviewed');
+
+  if(s.running){
+    $('runBtn').disabled = true;
+    $('runBtnIcon').innerHTML = '<span class="spinner"></span>';
+    runFinishedShown = false;
+  }else{
+    $('runBtn').disabled = false;
+    $('runBtnIcon').textContent = '▶';
+    if(!runFinishedShown && (s.total||0)>0){
+      runFinishedShown = true;
+      markStep(5);
+      const n = s.total, r = s.reviewed||0;
+      if(s.all_decided) toast('Review complete · all '+n+' findings decided');
+      else if(r>0) toast('Run complete · '+n+' verified findings · '+r+'/'+n+' decided');
+      else toast('Run complete · '+n+' verified findings awaiting your review');
+    }
+  }
+
+  renderLog(s.log, running);
+  renderFindings();
+  renderAmendments();
+  renderDiff(s.diff);
+  $('rejTitle').style.display = (s.discarded||[]).length?'block':'none';
+  $('rejected').innerHTML = (s.discarded||[]).map(d=>`<div class="rejected"><h3>✗ ${esc(d.typology_name||d.typology_id)}</h3><div class="basis">${esc(d.evidential_basis||'rejected by critic')}</div></div>`).join('');
+}
+
+function renderAmendments(){
+  const rules = amendments.rules||[];
+  const banner = $('instBanner');
+  if(rules.length){
+    banner.style.display = 'flex';
+    $('instTitle').textContent = 'Institutionalised indicators in force';
+    $('instSub').textContent = rules.map(r=>r.id+' · '+r.name).join('  ·  ');
+    $('instDrift').textContent = (amendments.covered||[]).length+' gap(s) closed';
+  }else{
+    banner.style.display = 'none';
+  }
+}
+
+function renderDiff(diff){
+  const el = $('diffSummary');
+  if(!diff || !(diff.prev_count>0)){
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = 'flex';
+  el.innerHTML = `<span><b>${diff.new.length}</b> new finding(s)</span>
+    <span><b>${diff.repeat.length}</b> repeat finding(s)</span>
+    <span><b>${diff.regressed.length}</b> regressed</span>
+    <span class="dim">vs previous run (${diff.prev_count} findings)</span>`;
+}
+
+async function runProbe(){
+  const btn = $('probeBtn');
+  btn.disabled = true; btn.textContent = 'Probing…';
+  try{
+    const p = await api('/api/probe');
+    $('probeResult').innerHTML =
+      `<div class="probe-steps mt2" style="margin-top:14px">` +
+      p.steps.map(([n,t])=>`<div class="probe-step"><span class="n">${n}</span> · ${esc(t)}</div>`).join('') +
+      `</div>
+       <div class="flex mt" style="gap:10px;flex-wrap:wrap">
+         <span class="chip bad">claim ${p.claim.join(', ')}</span>
+         <span class="chip good">actual evaded ${p.actual_evaded.join(', ')}</span>
+       </div>
+       <div class="probe-verdict ${p.reproduced?'flat':'keep'}">${esc(p.verdict)}</div>
+       <div class="dim" style="font-size:11.5px;margin-top:4px">victim ${esc(p.victim.id)} · ${esc(p.scheme)}</div>`;
+    toast('Probe verdict: '+(p.reproduced?'flagged':'attack rejected'));
+  }catch(e){ toast('Probe failed: '+e.message); }
+  btn.disabled = false; btn.textContent = 'Run probe';
+}
+
+let running = false;
+async function tick(){
+  try{ await refresh(); }catch(e){ console.error('tick error', e); }
+  setTimeout(tick, running?600:3000);
+}
+
+$('runBtn').addEventListener('click', async ()=>{
+  try{
+    $('runBtn').disabled = true; $('runBtnIcon').innerHTML='<span class="spinner"></span>';
+    stepIndex=-1; logCache=null; runFinishedShown=false;
+    decisions={}; allFindings=[];
+    buildPipe();
+    await api('/api/run', {method:'POST', body:JSON.stringify({trigger:'manual'})});
+  }catch(e){ toast('Could not start run: '+e.message); $('runBtn').disabled=false; $('runBtnIcon').textContent='▶'; }
+});
+
+$('resetBtn').addEventListener('click', async ()=>{
+  try{
+    $('resetBtn').disabled = true;
+    const r = await api('/api/reset', {method:'POST', body:'{}'});
+    if(r.aborted){
+      toast('Aborting running scan…');
+      $('runStatus').textContent = 'aborting…';
+      $('runBtn').disabled = true; $('runBtnIcon').innerHTML='<span class="spinner"></span>';
+      const wait = async ()=>{
+        const s = await api('/api/state');
+        if(!s.running){ doResetUI(); toast('Run aborted · state cleared'); }
+        else setTimeout(wait, 800);
+      };
+      wait();
+    }else{
+      if(r.restored && r.restored.length) toast('Baseline restored · removed '+(r.restored.length)+' instituted rule(s)');
+      doResetUI();
+      if(!(r.restored&&r.restored.length)) toast('State reset');
+    }
+  }catch(e){ toast('Reset failed: '+e.message); }
+  $('resetBtn').disabled = false;
+});
+
+$('probeBtn').addEventListener('click', runProbe);
+
+function doResetUI(){
+  stepIndex=-1; logCache=null; runFinishedShown=false;
+  decisions={}; allFindings=[];
+  buildPipe();
+  refresh();
+}
+
+buildPipe();
+refresh();
+tick();
+</script>
+</body>
+</html>

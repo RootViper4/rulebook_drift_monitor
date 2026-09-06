@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Rulebook Drift Monitor · Forecast</title>
+<link rel="stylesheet" href="static/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <div class="side-logo">RD</div>
+      <div><div class="name">Rulebook Drift Monitor</div><div class="sub">Agentic Regulatory Oversight</div></div>
+    </div>
+    <nav class="side-nav">
+      <div class="nav-sec">Platform</div>
+      <a class="nav-link" href="dashboard.html"><span class="ic">◈</span>Dashboard</a>
+      <a class="nav-link" href="index.html"><span class="ic">▶</span>Run Console</a>
+      <a class="nav-link" href="rules.html"><span class="ic">⚖</span>Rule Catalog</a>
+      <a class="nav-link" href="forecast.html"><span class="ic">⌁</span>Forecast</a>
+      <a class="nav-link" href="docs.html"><span class="ic">?</span>Docs</a>
+    </nav>
+    <div class="side-foot">DS-01..DS-40 · 40 rules<br/>Synthetic data · hackathon demo</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title" id="pageTitle">Forecast &amp; risk projection</div>
+      <div class="top-right">
+        <span class="badge-status online" id="statusPill">● Ready</span>
+        <span class="analyst-chip"><span class="avatar">AA</span><span id="analystName">A. Analyst</span></span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="hero">
+        <div class="eyebrow">Decision support · measured history + label model</div>
+        <h1>Where the rulebook drifts next</h1>
+        <p class="sub">A transparent predictive layer on top of the deterministic library scan. With 3+ recorded runs the projection is fitted to the MEASURED drift-index series (with a confidence band and hold-out backtest); otherwise it falls back to a clearly-labelled baseline. It also ranks the typologies most likely to evade next period.</p>
+      </div>
+
+      <div class="grid kpis">
+        <div class="card card-pad kpi"><span class="icon k-warn" style="background:var(--warn-soft)">⌁</span>
+          <span class="k-label">Drift index today</span><span class="k-value k-warn" id="kDrift">—</span>
+          <span class="k-sub" id="kBand">band</span></div>
+        <div class="card card-pad kpi"><span class="icon k-good" style="background:var(--good-soft)">◔</span>
+          <span class="k-label">Coverage today</span><span class="k-value k-good" id="kCov">—</span>
+          <span class="k-sub" id="kCovSub"></span></div>
+        <div class="card card-pad kpi"><span class="icon k-bad" style="background:var(--bad-soft)">AI</span>
+          <span class="k-label">Projected index</span><span class="k-value k-bad" id="kProj6">—</span>
+          <span class="k-sub">after 6 review cycles</span></div>
+        <div class="card card-pad kpi"><span class="icon k-info" style="background:var(--info-soft)">⎘</span>
+          <span class="k-label">Recorded history</span><span class="k-value k-info" id="kHist">0</span>
+          <span class="k-sub">runs/checkpoints · <button class="btn-sm btn-accept" id="recordBtn">Record checkpoint</button></span></div>
+      </div>
+
+      <div class="section-title">Drift index projection</div>
+      <div class="card card-pad">
+        <div class="card-title">Six-cycle drift projection</div>
+        <div class="card-sub" id="methodLine"></div>
+        <div id="trendSvg"></div>
+      </div>
+
+      <div class="section-title">Predicted at-risk typologies</div>
+      <div class="card card-pad">
+        <div class="hotlist" id="hotList"></div>
+      </div>
+
+      <div class="section-title">Coverage by category</div>
+      <div class="grid cards" id="catCards"></div>
+
+      <div class="section-title">AI-evasion pressure</div>
+      <div class="grid two">
+        <div class="card card-pad">
+          <div class="card-title">Pressure dashboard</div>
+          <div class="card-sub">Share of current evasions that sit on AI-relevant rules</div>
+          <div class="gauge"><div class="fill" id="aiGauge" style="width:0%;background:var(--bad)"></div></div>
+          <div class="muted mt">AI-evasion share <b id="aiShare"></b> · AI rules in book <b id="aiRules"></b></div>
+        </div>
+        <div class="card card-pad">
+          <div class="card-title">Evaded AI-relevant rules</div>
+          <div class="card-sub">Rule IDs most exposed to AI-orchestrated evasion</div>
+          <div id="aiEvaded" class="chip-row"></div>
+        </div>
+      </div>
+
+      <div class="card card-pad mt2">
+        <div class="card-title">Methodology</div>
+        <div class="card-sub" id="methodText"></div>
+      </div>
+
+      <footer>Rulebook Drift Monitor · hackathon prototype · all data synthetic &amp; illustrative</footer>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="static/js/app.js"></script>
+<script>
+function sevColorBg(s){ return {critical:'var(--bad)',high:'var(--warn)',medium:'var(--info)',low:'var(--panel-3)'}[s]||'var(--accent)'; }
+
+async function load(){
+  try{
+    const f = await api('/api/forecast');
+    const t = f.trend;
+    $('kDrift').textContent = f.drift_index.toFixed(0);
+    $('kBand').textContent = f.drift_band+' band · '+t.direction;
+    $('kCov').textContent = (f.coverage.overall*100).toFixed(0)+'%';
+    $('kCovSub').textContent = f.coverage.covered_pairs+' of '+f.coverage.pairs+' pairs fire · input: '+f.inputs.rules+' rules × '+f.inputs.typologies+' typologies';
+    $('kProj6').textContent = (t.projection||t.values[t.values.length-1]).toFixed(0);
+    $('kHist').textContent = t.history_count||0;
+    $('methodLine').textContent = (t.kind==='measured_history')
+      ? 'Projection from '+t.history_count+' measured runs/checkpoints · cadence ~'+t.cadence_days+'d · '+t.period
+      : t.source+' · '+t.period;
+    renderForecast('trendSvg', t);
+    let meta = `<div class="muted" style="font-size:12px;margin-top:6px">Current index <b>${f.drift_index.toFixed(0)}</b> → projected <b>${(t.projection||'').toFixed(0)||'—'}</b> ${t.kind==='measured_history'?'over '+t.period:''} if evasion pressure holds.`;
+    if(t.kind==='measured_history' && t.backtest){
+      meta += ` Rolling-origin backtest: n=${t.backtest.n_points}, MAD <b>${t.backtest.mad}</b>, MAPE <b>${t.backtest.mape}%</b>, bias <b>${t.backtest.bias}</b>.`;
+      meta += ' Shaded area = confidence band (widens with horizon).';
+    } else {
+      meta += ' Baseline projection · record '+(3-(t.history_count||0))+' more runs/checkpoints for a measured forecast.';
+    }
+    meta += '</div>';
+    $('trendSvg').insertAdjacentHTML('beforeend', meta);
+
+    $('hotList').innerHTML = f.at_risk.map((a,i)=>{
+      const rankCls = i===0?'r1':i===1?'r2':i===2?'r3':'';
+      const pct = Math.min(100, a.hot_score*100);
+      return `<div class="hot-row">
+        <span class="hot-rank ${rankCls}">${a.rank}</span>
+        <span class="hot-name"><span class="mono" style="color:var(--accent)">${a.typology_id}</span> · ${esc(a.name)}<br/>
+          <span class="dim" style="font-size:11.5px">evades ${a.evaded_count}/${a.relevant_count} relevant · AI-evasion ${(a.ai_evasion_share*100).toFixed(0)}% · ${esc(a.source)}</span></span>
+        <span class="hot-score">${a.hot_score.toFixed(2)}</span>
+        <span class="hot-bar"><span class="fill" style="width:${pct}%"></span></span>
+      </div>`;
+    }).join('');
+
+    const cats = Object.entries(f.coverage.by_category);
+    $('catCards').innerHTML = cats.map(([c,v])=>{
+      const covPct = (v.coverage*100).toFixed(0);
+      const colBad = v.coverage < 0.4;
+      const col = colBad?'var(--bad)':v.coverage<0.75?'var(--warn)':'var(--good)';
+      return `<div class="card card-pad">
+        <div class="rulebar"><span class="card-title" style="margin:0">${esc(v.label)}</span>
+          <span class="sev ${colBad?'critical':v.coverage<0.75?'medium':'low'}">${covPct}%</span></div>
+        <div class="card-sub" style="margin-top:6px">${c} · ${v.rules} rules</div>
+        <div class="gauge"><div class="fill" style="width:${v.coverage*100}%;background:${col}"></div></div>
+        <div class="dim mt" style="font-size:11.5px">${v.covered_pairs}/${v.total_pairs} relevant rule-typology pairs fire · deficit ${(v.drift_deficit*100).toFixed(0)}%</div>
+      </div>`;
+    }).join('');
+
+    $('aiGauge').style.width = (f.ai_pressure.share*100)+'%';
+    $('aiShare').textContent = (f.ai_pressure.share*100).toFixed(0)+'%';
+    $('aiRules').textContent = (f.ai_share_all_rules*100).toFixed(0)+'%';
+    $('aiEvaded').innerHTML = f.ai_pressure.evaded_ai_rules.map(id=>`<span class="chip good">${esc(id)}</span>`).join('') || '<span class="dim">none currently evaded</span>';
+
+    $('methodText').textContent = f.method;
+  }catch(e){ toast('Forecast load failed: '+e.message); }
+}
+
+$('recordBtn').addEventListener('click', async ()=>{
+  try{
+    await api('/api/record', {method:'POST', body:'{}'});
+    toast('Checkpoint recorded');
+    load();
+  }catch(e){ toast('Record failed: '+e.message); }
+});
+load();
+</script>
+</body>
+</html>

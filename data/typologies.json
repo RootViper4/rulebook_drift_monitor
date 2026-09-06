@@ -1,0 +1,746 @@
+{
+  "version": "2026.09.05",
+  "source_notes": "Documented money-laundering and fraud typologies drawn from public reporting exemplars (FATF, FATF-Generative-AI, Chainalysis, Europol, INTERPOL, ENISA, FBI IC3, UNODC, Verizon DBIR, SEC/OFAC advisories) and sanitised illustrative STR themes, mapped against the Drift Sentinel DS-01..DS-40 rulebook. For hackathon demonstration only - all fixtures are synthetic and illustrative; they contain no personal or confidential data.",
+  "typologies": [
+    {
+      "id": "TYP-001",
+      "name": "Investment/Ponzi crypto fraud",
+      "source": "FATF Virtual Assets Red Flags / Chainalysis Crypto Crime 2023-24",
+      "description": "Victims are induced to deposit crypto into a fraudulent investment scheme promising high returns, often run via a cloned or fake trading platform with AI-generated marketing personas.",
+      "techniques": ["fake trading platform", "promised returns", "withdrawal block", "deepfake media", "synthetic identity", "new account", "weak counterparty", "unhosted wallet"],
+      "mitre_atlas": ["TA0001 Reconnaissance", "T1552 Phishing", "AML.T1566 Social Engineering"],
+      "risk_severity": "high",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 5000, "currency": "USDT",
+            "counterparty_jurisdiction": "high_risk", "wallet_age_days": 2,
+            "customer_profile_consistent": false, "economic_rationale": "investment_return",
+            "kyc_complete": true, "new_account": true, "fresh_onboarding": true,
+            "round_amount": true, "weak_counterparty": true, "threat_list_hit": true,
+            "rapid_withdrawal": true, "below_threshold": false
+          }
+        }
+      ],
+      "expected_gap": "source of funds corroboration (DS-27)"
+    },
+    {
+      "id": "TYP-002",
+      "name": "Pig-butchering / romance scam (AI persona)",
+      "source": "FATF-Generative-AI 2024 / INTERPOL / FBI IC3",
+      "description": "Criminals groom victims through social or dating channels using AI-generated personas and deepfake media, building trust before steering them into fake crypto investment platforms.",
+      "techniques": ["deepfake persona", "deepfake media", "synthetic identity", "social engineering", "grooming", "coached victim", "unfamiliar", "unhosted wallet"],
+      "mitre_atlas": ["T1552 Phishing", "T1566 Social Engineering", "AML.T0016.002 Generative AI"],
+      "risk_severity": "high",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 12000, "currency": "BTC",
+            "counterparty_jurisdiction": "low_monitoring", "wallet_age_days": 0,
+            "customer_profile_consistent": false, "economic_rationale": "romance",
+            "kyc_complete": true, "identity_markers": ["deepfake_media", "synthetic"],
+            "crypto_naive": true, "coached_mule": true, "small_wallet_set": true,
+            "lacks_transaction_knowledge": true
+          }
+        }
+      ],
+      "expected_gap": "source-of-wealth inconsistency during relationship (DS-27)"
+    },
+    {
+      "id": "TYP-003",
+      "name": "Mule / money-mule pass-through network",
+      "source": "Chainalysis Crypto Crime / FATF Recommendation 5",
+      "description": "Criminals recruit money mules who open crypto accounts or use their own wallets to receive and pass through illicit funds, often via fresh wallets created on demand.",
+      "techniques": ["fresh wallet", "pass through", "layering", "multiple accounts", "mule grooming"],
+      "mitre_atlas": ["TA0006 Impact", "TA0007 Evasion", "T1071 Layer"],
+      "risk_severity": "high",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 800, "currency": "USDT",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 0,
+            "customer_profile_consistent": true, "economic_rationale": "pass_through",
+            "kyc_complete": true, "fresh_wallet": true, "multiple_accounts": true,
+            "pass_through": true, "unhosted_wallet": true, "consolidated": true
+          }
+        }
+      ],
+      "expected_gap": "mule-behaviour detection when no overt coaching markers (DS-40)"
+    },
+    {
+      "id": "TYP-004",
+      "name": "AI-cloned voice / phishing of account access",
+      "source": "SABRIC / FATF-Generative-AI 2024",
+      "description": "Fraudsters use AI-generated voice clones and realistic phishing pages mirroring the exchange app to obtain login credentials and wallet keys.",
+      "techniques": ["voice clone", "phishing", "cloned app", "credential theft", "wallet key capture", "anomalous login", "shared credentials"],
+      "mitre_atlas": ["T1552 Phishing", "TA0001 Reconnaissance", "T1566 Social Engineering"],
+      "risk_severity": "high",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 3000, "currency": "ETH",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 45,
+            "customer_profile_consistent": true, "economic_rationale": "credential_theft",
+            "kyc_complete": true, "anomalous_login": true,
+            "changed_credentials": true, "shared_credentials": true, "uses_vpn_tor": true
+          }
+        }
+      ],
+      "expected_gap": "AI-orchestrated voice/credential takeover not yet a named rule (DS-06/DS-24 only partially catch)"
+    },
+    {
+      "id": "TYP-005",
+      "name": "Synthetic identity new-customer fraud",
+      "source": "FATF 2022 s.II.3 / FATF-Generative-AI 2024",
+      "description": "Fraud programmes assemble synthetic identities from aggregated real and fabricated data (including AI-generated documents) to pass KYC and onboard as new customers, then transact at scale before detection.",
+      "techniques": ["synthetic identity", "forged KYC", "new account", "rapid volume", "identity stitching", "deepfake media", "incomplete kyc"],
+      "mitre_atlas": ["TA0005 ML Development", "TA0007 Evasion", "T1592 Gather Victim Org Info"],
+      "risk_severity": "critical",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 25000, "currency": "USDT",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 1,
+            "customer_profile_consistent": false, "economic_rationale": "synthetic_identity",
+            "kyc_complete": true, "fresh_onboarding": true, "new_account": true,
+            "identity_markers": ["synthetic", "forged", "deepfake_media"],
+            "ai_orchestrated_onboarding": true, "rapid_accumulation": true
+          }
+        }
+      ],
+      "expected_gap": "ongoing post-onboarding source-of-funds monitoring (DS-27/DS-29)"
+    },
+    {
+      "id": "TYP-006",
+      "name": "Stablecoin cross-border payment structuring",
+      "source": "Finextra / FATF Travel Rule implementation 2025-26",
+      "description": "Stablecoin rails used for cross-border payments are structured to avoid travel-rule and transaction thresholds, exploiting gaps in originator information transmission.",
+      "techniques": ["structuring", "stablecoin", "threshold evasion", "missing originator information", "cross-border", "unregistered exchange", "no rationale"],
+      "mitre_atlas": ["TA0007 Evasion", "T1071 Layer"],
+      "risk_severity": "medium",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 950, "currency": "USDC",
+            "counterparty_jurisdiction": "grey_list", "wallet_age_days": 10,
+            "customer_profile_consistent": true, "economic_rationale": "structuring",
+            "kyc_complete": true, "travel_rule_missing": true, "missing_orig_benef": true,
+            "below_threshold": true, "unregistered_exchange": true, "cross_border": true
+          }
+        }
+      ],
+      "expected_gap": "travel-rule threshold structuring evade for non-covered rails (DS-34)"
+    },
+    {
+      "id": "TYP-007",
+      "name": "Romance scam with AI deepfake video persona",
+      "source": "FBI IC3 2023 Annual Report / FATF-Generative-AI",
+      "description": "Scammers sustain long-running fake relationships through AI-generated video calls, producing near-real-time deepfake faces to defeat user-side verification, then route victim funds into fresh unhosted wallets.",
+      "techniques": ["ai persona", "deepfake persona", "deepfake media", "social engineering", "grooming", "crypto naive", "unfamiliar", "new account", "unhosted wallet", "weak counterparty"],
+      "mitre_atlas": ["AML.T0016.002 Generative AI", "T1566 Social Engineering", "TA0007 Evasion"],
+      "risk_severity": "critical",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 20000, "currency": "USDT",
+            "counterparty_jurisdiction": "high_risk", "wallet_age_days": 0,
+            "customer_profile_consistent": false, "economic_rationale": "romance",
+            "kyc_complete": true, "new_account": true, "identity_markers": ["deepfake_media"],
+            "crypto_naive": true, "coached_mule": true, "unhosted_wallet": true
+          }
+        }
+      ],
+      "expected_gap": "counterparty due diligence on unhosted receivers (DS-04/DS-26)"
+    },
+    {
+      "id": "TYP-008",
+      "name": "Deepfake liveness-bypass document fraud",
+      "source": "Europol 2024 / FATF-Generative-AI 2024",
+      "description": "Fraudsters defeat KYC liveness checks with deepfake face-swap media and forged identity documents, onboarding under borrowed identities at speed before onboarding monitors desensitise.",
+      "techniques": ["deepfake", "liveness bypass", "forged documents", "edited photos", "synthetic identity", "new account", "rapid deposit", "source of funds"],
+      "mitre_atlas": ["TA0005 ML Development", "TA0007 Evasion"],
+      "risk_severity": "critical",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 15000, "currency": "USDT",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 3,
+            "customer_profile_consistent": false, "economic_rationale": "rapid_investment",
+            "kyc_complete": true, "new_account": true, "fresh_onboarding": true,
+            "identity_markers": ["liveness_bypass", "forged", "deepfake_media"],
+            "ai_orchestrated_onboarding": true, "rapid_accumulation": true
+          }
+        }
+      ],
+      "expected_gap": "incomplete-KYC enrolment accepted despite undetected liveness bypass (DS-07)"
+    },
+    {
+      "id": "TYP-009",
+      "name": "Account takeover via credential stuffing",
+      "source": "ENISA Threat Landscape 2023 / Verizon DBIR 2024",
+      "description": "Password lists harvested from breaches are replayed across exchange accounts. Stolen sessions are used for rapid withdrawals before the victim notices, with funds moving from a now-shared-credential profile.",
+      "techniques": ["account takeover", "changed credentials", "shared credentials", "anomalous login", "shared ip", "flash cookies", "rapid withdrawal", "source of funds"],
+      "mitre_atlas": ["T1078 Valid Accounts", "T1555.003 Credentials", "TA0007 Evasion"],
+      "risk_severity": "high",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 9000, "currency": "ETH",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 120,
+            "customer_profile_consistent": true, "economic_rationale": "credential_stuffing",
+            "kyc_complete": true, "changed_credentials": true, "shared_credentials": true,
+            "rapid_withdrawal": true, "uses_vpn_tor": true, "source_inconsistent": true
+          }
+        }
+      ],
+      "expected_gap": "CDD-only monitoring cannot tell shared-credential resets from routine change (DS-07/DS-27)"
+    },
+    {
+      "id": "TYP-010",
+      "name": "Corporate KYB 'door-opener' front company",
+      "source": "FATF 2020 Recommendations 24-25 / EU AMLR 2024",
+      "description": "A front company with credible-looking KYB documents onboard as a corporate client; the true economic controller uses nominee officers and refuses beneficial-ownership disclosure, then runs deposits through the account.",
+      "techniques": ["ubo not established", "legal person", "beneficial ownership", "evasive cdd", "unwilling", "documentation", "wealth mismatch", "source of wealth"],
+      "mitre_atlas": ["TA0001 Reconnaissance", "AML.T0001 Legal Persons"],
+      "risk_severity": "critical",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 85000, "currency": "USDC",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 40,
+            "customer_profile_consistent": true, "economic_rationale": "corporate",
+            "kyc_complete": false, "unverified_ubo": true, "evasive_cdd": true,
+            "wealth_mismatch": true
+          }
+        }
+      ],
+      "expected_gap": "source-of-wealth verification for controlling shareholders (DS-27)"
+    },
+    {
+      "id": "TYP-011",
+      "name": "Shell-company nominee / DPO layering conduit",
+      "source": "FATF 2020 rec 24 / open leaks-derived exemplars (unnamed)",
+      "description": "Legal-entity shells with designated persons (officers) accumulate funds from multiple operating companies, pass them through corporate accounts to third-party shell recipients, while beneficial ownership stays unverified.",
+      "techniques": ["ubo not established", "beneficial ownership", "legal person", "layering", "pass through", "multiple accounts", "consolidation", "weak counterparty", "unhosted wallet"],
+      "mitre_atlas": ["T1071 Layer", "AML.T0001 Legal Persons"],
+      "risk_severity": "high",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 60000, "currency": "USDT",
+            "counterparty_jurisdiction": "high_risk", "wallet_age_days": 90,
+            "customer_profile_consistent": true, "economic_rationale": "corporate",
+            "kyc_complete": true, "multiple_accounts": true, "consolidated": true,
+            "pass_through": true, "ubo_not_established": true
+          }
+        }
+      ],
+      "expected_gap": "pass-through corporate conduits evade counterparty due diligence (DS-04/DS-26)"
+    },
+    {
+      "id": "TYP-012",
+      "name": "Deposit-dispersion fan-out structuring",
+      "source": "FATF 2020 Outcome-based Recommendations / classic structuring casework",
+      "description": "Criminal proceeds are dispersed from a master account in sub-threshold round transfers to a small cluster of wallets, reassembled elsewhere - classic structuring recomposed for crypto rails.",
+      "techniques": ["structuring", "fan-in", "multiple senders", "small wallet set", "clustering", "round amount", "below threshold", "no rationale"],
+      "mitre_atlas": ["T1071 Layer", "TA0007 Evasion"],
+      "risk_severity": "medium",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 1200, "currency": "USDT",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 5,
+            "customer_profile_consistent": true, "economic_rationale": "structuring",
+            "kyc_complete": true, "fan_in": true, "small_wallet_set": true,
+            "round_amount": true, "below_threshold": true
+          }
+        }
+      ],
+      "expected_gap": "structuring that carries an articulated rationale escapes anomaly reason checks (DS-38)"
+    },
+    {
+      "id": "TYP-013",
+      "name": "Peel-chain layering with token swaps",
+      "source": "Chainalysis Crypto Crime Report 2023-24",
+      "description": "Funds are split and re-split across fresh wallets ('peeling'), converted through token swaps and privacy coins, so single-hop rules see only small, benign-looking transfers.",
+      "techniques": ["layering", "multi hop", "peel chain", "token swap", "privacy coin", "fresh wallet", "fan-in", "obfuscation"],
+      "mitre_atlas": ["T1071 Layer", "AML.T0003 Layering"],
+      "risk_severity": "high",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 3200, "currency": "BTC",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 0,
+            "customer_profile_consistent": true, "economic_rationale": "peel_chain",
+            "kyc_complete": true, "multi_hop": true, "token_swap": true,
+            "privacy_coin": true, "fresh_wallet": true
+          }
+        }
+      ],
+      "expected_gap": "multi-hop peel chains evade fan-out consolidation detection (DS-05/DS-15)"
+    },
+    {
+      "id": "TYP-014",
+      "name": "Cross-chain bridge / chain-hopping obfuscation",
+      "source": "Europol 2023 / Chainalysis 2024",
+      "description": "Funds are moved across blockchains through native bridges and exchange-internal swaps, shattering a single-chain audit trail while sitting under each platform's per-chain monitoring.",
+      "techniques": ["cross chain", "chain hopping", "layering", "obfuscation", "convertible", "token swap", "multi hop"],
+      "mitre_atlas": ["T1071 Layer", "AML.T0003 Layering"],
+      "risk_severity": "high",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 5000, "currency": "ETH",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 15,
+            "customer_profile_consistent": true, "economic_rationale": "bridge",
+            "kyc_complete": true, "token_swap": true, "multi_hop": true,
+            "source_inconsistent": true
+          }
+        }
+      ],
+      "expected_gap": "cross-chain hop sequences are invisible to single-chain fan-in/out logic (DS-05/DS-15)"
+    },
+    {
+      "id": "TYP-015",
+      "name": "Mixer-assisted sanitisation",
+      "source": "FATF 2020 Virtual Asset guidance / Recommendation 16",
+      "description": "Proceeds pass through a mixing/tumbling service to break the on-chain link to criminal origin; the exchange only ever sees post-mix inputs with no traceable provenance.",
+      "techniques": ["mixer", "tumbler", "sanitisation", "darknet", "obfuscation", "round amount"],
+      "mitre_atlas": ["AML.T0004 Obfuscation", "TA0007 Evasion"],
+      "risk_severity": "critical",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 7000, "currency": "BTC",
+            "counterparty_jurisdiction": "high_risk", "wallet_age_days": 8,
+            "customer_profile_consistent": true, "economic_rationale": "mix",
+            "kyc_complete": true, "uses_mixer": true, "tumbler": true,
+            "tools": ["mixer"], "criminal_source": true, "threat_list_hit": true
+          }
+        }
+      ],
+      "expected_gap": "post-mix inputs defeat link-analysis where sanitisation is not itself flagged (DS-15)"
+    },
+    {
+      "id": "TYP-016",
+      "name": "Privacy-coin conversion layer (Monero-style)",
+      "source": "Chainalysis Money Laundering & Cryptocurrency 2023 / FinCEN 2023",
+      "description": "Funds are converted into privacy coins and back to transparent assets at unhosted wallets, exploiting concealment by design plus token-swap rails that most indicator libraries do not monitor natively.",
+      "techniques": ["privacy coin", "convertible", "token swap", "unhosted wallet", "obfuscation", "self custody"],
+      "mitre_atlas": ["AML.T0004 Obfuscation", "TA0007 Evasion"],
+      "risk_severity": "high",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 4500, "currency": "XMR_to_USDT",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 20,
+            "customer_profile_consistent": true, "economic_rationale": "conversion",
+            "kyc_complete": true, "privacy_coin": true, "token_swap": true,
+            "unhosted_wallet": true, "self_custody": true
+          }
+        }
+      ],
+      "expected_gap": "conversion-layer concealment is treated as routine token activity (DS-15)"
+    },
+    {
+      "id": "TYP-017",
+      "name": "Ransomware payment facilitation",
+      "source": "FBI IC3 2023 Annual Report / Chainalysis 2024",
+      "description": "Ransom affiliates route victim payments through high-risk jurisdictions and threat-intelligence-flagged addresses; screening misses them because the receiving address is not yet on a published list.",
+      "techniques": ["ransomware", "extortion", "darknet", "threat intelligence", "stolen card", "sanctioned", "high risk jurisdiction", "sanctions"],
+      "mitre_atlas": ["AML.T0021 Ransomware Extortion", "TA0006 Impact"],
+      "risk_severity": "critical",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 14000, "currency": "BTC",
+            "counterparty_jurisdiction": "high_risk", "wallet_age_days": 60,
+            "customer_profile_consistent": true, "economic_rationale": "ransom",
+            "kyc_complete": true, "criminal_source": true, "threat_list_hit": true
+          }
+        }
+      ],
+      "expected_gap": "first-seen ransom addresses evade sanctions/risk-list screening (DS-21)"
+    },
+    {
+      "id": "TYP-018",
+      "name": "Sextortion / financial-release extortion",
+      "source": "UNODC Human Trafficking & ML 2023 / NC3 sextortion advisories",
+      "description": "Victims are coerced into paying a 'release fee' via cryptocurrency; perpetrators use naive victim wallets and darknet-purpose memos, with a low-history beneficiary collecting the sums.",
+      "techniques": ["extortion", "darknet", "memo field", "illicit goods", "crypto naive", "unfamiliar", "low history wallet", "victim"],
+      "mitre_atlas": ["T1566 Social Engineering", "AML.T0021 Ransomware Extortion"],
+      "risk_severity": "high",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 2600, "currency": "BTC",
+            "counterparty_jurisdiction": "low_monitoring", "wallet_age_days": 30,
+            "customer_profile_consistent": true, "economic_rationale": "extortion",
+            "kyc_complete": true, "memo_illicit": true, "crypto_naive": true,
+            "criminal_source": true
+          }
+        }
+      ],
+      "expected_gap": "small-sum victim-to-perpetrator transfers avoid material transfer safeguards (DS-35)"
+    },
+    {
+      "id": "TYP-019",
+      "name": "Authorised push payment fraud via deepfake calls",
+      "source": "Europol 2024 / UK PSR APP fraud review 2024",
+      "description": "Fraudsters impersonate bank or exchange staff in AI-generated voice/video calls, coercing victims into transferring funds from their own accounts - transfers that are customer-authorised and therefore hard to detect.",
+      "techniques": ["social engineering", "voice clone", "deepfake media", "coached victim", "crypto naive", "rapid withdrawal", "ip geo mismatch"],
+      "mitre_atlas": ["AML.T0016.002 Generative AI", "T1566 Social Engineering"],
+      "risk_severity": "high",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 18000, "currency": "USDT",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 90,
+            "customer_profile_consistent": false, "economic_rationale": "requested_out",
+            "kyc_complete": true, "identity_markers": ["deepfake_media"],
+            "coached_mule": true, "crypto_naive": true, "rapid_withdrawal": true
+          }
+        }
+      ],
+      "expected_gap": "customer-authorised outflows to deepfake-directed recipients miss anonymity checks (DS-24)"
+    },
+    {
+      "id": "TYP-020",
+      "name": "Pension / life-savings restructuring abuse",
+      "source": "FATF 2020 Case Studies (structured retirement releases)",
+      "description": "Victims are persuaded to 'restructure' retirement savings into small sub-threshold withdrawals and onward investments; velocity spikes on legacy accounts signal the abuse but comply with each individual threshold.",
+      "techniques": ["structuring", "below threshold", "round amount", "rapid deposit", "high value", "velocity", "accumulate"],
+      "mitre_atlas": ["TA0007 Evasion", "T1071 Layer"],
+      "risk_severity": "medium",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 4000, "currency": "USDC",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 400,
+            "customer_profile_consistent": true, "economic_rationale": "restructure",
+            "kyc_complete": true, "below_threshold": true, "round_amount": true,
+            "velocity": true, "rapid_accumulation": true
+          }
+        }
+      ],
+      "expected_gap": "articulated-rationale velocity spikes evade no-rationale anomaly logic (DS-38)"
+    },
+    {
+      "id": "TYP-021",
+      "name": "ESports skin-gambling layering",
+      "source": "FATF Virtual Asset Compliance 2021 / ESMA markets 2024",
+      "description": "Crypto moved onto immersive-gaming platforms is churned through loot crates and skin trades, converted at unlicensed skin-exchanges, and withdrawn as fiat - opaque to conventional transaction monitoring.",
+      "techniques": ["layering", "obfuscation", "clustering", "multiple accounts", "small wallet set", "fan out", "unregistered exchange"],
+      "mitre_atlas": ["T1071 Layer", "AML.T0003 Layering"],
+      "risk_severity": "medium",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 700, "currency": "SKN_to_USDT",
+            "counterparty_jurisdiction": "low_monitoring", "wallet_age_days": 12,
+            "customer_profile_consistent": true, "economic_rationale": "gaming",
+            "kyc_complete": true, "clustering": true, "small_wallet_set": true,
+            "multiple_accounts": true
+          }
+        }
+      ],
+      "expected_gap": "skin-gaming churn is below structural detection without named-platform coverage (DS-05/DS-19)"
+    },
+    {
+      "id": "TYP-022",
+      "name": "Fake crypto exchange rug-pull",
+      "source": "Chainalysis Crypto Crime 2024 / SEC enforcement actions 2024",
+      "description": "Cloned-exchange platform oboards retail users, aggregates deposits through sub-threshold investment tickets, then freezes withdrawals and exits - with the platform never registered or screened.",
+      "techniques": ["fake trading platform", "promised returns", "withdrawal block", "round amount", "threat intelligence", "unregistered exchange", "new account", "weak counterparty"],
+      "mitre_atlas": ["T1566 Social Engineering", "AML.T0016.002 Generative AI"],
+      "risk_severity": "high",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 5000, "currency": "USDT",
+            "counterparty_jurisdiction": "high_risk", "wallet_age_days": 7,
+            "customer_profile_consistent": false, "economic_rationale": "investment",
+            "kyc_complete": true, "new_account": true, "round_amount": true,
+            "weak_counterparty": true, "unregistered_exchange": true
+          }
+        }
+      ],
+      "expected_gap": "unregistered-platform counterparties evade risk-list and rationale checks when activity is framed as investment (DS-31/DS-38)"
+    },
+    {
+      "id": "TYP-023",
+      "name": "Pump-and-dump token inflation",
+      "source": "FATF 2021 / Chainalysis market-manipulation studies",
+      "description": "Coordinated clusters inflate a low-cap token with rapid successive high-value buys, then distribute to insiders - behavioural spikes on a single asset mirroring classic market-abuse wash patterns.",
+      "techniques": ["clustering", "layering", "fan in", "velocity", "quick succession", "high value", "multiple senders"],
+      "mitre_atlas": ["T1071 Layer", "AML.T0002 Market Abuse"],
+      "risk_severity": "medium",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 3000, "currency": "ALT",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 25,
+            "customer_profile_consistent": true, "economic_rationale": "trade",
+            "kyc_complete": true, "velocity": true, "high_value": true,
+            "quick_succession": true, "fan_in": true, "clustering": true
+          }
+        }
+      ],
+      "expected_gap": "coordinated buy-spike suffers no pass-through check beyond velocity (DS-23)"
+    },
+    {
+      "id": "TYP-024",
+      "name": "NFT / lootbox wash-trading",
+      "source": "WIPO/Chainalysis 2023 / NFT market laundering analysis",
+      "description": "Wash-trading between a controller's own wallet cluster gives artificial trading volume to shared-narrative NFTs, moving value via embedded royalties and 'sweep' mechanisms outside monitored asset classes.",
+      "techniques": ["wash trading", "clustering", "small wallet set", "multiple accounts", "fan in", "obfuscation", "pass through"],
+      "mitre_atlas": ["T1071 Layer", "AML.T0002 Market Abuse"],
+      "risk_severity": "medium",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 550, "currency": "NFT_USD",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 33,
+            "customer_profile_consistent": true, "economic_rationale": "collectible",
+            "kyc_complete": true, "clustering": true, "small_wallet_set": true,
+            "fan_in": true, "multiple_accounts": true
+          }
+        }
+      ],
+      "expected_gap": "collection wash-trading only partially caught by clustering rules (DS-23)"
+    },
+    {
+      "id": "TYP-025",
+      "name": "Fresh-wallet mule factory",
+      "source": "FATF Recommendation 5 / Europol money-muling operations 2023",
+      "description": "A network of newly created wallets receives mule-driven deposits, obeys coached small-set instructions, and is drained through unhosted wallets - each wallet demonstrably low-history yet moving material sums.",
+      "techniques": ["fresh wallet", "new wallet", "no history", "mule grooming", "coached", "small wallet set", "unhosted wallet", "pass through"],
+      "mitre_atlas": ["TA0007 Evasion", "T1071 Layer"],
+      "risk_severity": "high",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 2000, "currency": "USDT",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 0,
+            "customer_profile_consistent": true, "economic_rationale": "pass_through",
+            "kyc_complete": true, "fresh_wallet": true, "coached_mule": true,
+            "low_history_wallet": true, "unhosted_wallet": true, "small_wallet_set": true
+          }
+        }
+      ],
+      "expected_gap": "fresh-wallet factory is caught per-wallet but not as a coordinated pass-through set (DS-23)"
+    },
+    {
+      "id": "TYP-026",
+      "name": "SIM-swap-driven account takeover",
+      "source": "Verizon DBIR 2024 / FTC SIM-swap reports",
+      "description": "Attackers port the victim's mobile number, reset credentials, change device/IP fingerprints, and withdraw before anomaly detectors learn the new behavioural baseline.",
+      "techniques": ["account takeover", "changed credentials", "changed ip", "changed email", "geo mismatch", "rapid withdrawal", "source of funds", "shared credentials"],
+      "mitre_atlas": ["T1078 Valid Accounts", "T1555.003 Credentials", "TA0007 Evasion"],
+      "risk_severity": "high",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 12500, "currency": "ETH",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 220,
+            "customer_profile_consistent": true, "economic_rationale": "sim_swap",
+            "kyc_complete": true, "changed_credentials": true, "frequent_identity_change": true,
+            "rapid_withdrawal": true, "uses_vpn_tor": true, "ip_geo_mismatch": true,
+            "source_inconsistent": true
+          }
+        }
+      ],
+      "expected_gap": "credential-profile churn is not surfaced as shared-credential risk until after the fact (DS-06)"
+    },
+    {
+      "id": "TYP-027",
+      "name": "Unlicensed VASP jurisdiction hopping",
+      "source": "FATF Recommendations 19/21 / EU AMLR licensing regimes 2024",
+      "description": "Clients deliberately use unlicensed or unregulated VASPs in low-enforcement jurisdictions, relocating activity when a jurisdiction raises its controls - evading registration-based screening.",
+      "techniques": ["unlicensed", "unregistered exchange", "unregulated jurisdiction", "relocation", "geographic", "no rationale", "anonymisation"],
+      "mitre_atlas": ["TA0007 Evasion", "AML.T0005 Geographic"],
+      "risk_severity": "medium",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 1500, "currency": "USDT",
+            "counterparty_jurisdiction": "grey_list", "wallet_age_days": 70,
+            "customer_profile_consistent": true, "economic_rationale": "arbitrage",
+            "kyc_complete": true, "unregistered_exchange": true,
+            "unregulated_jurisdiction": true, "offices_relocation": true
+          }
+        }
+      ],
+      "expected_gap": "anonymisation on unlicensed platforms escapes technology-layer monitoring (DS-24)"
+    },
+    {
+      "id": "TYP-028",
+      "name": "Grey-list / high-risk corridor travel-rule gap",
+      "source": "FATF 2023 grey-list jurisdictions monitoring round",
+      "description": "Transfers to enhanced-monitoring (grey-list) jurisdictions routinely arrive with incomplete originator information, exploiting travel-rule exemptions on smaller-value and cross-border corridors.",
+      "techniques": ["travel rule", "cross border", "missing originator information", "high risk jurisdiction", "grey list", "missing information", "no rationale"],
+      "mitre_atlas": ["AML.T0005 Geographic", "TA0007 Evasion"],
+      "risk_severity": "critical",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 3000, "currency": "USDC",
+            "counterparty_jurisdiction": "grey_list", "wallet_age_days": 50,
+            "customer_profile_consistent": true, "economic_rationale": "cross_border",
+            "kyc_complete": true, "travel_rule_missing": true, "missing_orig_benef": true,
+            "cross_border": true
+          }
+        }
+      ],
+      "expected_gap": "travel-rule exemptions for small cross-border corridors evade originator-information rules (DS-20/DS-34)"
+    },
+    {
+      "id": "TYP-029",
+      "name": "Sanctioned-entity wallet interop",
+      "source": "OFAC sanctions advisories / FATF Recommendation 7",
+      "description": "A counterparty appears behind an unhosted wallet and unverified onboarding gaps; the address is not yet on published sanctions lists, so screening fails despite elevated jurisdiction risk.",
+      "techniques": ["sanctions", "screening", "freeze", "tfs", "unsc", "weak counterparty", "unhosted wallet", "high risk jurisdiction"],
+      "mitre_atlas": ["AML.T0006 Sanctions Evasion", "TA0007 Evasion"],
+      "risk_severity": "critical",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 25000, "currency": "USDT",
+            "counterparty_jurisdiction": "high_risk", "wallet_age_days": 4,
+            "customer_profile_consistent": true, "economic_rationale": "trade",
+            "kyc_complete": true, "weak_counterparty": true, "unhosted_wallet": true
+          }
+        }
+      ],
+      "expected_gap": "first-seen sanctioned-adjacent wallet escapes matching until list publication (DS-21)"
+    },
+    {
+      "id": "TYP-030",
+      "name": "Darknet marketplace value transfer",
+      "source": "UNODC 2023 World Drug Report / Chainalysis darknet studies",
+      "description": "Marketplace proceeds paid with stolen cards and criminal-source crypto are withdrawn via memos referencing illicit goods, moving from darknet-tagged wallets to high-risk jurisdictions.",
+      "techniques": ["darknet", "criminal source", "stolen card", "threat intelligence", "memo field", "illicit goods", "unregistered exchange", "high risk jurisdiction"],
+      "mitre_atlas": ["AML.T0020 Darknet Markets", "TA0006 Impact"],
+      "risk_severity": "critical",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 9000, "currency": "BTC",
+            "counterparty_jurisdiction": "high_risk", "wallet_age_days": 14,
+            "customer_profile_consistent": true, "economic_rationale": "market",
+            "kyc_complete": true, "criminal_source": true, "stolen_card": true,
+            "memo_illicit": true, "threat_list_hit": true
+          }
+        }
+      ],
+      "expected_gap": "marketplace-to-exchange flows evade unregistered-platform detection when memos are sanitised (DS-19)"
+    },
+    {
+      "id": "TYP-031",
+      "name": "PEP nominee conduit",
+      "source": "FATF Recommendation 12 / ICIJ-derived exemplars",
+      "description": "A politically exposed person routes funds through corporate conduits and designated nominee signatories; enhanced diligence is bypassed because the PEP is not a named account holder and UBO sources go unverified.",
+      "techniques": ["pep", "monitoring", "unusual activity", "enhanced due diligence", "ubo not established", "beneficial ownership", "legal person", "source of wealth"],
+      "mitre_atlas": ["AML.T0008 PEP", "AML.T0001 Legal Persons"],
+      "risk_severity": "high",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 42000, "currency": "USDT",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 100,
+            "customer_profile_consistent": true, "economic_rationale": "corporate",
+            "kyc_complete": true, "is_pep": true, "pep_activity_unusual": true,
+            "unverified_ubo": true, "evasive_cdd": true
+          }
+        }
+      ],
+      "expected_gap": "conduit-held PEP funds evade source-of-wealth checks in corporate wrappers (DS-27)"
+    },
+    {
+      "id": "TYP-032",
+      "name": "Unregistered P2P arbitrage cash-out",
+      "source": "FATF Recommendation 16 implementation / national P2P advisories",
+      "description": "Crypto is cashed out through peer-to-peer arbitrage on unregistered platforms, converting sub-threshold tranches to fiat via crypto-to-card rails - bypassing both exchange registration and round-trip detection.",
+      "techniques": ["p2p", "unregistered exchange", "crypto to plastic", "cash deposit", "withdrawal", "round amount", "no rationale"],
+      "mitre_atlas": ["T1071 Layer", "AML.T0005 Geographic"],
+      "risk_severity": "medium",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 990, "currency": "USDT_to_BRL",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 21,
+            "customer_profile_consistent": true, "economic_rationale": "p2p",
+            "kyc_complete": true, "crypto_to_plastic": true, "cash_deposit_cards": true,
+            "unregistered_exchange": true, "round_amount": true
+          }
+        }
+      ],
+      "expected_gap": "P2P cash-out escapes no-rationale anomaly logic when framed as arbitrage (DS-38)"
+    },
+    {
+      "id": "TYP-033",
+      "name": "Fresh-wallet AI-coached mule victims",
+      "source": "FATF-Generative-AI 2024 / INTERPOL AI & ML crimes",
+      "description": "Victims are recruited through AI-generated video ads into 'work from home' schemes; they open fresh wallets, receive coached transfers, and forward funds, with limited financial literacy hiding the mule role.",
+      "techniques": ["coached", "limited literacy", "victim", "small wallet set", "deepfake media", "fresh wallet", "crypto naive", "pass through"],
+      "mitre_atlas": ["AML.T0016.002 Generative AI", "TA0007 Evasion"],
+      "risk_severity": "high",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 1500, "currency": "USDT",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 1,
+            "customer_profile_consistent": true, "economic_rationale": "earnings",
+            "kyc_complete": true, "coached_mule": true, "crypto_naive": true,
+            "identity_markers": ["deepfake_media"], "fresh_wallet": true,
+            "small_wallet_set": true, "low_history_wallet": true
+          }
+        }
+      ],
+      "expected_gap": "AI-recruited low-literacy mules evade single-hop pass-through aggregation (DS-23)"
+    },
+    {
+      "id": "TYP-034",
+      "name": "LLM-generated bulk phishing / mass ATO",
+      "source": "FATF-Generative-AI 2024 / OpenAI & Microsoft 2024 threat reports",
+      "description": "LLM tooling produces thousands of adaptive phishing pages and credential lures, leading to bulk account takeover across a clustered wallet population whose sessions share fingerprints.",
+      "techniques": ["phishing", "account takeover", "changed credentials", "shared credentials", "shared ip", "flash cookies", "clustering", "small wallet set", "vpn"],
+      "mitre_atlas": ["AML.T0016.002 Generative AI", "T1552 Phishing", "TA0007 Evasion"],
+      "risk_severity": "critical",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 800, "currency": "ETH",
+            "counterparty_jurisdiction": "normal", "wallet_age_days": 18,
+            "customer_profile_consistent": true, "economic_rationale": "bulk_ato",
+            "kyc_complete": true, "changed_credentials": true, "shared_credentials": true,
+            "clustering": true, "small_wallet_set": true, "rapid_withdrawal": true,
+            "source_inconsistent": true
+          }
+        }
+      ],
+      "expected_gap": "mass ATO evades anonymous-traffic detection when sessions are proxied per user (DS-24)"
+    },
+    {
+      "id": "TYP-035",
+      "name": "Trust-transfer scam to cross-border funnel",
+      "source": "FBI IC3 2024 / UK FCA fraud 2024 review",
+      "description": "Victims in trust-transfer scams (grandparent, family-support, impersonation) remit to a cross-border funnel of naive, low-history wallets where originator details are stripped before the final hop.",
+      "techniques": ["social engineering", "cross border", "travel rule", "missing originator information", "crypto naive", "unfamiliar", "weak counterparty", "unhosted wallet"],
+      "mitre_atlas": ["T1566 Social Engineering", "AML.T0005 Geographic"],
+      "risk_severity": "high",
+      "test_fixtures": [
+        {
+          "tx": {
+            "amount": 6000, "currency": "USDC",
+            "counterparty_jurisdiction": "low_monitoring", "wallet_age_days": 11,
+            "customer_profile_consistent": true, "economic_rationale": "family_transfer",
+            "kyc_complete": true, "crypto_naive": true, "weak_counterparty": true,
+            "missing_orig_benef": true, "travel_rule_missing": true, "cross_border": true
+          }
+        }
+      ],
+      "expected_gap": "cross-border trust-transfer funnel defeats unhosted-receiver due diligence at the retail layer (DS-26)"
+    }
+  ]
+}

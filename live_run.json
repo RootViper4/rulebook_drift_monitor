@@ -1,0 +1,347 @@
+{
+  "run_id": "run-b39c5c27",
+  "status": "awaiting_human_approval",
+  "rulebook_version": "DS-01..DS-40 · 40 rules",
+  "results": [
+    {
+      "name": "Investment/Ponzi crypto fraud",
+      "id": "TYP-001",
+      "fires": "DS-01, DS-02, DS-04, DS-28, DS-31, DS-37",
+      "evades": "DS-06, DS-09, DS-12, DS-17, DS-26, DS-39",
+      "atlas": "TA0001 Reconnaissance, T1552 Phishing, AML.T1566 Social Engineering",
+      "basis": "documented typology",
+      "flag": "Customer engages in activity consistent with 'Investment/Ponzi crypto fraud' that is not adequately detected because the following indicator(s) do not fire: Credentials or identifiers shared with another account; Forged or edited identification documents; Sender unfamiliar with VA technology or custodial wallets; Crypto-to-plastic conversion or cash-funded credit cards; Non-hosted / self-custody wallet with attribution risk; AI-orchestrated synthetic-identity impersonation at onboarding. Draft indicator: assess transactions exhibiting fake trading platform, promised returns, withdrawal block, currently outside explicit coverage of the existing rulebook."
+    },
+    {
+      "name": "Pig-butchering / romance scam (AI persona)",
+      "id": "TYP-002",
+      "fires": "DS-08, DS-09, DS-12, DS-15, DS-40",
+      "evades": "DS-04, DS-06, DS-26, DS-39",
+      "atlas": "T1552 Phishing, T1566 Social Engineering, AML.T0016.002 Generative AI",
+      "basis": "documented typology",
+      "flag": "A candidate's use of deepfake personas, deepfake media, synthetic identities, or social engineering tactics in their transactions or communications may indicate an attempt to conceal their true identity or facilitate financial crimes."
+    },
+    {
+      "name": "Mule / money-mule pass-through network",
+      "id": "TYP-003",
+      "fires": "DS-04, DS-05, DS-23, DS-25, DS-26",
+      "evades": "DS-12, DS-15, DS-40",
+      "atlas": "TA0006 Impact, TA0007 Evasion, T1071 Layer",
+      "basis": "documented typology",
+      "flag": "A financial institution's customer is opening a new, unregistered, high-value account in a foreign jurisdiction with a fresh wallet, and is making multiple transactions through a series of pass-through accounts, without providing any clear business or financial purpose."
+    },
+    {
+      "name": "AI-cloned voice / phishing of account access",
+      "id": "TYP-004",
+      "fires": "DS-06, DS-13, DS-24",
+      "evades": "DS-12",
+      "atlas": "T1552 Phishing, TA0001 Reconnaissance, T1566 Social Engineering",
+      "basis": "documented typology",
+      "flag": "A \"Customer is attempting to initiate a transaction using a voice clone or phishing call, or is using a cloned mobile application, and has provided sensitive information, such as login credentials or account numbers, in response.\""
+    },
+    {
+      "name": "Synthetic identity new-customer fraud",
+      "id": "TYP-005",
+      "fires": "DS-01, DS-09, DS-28, DS-39",
+      "evades": "DS-06, DS-07, DS-23",
+      "atlas": "TA0005 ML Development, TA0007 Evasion, T1592 Gather Victim Org Info",
+      "basis": "documented typology",
+      "flag": "\"Compliance team should watch for suspicious transactions involving rapid volume, new account opening, and synthetic identity indicators, such as unusual login activity or large transfers from a single IP address.\""
+    },
+    {
+      "name": "Stablecoin cross-border payment structuring",
+      "id": "TYP-006",
+      "fires": "DS-02, DS-03, DS-19, DS-34, DS-37",
+      "evades": "DS-20, DS-24, DS-38",
+      "atlas": "TA0007 Evasion, T1071 Layer",
+      "basis": "documented typology",
+      "flag": "A customer is exhibiting suspicious activity in their account by consistently structuring transactions into smaller, less frequent amounts, or into multiple accounts, or by failing to report the origin of a large or unusual transaction."
+    },
+    {
+      "name": "Romance scam with AI deepfake video persona",
+      "id": "TYP-007",
+      "fires": "DS-01, DS-04, DS-09, DS-12, DS-26, DS-37, DS-40",
+      "evades": "DS-28, DS-39",
+      "atlas": "AML.T0016.002 Generative AI, T1566 Social Engineering, TA0007 Evasion",
+      "basis": "documented typology",
+      "flag": "Customer engages in activity consistent with 'Romance scam with AI deepfake video persona' that is not adequately detected because the following indicator(s) do not fire: Rapid accumulation then off-boarding of value; AI-orchestrated synthetic-identity impersonation at onboarding. Draft indicator: assess transactions exhibiting ai persona, deepfake persona, deepfake media, currently outside explicit coverage of the existing rulebook."
+    },
+    {
+      "name": "Deepfake liveness-bypass document fraud",
+      "id": "TYP-008",
+      "fires": "DS-01, DS-09, DS-28, DS-39",
+      "evades": "DS-06, DS-07, DS-08, DS-23, DS-27, DS-29",
+      "atlas": "TA0005 ML Development, TA0007 Evasion",
+      "basis": "documented typology",
+      "flag": "A candidate's ability to create, manipulate, or alter digital content in a way that deceives or misleads others, potentially to facilitate financial crimes, should be thoroughly assessed and monitored."
+    },
+    {
+      "name": "Account takeover via credential stuffing",
+      "id": "TYP-009",
+      "fires": "DS-01, DS-06, DS-13, DS-24, DS-27",
+      "evades": "DS-07, DS-08, DS-17, DS-23, DS-28, DS-29",
+      "atlas": "T1078 Valid Accounts, T1555.003 Credentials, TA0007 Evasion",
+      "basis": "documented typology",
+      "flag": "A user's account has been accessed from an unfamiliar location or device, or their login credentials have been shared with another account."
+    },
+    {
+      "name": "Corporate KYB 'door-opener' front company",
+      "id": "TYP-010",
+      "fires": "DS-07, DS-27, DS-33, DS-36",
+      "evades": "DS-04",
+      "atlas": "TA0001 Reconnaissance, AML.T0001 Legal Persons",
+      "basis": "documented typology",
+      "flag": "A \"Suspicious Transaction Indicator: Unusual Non-Entity Ownership (ubo) or Legal Person Account Activity.\""
+    },
+    {
+      "name": "Shell-company nominee / DPO layering conduit",
+      "id": "TYP-011",
+      "fires": "DS-05, DS-23, DS-36, DS-37",
+      "evades": "DS-04, DS-12, DS-15, DS-26",
+      "atlas": "T1071 Layer, AML.T0001 Legal Persons",
+      "basis": "documented typology",
+      "flag": "\"Compliance team should watch for suspicious transactions involving unverified or unstructured non-identified entities, beneficial ownership structures that lack clear or unexplained relationships, and entities with multiple layers of legal persons or complex ownership arrangements.\""
+    },
+    {
+      "name": "Deposit-dispersion fan-out structuring",
+      "id": "TYP-012",
+      "fires": "DS-02, DS-05, DS-15",
+      "evades": "DS-12, DS-20, DS-38",
+      "atlas": "T1071 Layer, TA0007 Evasion",
+      "basis": "documented typology",
+      "flag": "We will be monitoring for suspicious activity in transactions involving large, unstructured funds, multiple senders, and small, unverified recipient wallets."
+    },
+    {
+      "name": "Peel-chain layering with token swaps",
+      "id": "TYP-013",
+      "fires": "DS-23, DS-25, DS-32",
+      "evades": "DS-05, DS-12, DS-15",
+      "atlas": "T1071 Layer, AML.T0003 Layering",
+      "basis": "documented typology",
+      "flag": "A financial institution should be aware of suspicious activity that involves a series of transactions or account movements that appear to be part of a larger, complex scheme, including transactions that involve multiple parties, multiple locations, and multiple currencies."
+    },
+    {
+      "name": "Cross-chain bridge / chain-hopping obfuscation",
+      "id": "TYP-014",
+      "fires": "DS-23, DS-27, DS-32",
+      "evades": "DS-05, DS-15",
+      "atlas": "T1071 Layer, AML.T0003 Layering",
+      "basis": "documented typology",
+      "flag": "A candidate's account is at risk if they exhibit unusual patterns of cross-chain transactions, frequent or large chain hops, or suspicious layering activities."
+    },
+    {
+      "name": "Mixer-assisted sanitisation",
+      "id": "TYP-015",
+      "fires": "DS-16, DS-18, DS-31, DS-37",
+      "evades": "DS-15, DS-32, DS-38",
+      "atlas": "AML.T0004 Obfuscation, TA0007 Evasion",
+      "basis": "documented typology",
+      "flag": "Customer engages in activity consistent with 'Mixer-assisted sanitisation' that is not adequately detected because the following indicator(s) do not fire: Repeated transactions with a subset of individuals; Intermediate (tier-2) tokens or convertible currencies; Round or structured amounts with no rationale. Draft indicator: assess transactions exhibiting mixer, tumbler, sanitisation, currently outside explicit coverage of the existing rulebook."
+    },
+    {
+      "name": "Privacy-coin conversion layer (Monero-style)",
+      "id": "TYP-016",
+      "fires": "DS-04, DS-26, DS-32",
+      "evades": "DS-12, DS-15",
+      "atlas": "AML.T0004 Obfuscation, TA0007 Evasion",
+      "basis": "documented typology",
+      "flag": "A \"Customer has recently purchased a privacy coin or has shown interest in a convertible or token swap, and has not provided any clear explanation for their transactions or has been hesitant to disclose their wallet information.\""
+    },
+    {
+      "name": "Ransomware payment facilitation",
+      "id": "TYP-017",
+      "fires": "DS-16, DS-31, DS-37",
+      "evades": "DS-18, DS-19, DS-21, DS-24",
+      "atlas": "AML.T0021 Ransomware Extortion, TA0006 Impact",
+      "basis": "documented typology",
+      "flag": "Customer engages in activity consistent with 'Ransomware payment facilitation' that is not adequately detected because the following indicator(s) do not fire: Funds sourced from mixing services or tumbler wallets; Transfers to/from an exchange not registered in the jurisdiction; Sanctions / targeted financial sanctions screening; Use of anonymity-enhancing technologies (VPN/Tor). Draft indicator: assess transactions exhibiting ransomware, extortion, darknet, currently outside explicit coverage of the existing rulebook."
+    },
+    {
+      "name": "Sextortion / financial-release extortion",
+      "id": "TYP-018",
+      "fires": "DS-12, DS-14, DS-16, DS-31",
+      "evades": "DS-18, DS-24, DS-35, DS-40",
+      "atlas": "T1566 Social Engineering, AML.T0021 Ransomware Extortion",
+      "basis": "documented typology",
+      "flag": "Customer engages in activity consistent with 'Sextortion / financial-release extortion' that is not adequately detected because the following indicator(s) do not fire: Funds sourced from mixing services or tumbler wallets; Use of anonymity-enhancing technologies (VPN/Tor); Suspicious-beneficiary VA wallet with little history; Coached mule / scam-victim behaviour pattern. Draft indicator: assess transactions exhibiting extortion, darknet, memo field, currently outside explicit coverage of the existing rulebook."
+    },
+    {
+      "name": "Authorised push payment fraud via deepfake calls",
+      "id": "TYP-019",
+      "fires": "DS-01, DS-09, DS-12, DS-40",
+      "evades": "DS-17, DS-23, DS-24, DS-28, DS-39",
+      "atlas": "AML.T0016.002 Generative AI, T1566 Social Engineering",
+      "basis": "documented typology",
+      "flag": "A candidate's use of high-pressure sales tactics, unusually large or frequent transactions, or unexplained changes in their account activity may indicate a social engineering or voice clone scam."
+    },
+    {
+      "name": "Pension / life-savings restructuring abuse",
+      "id": "TYP-020",
+      "fires": "DS-02, DS-28, DS-30",
+      "evades": "DS-01, DS-23, DS-38",
+      "atlas": "TA0007 Evasion, T1071 Layer",
+      "basis": "documented typology",
+      "flag": "A financial institution should be aware of customers who consistently deposit small amounts of cash in a short period, or who make multiple deposits of less than $10,000 in a single transaction."
+    },
+    {
+      "name": "ESports skin-gambling layering",
+      "id": "TYP-021",
+      "fires": "DS-15",
+      "evades": "DS-05, DS-12, DS-19, DS-23, DS-32",
+      "atlas": "T1071 Layer, AML.T0003 Layering",
+      "basis": "documented typology",
+      "flag": "A financial institution should be aware of customers exhibiting suspicious behavior that may indicate they are attempting to layer or obfuscate transactions, particularly if they are doing so across multiple accounts or in a manner that is not typical for their transactional patterns."
+    },
+    {
+      "name": "Fake crypto exchange rug-pull",
+      "id": "TYP-022",
+      "fires": "DS-01, DS-02, DS-04, DS-19, DS-37",
+      "evades": "DS-17, DS-28, DS-31, DS-38",
+      "atlas": "T1566 Social Engineering, AML.T0016.002 Generative AI",
+      "basis": "documented typology",
+      "flag": "A suspicious pattern of withdrawal from a large number of accounts, with a round number, and a withdrawal amount that is a multiple of a significant portion of the account balance."
+    },
+    {
+      "name": "Pump-and-dump token inflation",
+      "id": "TYP-023",
+      "fires": "DS-05, DS-15, DS-30",
+      "evades": "DS-23",
+      "atlas": "T1071 Layer, AML.T0002 Market Abuse",
+      "basis": "documented typology",
+      "flag": "A candidate's high volume of cross-border wire transfers from a single, unverified account in a low-risk country to multiple, high-risk countries, or their high velocity, may indicate a potential money laundering scheme."
+    },
+    {
+      "name": "NFT / lootbox wash-trading",
+      "id": "TYP-024",
+      "fires": "DS-05, DS-15",
+      "evades": "DS-12, DS-32",
+      "atlas": "T1071 Layer, AML.T0002 Market Abuse",
+      "basis": "documented typology",
+      "flag": "A suspicious pattern of multiple small transactions across different accounts, particularly if occurring in a short period, may indicate wash trading activity."
+    },
+    {
+      "name": "Fresh-wallet mule factory",
+      "id": "TYP-025",
+      "fires": "DS-04, DS-15, DS-25, DS-26, DS-35, DS-40",
+      "evades": "DS-12, DS-24",
+      "atlas": "TA0007 Evasion, T1071 Layer",
+      "basis": "documented typology",
+      "flag": "Customer engages in activity consistent with 'Fresh-wallet mule factory' that is not adequately detected because the following indicator(s) do not fire: Sender unfamiliar with VA technology or custodial wallets; Use of anonymity-enhancing technologies (VPN/Tor). Draft indicator: assess transactions exhibiting fresh wallet, new wallet, no history, currently outside explicit coverage of the existing rulebook."
+    },
+    {
+      "name": "SIM-swap-driven account takeover",
+      "id": "TYP-026",
+      "fires": "DS-01, DS-13, DS-24, DS-27",
+      "evades": "DS-06, DS-07, DS-08, DS-17, DS-23, DS-28, DS-29",
+      "atlas": "T1078 Valid Accounts, T1555.003 Credentials, TA0007 Evasion",
+      "basis": "documented typology",
+      "flag": "A \"Customer Account Change Indicator\" should be triggered when an account holder's account details, such as login credentials or email address, are modified without the prior consent of the account owner or in a manner that raises suspicions of unauthorized access or manipulation."
+    },
+    {
+      "name": "Unlicensed VASP jurisdiction hopping",
+      "id": "TYP-027",
+      "fires": "DS-19, DS-20, DS-37",
+      "evades": "DS-04, DS-23, DS-24, DS-38",
+      "atlas": "TA0007 Evasion, AML.T0005 Geographic",
+      "basis": "documented typology",
+      "flag": "A suspicious combination of a customer's relocation to a high-risk jurisdiction, unlicensed activity in a jurisdiction not registered with the regulator, and unregistered exchange activity."
+    },
+    {
+      "name": "Grey-list / high-risk corridor travel-rule gap",
+      "id": "TYP-028",
+      "fires": "DS-03, DS-34, DS-37",
+      "evades": "DS-19, DS-20, DS-24, DS-38",
+      "atlas": "AML.T0005 Geographic, TA0007 Evasion",
+      "basis": "documented typology",
+      "flag": "A customer's frequent international transfers to unknown destinations, or those exceeding $50,000 in a single transaction, may indicate suspicious activity."
+    },
+    {
+      "name": "Sanctioned-entity wallet interop",
+      "id": "TYP-029",
+      "fires": "DS-04, DS-26, DS-37",
+      "evades": "DS-12, DS-16, DS-19, DS-21",
+      "atlas": "AML.T0006 Sanctions Evasion, TA0007 Evasion",
+      "basis": "documented typology",
+      "flag": "Customer engages in activity consistent with 'Sanctioned-entity wallet interop' that is not adequately detected because the following indicator(s) do not fire: Sender unfamiliar with VA technology or custodial wallets; Transactions with addresses connected to criminal schemes; Transfers to/from an exchange not registered in the jurisdiction; Sanctions / targeted financial sanctions screening. Draft indicator: assess transactions exhibiting sanctions, screening, freeze, currently outside explicit coverage of the existing rulebook."
+    },
+    {
+      "name": "Darknet marketplace value transfer",
+      "id": "TYP-030",
+      "fires": "DS-14, DS-16, DS-31, DS-37",
+      "evades": "DS-18, DS-19",
+      "atlas": "AML.T0020 Darknet Markets, TA0006 Impact",
+      "basis": "documented typology",
+      "flag": "\"Compliance team should watch for suspicious transactions involving high-risk darknet marketplaces, individuals with a history of organized crime involvement, stolen or compromised payment card numbers, and entities with publicly available threat intelligence indicating malicious activity.\""
+    },
+    {
+      "name": "PEP nominee conduit",
+      "id": "TYP-031",
+      "fires": "DS-22, DS-33, DS-36",
+      "evades": "DS-24, DS-27",
+      "atlas": "AML.T0008 PEP, AML.T0001 Legal Persons",
+      "basis": "documented typology",
+      "flag": "We will be monitoring for suspicious patterns of large cash transactions, unusual account activity, and clients who require enhanced due diligence."
+    },
+    {
+      "name": "Unregistered P2P arbitrage cash-out",
+      "id": "TYP-032",
+      "fires": "DS-02, DS-17, DS-19",
+      "evades": "DS-20, DS-28, DS-38",
+      "atlas": "T1071 Layer, AML.T0005 Geographic",
+      "basis": "documented typology",
+      "flag": "Customer engages in activity consistent with 'Unregistered P2P arbitrage cash-out' that is not adequately detected because the following indicator(s) do not fire: Offices in unregulated or no-rationale jurisdictions; Rapid accumulation then off-boarding of value; Round or structured amounts with no rationale. Draft indicator: assess transactions exhibiting p2p, unregistered exchange, crypto to plastic, currently outside explicit coverage of the existing rulebook."
+    },
+    {
+      "name": "Fresh-wallet AI-coached mule victims",
+      "id": "TYP-033",
+      "fires": "DS-09, DS-12, DS-15, DS-25, DS-35, DS-40",
+      "evades": "DS-39",
+      "atlas": "AML.T0016.002 Generative AI, TA0007 Evasion",
+      "basis": "documented typology",
+      "flag": "Customer engages in activity consistent with 'Fresh-wallet AI-coached mule victims' that is not adequately detected because the following indicator(s) do not fire: AI-orchestrated synthetic-identity impersonation at onboarding. Draft indicator: assess transactions exhibiting coached, limited literacy, victim, currently outside explicit coverage of the existing rulebook."
+    },
+    {
+      "name": "LLM-generated bulk phishing / mass ATO",
+      "id": "TYP-034",
+      "fires": "DS-01, DS-06, DS-13, DS-15, DS-27",
+      "evades": "DS-12, DS-24",
+      "atlas": "AML.T0016.002 Generative AI, T1552 Phishing, TA0007 Evasion",
+      "basis": "documented typology",
+      "flag": "Customer engages in activity consistent with 'LLM-generated bulk phishing / mass ATO' that is not adequately detected because the following indicator(s) do not fire: Sender unfamiliar with VA technology or custodial wallets; Use of anonymity-enhancing technologies (VPN/Tor). Draft indicator: assess transactions exhibiting phishing, account takeover, changed credentials, currently outside explicit coverage of the existing rulebook."
+    },
+    {
+      "name": "Trust-transfer scam to cross-border funnel",
+      "id": "TYP-035",
+      "fires": "DS-03, DS-04, DS-12, DS-34",
+      "evades": "DS-24, DS-26",
+      "atlas": "T1566 Social Engineering, AML.T0005 Geographic",
+      "basis": "documented typology",
+      "flag": "A candidate's ability to identify and report suspicious social engineering activities, such as requests for sensitive information or urgent transactions, where the originator's identity or location is unclear or inconsistent."
+    },
+    {
+      "name": "deepfake KYC bypass",
+      "id": "GEN-NOVEL",
+      "fires": "DS-01, DS-02, DS-09, DS-38, DS-39",
+      "evades": "DS-06",
+      "atlas": "TA0005 ML Development, TA0007 Evasion, T1592 Gather Victim Org Info",
+      "basis": "self-generated from AI capability primitives (novel, unverified)",
+      "flag": "Novel pattern 'deepfake KYC bypass' evades existing indicators (DS-06); candidate indicator: flag activity exhibiting deepfake_media, synthetic identity, ai social engineering which current rules do not explicitly detect. Submit for expert plausibility review."
+    },
+    {
+      "name": "AI-coordinated pass-through layering",
+      "id": "GEN-NOVEL",
+      "fires": "DS-23, DS-25",
+      "evades": "DS-05, DS-12, DS-15",
+      "atlas": "TA0007 Evasion, T1071 Layer",
+      "basis": "self-generated from AI capability primitives (novel, unverified)",
+      "flag": "Novel pattern 'AI-coordinated pass-through layering' evades existing indicators (DS-05; DS-12; DS-15); candidate indicator: flag activity exhibiting pass through, fresh wallet, layering which current rules do not explicitly detect. Submit for expert plausibility review."
+    }
+  ],
+  "discarded": [
+    {
+      "name": "prompt-poisoned global settlement reroute",
+      "id": "GEN-NOVEL",
+      "why": "rejected by critic: speculative self-generated path with no supporting published evidence or STR material"
+    }
+  ]
+}

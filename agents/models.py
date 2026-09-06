@@ -21,6 +21,7 @@ class Rule:
     risk_severity: str = "medium"            # low | medium | high | critical
     ai_relevant: bool = False                # whether the rule maps to AI-orchestrated evasion
     signal_signature: dict = field(default_factory=dict)   # (key,value) pairs; institutionalised rules
+    trigger_schema: dict = field(default_factory=dict)     # structured all/any/not trigger tree; see agents/trigger_schema.py
     institutionalised: bool = False          # auto-generated from an approved review finding
     source_finding: str = ""                 # provenance: finding id / typology id
 

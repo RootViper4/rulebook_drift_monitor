@@ -184,8 +184,8 @@ def _rule_to_dict(rule: Rule) -> dict:
         "keywords": rule.keywords, "rule_type": rule.rule_type, "trigger": rule.trigger,
         "mitre_atlas": rule.mitre_atlas, "capability_primitives": rule.capability_primitives,
         "risk_severity": rule.risk_severity, "ai_relevant": rule.ai_relevant,
-        "signal_signature": rule.signal_signature, "institutionalised": rule.institutionalised,
-        "source_finding": rule.source_finding,
+        "signal_signature": rule.signal_signature, "trigger_schema": rule.trigger_schema,
+        "institutionalised": rule.institutionalised, "source_finding": rule.source_finding,
     }
 
 
@@ -214,8 +214,4 @@ def restore_baseline() -> dict:
             f.write(open(BASE_RULEBOOK_PATH, encoding="utf-8").read())
     if os.path.exists(INSTITUTED_PATH):
         os.remove(INSTITUTED_PATH)
-    if removed:
-        from agents.rule_engine import RuleEvaluationEngine
-        for rid in removed:
-            RuleEvaluationEngine._PREDICATES.pop(rid, None)
     return {"ok": True, "removed": removed}

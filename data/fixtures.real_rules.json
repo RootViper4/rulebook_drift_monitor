@@ -1,0 +1,87 @@
+{
+  "note": "Synthetic, obviously-fake test fixtures for direct RuleEvaluationEngine verification of the real-corpus rules DS-01..DS-05 (data/rulebook.json). Not real transactions, not real customers. Loaded via agents.loader.load_fixture_set().",
+  "fixtures": [
+    {
+      "id": "SYN-01-fire",
+      "label": "DS-01 fire: new account, profile-inconsistent deposit, same-day withdrawal",
+      "expect_fired": ["DS-01"],
+      "tx": {
+        "new_account": true,
+        "customer_profile_consistent": false,
+        "rapid_withdrawal": true
+      }
+    },
+    {
+      "id": "SYN-02-fire",
+      "label": "DS-02 fire: high-value transfers clustered in a short window",
+      "expect_fired": ["DS-02"],
+      "tx": {
+        "high_value": true,
+        "quick_succession": true
+      }
+    },
+    {
+      "id": "SYN-02-fire-subthreshold",
+      "label": "DS-02 fire: repeated sub-threshold transfers (structuring)",
+      "expect_fired": ["DS-02"],
+      "tx": {
+        "below_threshold": true
+      }
+    },
+    {
+      "id": "SYN-03-fire-breach",
+      "label": "DS-03 fire: qualifying transfer executed WITHOUT required Travel Rule info",
+      "expect_fired": ["DS-03"],
+      "tx": {
+        "qualifying_transfer": true,
+        "travel_rule_info_transmitted": false
+      }
+    },
+    {
+      "id": "SYN-03-pass-compliant",
+      "label": "DS-03 quiet: qualifying transfer WITH required Travel Rule info transmitted (compliant, must not fire)",
+      "expect_fired": [],
+      "tx": {
+        "qualifying_transfer": true,
+        "travel_rule_info_transmitted": true
+      }
+    },
+    {
+      "id": "SYN-04-fire",
+      "label": "DS-04 fire: transfer involves an unhosted wallet",
+      "expect_fired": ["DS-04"],
+      "tx": {
+        "unhosted_wallet": true
+      }
+    },
+    {
+      "id": "SYN-05-fire",
+      "label": "DS-05 fire: fan-in accumulation from multiple accounts then consolidated",
+      "expect_fired": ["DS-05"],
+      "tx": {
+        "multiple_accounts": true,
+        "consolidated": true
+      }
+    },
+    {
+      "id": "SYN-clean-pass",
+      "label": "Clean pass: routine, fully-compliant transfer - none of the five rules should fire",
+      "expect_fired": [],
+      "tx": {
+        "new_account": false,
+        "customer_profile_consistent": true,
+        "rapid_withdrawal": false,
+        "below_threshold": false,
+        "high_value": false,
+        "quick_succession": false,
+        "qualifying_transfer": true,
+        "travel_rule_info_transmitted": true,
+        "weak_counterparty": false,
+        "unhosted_wallet": false,
+        "fan_in": false,
+        "multiple_accounts": false,
+        "consolidated": false
+      }
+    }
+  ]
+}

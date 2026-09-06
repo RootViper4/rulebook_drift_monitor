@@ -1,7 +1,7 @@
 {
   "version": "2026.09.02",
   "jurisdiction": "South Africa — FIC Act 38 of 2001, Directive 9 (crypto-asset Travel Rule); FATF (2020) Virtual Asset Red Flag Indicators; FATF Recommendations 15 & 16; UNSC TFS (s.26A-26C)",
-  "source_notes": "Drift Sentinel rulebook — professional draft schema (Rule ID, risk category, rule text, trigger, source, rule type, ATLAS mapping, capability primitives). DS-01..21 transcribed from the Drift Sentinel Twenty Example Rules DRAFT (09.2026). DS-22..40 extend the FATF (2020) red-flag indicator set and Directive 9 obligation themes to reach a 40-rule reference rulebook. All rule text is paraphrased for schema demonstration; verify exact wording against source before production use. Demonstration data only.",
+  "source_notes": "SUPERSEDED / LEGACY — this is the original 40-rule PLACEHOLDER demo corpus (DS-01..DS-40), kept only for diffing against the real regulatory corpus now being built up in data/rulebook.json. Not loaded by the running pipeline. Drift Sentinel rulebook — professional draft schema (Rule ID, risk category, rule text, trigger, source, rule type, ATLAS mapping, capability primitives). DS-01..21 transcribed from the Drift Sentinel Twenty Example Rules DRAFT (09.2026). DS-22..40 extend the FATF (2020) red-flag indicator set and Directive 9 obligation themes to reach a 40-rule reference rulebook. All rule text is paraphrased for schema demonstration; verify exact wording against source before production use. Demonstration data only.",
   "rules": [
     {
       "id": "DS-01",

@@ -20,6 +20,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from agents.loader import load_rulebook, load_typologies
 from agents.orchestrator import Orchestrator
 from agents.forecaster import Forecaster
+from agents.llm_client import LocalLLMClient
 import agents.rule_amendment as amendments
 
 app = Flask(__name__, static_folder=None)
@@ -599,6 +600,7 @@ def _rule_json(r):
 def _dashboard_json():
     rulebook = load_rulebook()
     typologies = load_typologies()
+    llm = LocalLLMClient()
     by_category: dict[str, int] = {}
     by_type: dict[str, int] = {}
     by_severity: dict[str, int] = {}
@@ -624,7 +626,7 @@ def _dashboard_json():
         ],
         "evasion_matrix": Forecaster(rulebook, typologies).evasion_matrix(),
         "state": _state_json(),
-        "llm": {"available": True, "backend": "Ollama · llama3.2:1b"},
+        "llm": {"available": llm.available(), "backend": f"Ollama · {llm.model}"},
     }
 
 

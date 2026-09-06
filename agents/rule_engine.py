@@ -53,7 +53,7 @@ class RuleEvaluationEngine:
 
         # --- Onboarding / KYC ---
         P["DS-01"] = lambda fx: (i(fx, "new_account") or i(fx, "fresh_onboarding")) \
-            and fx.get("customer_profile_consistent") is False or i(fx, "rapid_withdrawal")
+            and fx.get("customer_profile_consistent") is False and i(fx, "rapid_withdrawal")
         P["DS-09"] = lambda fx: any_marker(fx, ["forged", "deepfake_media", "edited", "liveness_bypass"])
         P["DS-28"] = lambda fx: i(fx, "rapid_accumulation") or (i(fx, "new_account") and i(fx, "rapid_withdrawal"))
         P["DS-39"] = lambda fx: i(fx, "ai_orchestrated_onboarding") or (

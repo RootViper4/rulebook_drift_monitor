@@ -866,19 +866,6 @@ def _rule_json(r):
     }
 
 
-@app.errorhandler(404)
-def _debug_not_found(e):  # TEMP diagnostic for Vercel route debugging — remove after fix.
-    environ = request.environ
-    return jsonify({
-        "why": "route_not_found",
-        "path": request.path,
-        "path_info": environ.get("PATH_INFO"),
-        "script_name": environ.get("SCRIPT_NAME"),
-        "raw_uri": environ.get("RAW_URI"),
-        "url": request.url,
-    }), 404
-
-
 def _dashboard_json():
     rulebook = load_rulebook()
     typologies = load_typologies()

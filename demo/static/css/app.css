@@ -119,6 +119,9 @@ button{font-family:inherit}
 .pipe-step.active .pipe-label{color:var(--text)}
 .live-pane{background:#0d1526;border-radius:var(--radius);padding:16px 18px;margin-top:16px}
 .pane-title{font-weight:700;color:#c6d0e4;margin-bottom:8px;display:flex;align-items:center;gap:8px;font-size:13px}
+.friendly-log{font-size:13px;color:#c6d0e4;line-height:1.6}
+.friendly-line{padding:3px 0}
+.friendly-line.dim{color:#8fa1bd;font-style:italic}
 .logline{font-family:var(--mono);font-size:12px;color:#8fa1bd;padding:3px 0}
 .logline .ln{color:#7aa2ff}
 

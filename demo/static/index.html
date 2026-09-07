@@ -80,19 +80,21 @@
         <div class="legend-line" style="width:100%">
           <span><b class="lg-caught">Caught by a rule</b> = the rule fired and flagged this attack</span>
           <span><b class="lg-miss">Slipped past a rule</b> = the rule did not trigger — the attack got through</span>
-          <span style="opacity:.75">Click any finding to see on-screen what that means rule by rule</span>
+          <span style="opacity:.75">Click a row to expand it</span>
         </div>
         <div class="diff-summary" id="diffSummary" style="display:none"></div>
-        <div class="filterbar" id="reviewTabs">
-          <button class="tab" data-f="all" onclick="setFilter('all')">All <span id="cAll"></span></button>
-          <button class="tab" data-f="accepted" onclick="setFilter('accepted')">Accepted <span id="cAccepted"></span></button>
-          <button class="tab" data-f="amended" onclick="setFilter('amended')">Amended <span id="cAmended"></span></button>
-          <button class="tab" data-f="rejected" onclick="setFilter('rejected')">Rejected <span id="cRejected"></span></button>
-          <button class="tab" data-f="undecided" onclick="setFilter('undecided')">Undecided <span id="cUndecided"></span></button>
-        </div>
       </div>
-      <div id="findings" class="grid cards"></div>
-      <div id="emptyFilter" class="empty blocked" style="display:none">No findings match this filter.</div>
+
+      <div class="review-type-tabs" id="reviewTypeTabs">
+        <button class="rtab active" data-tab="reconciliation" onclick="setReviewTab('reconciliation')">Known Attacks <span class="rtab-count" id="cReconRev"></span></button>
+        <button class="rtab" data-tab="generation" onclick="setReviewTab('generation')">Emerging Threats <span class="rtab-count" id="cGenRev"></span></button>
+      </div>
+      <div class="tab-desc" id="tabDesc"></div>
+      <div id="findings" class="list-rows"></div>
+      <div id="emptyFilter" class="empty blocked" style="display:none">No undecided findings in this tab.</div>
+
+      <div class="section-title" id="decidedTitle">Decided</div>
+      <div id="decidedLog" class="list-rows"></div>
 
       <div class="section-title">Throw a fraud at it</div>
       <div class="fx-card">
@@ -152,12 +154,11 @@
 <script>
 const MILESTONES = {ingest:0, reconcile:1, generate_meta:2, critic_meta:3, draft:4, report:5};
 const STEP_NAMES = ['Ingest corpora', 'Reconciliation arm', 'Generation arm', 'Critic verification', 'Draft candidate red flags', 'Human approval gate'];
-const STEP_DESC  = ['load 40 rules · 35 typologies', 'step documented typologies through the rulebook', 'spawn novel AI evasion paths', 'reproduce every claim · discard unsupported', 'draft candidate indicators (LLM assist)', 'analyst accepts, amends or rejects'];
+const STEP_DESC  = ['load the rulebook', 'step the 12 capability-primitive attacks through the rulebook', 'spawn novel AI evasion paths', 'reproduce every claim · discard unsupported', 'draft candidate indicators (LLM assist)', 'analyst accepts, amends or rejects'];
 
 let stepIndex = -1;
 let logCache = null;
 let decisions = {};
-let filterTab = 'all';
 let runFinishedShown = false;
 
 function buildPipe(){
@@ -203,24 +204,56 @@ function renderLog(log, running){
 }
 
 let rationaleDrafts = {};
+let openRows = new Set();
 
-function findingCard(f){
+function toggleRow(fid){
+  if(openRows.has(fid)) openRows.delete(fid); else openRows.add(fid);
+  renderFindings();
+}
+
+// Collapsed: headline + one-line result summary only - a scannable triage
+// queue. Expanded (click): full plain-language rule-by-rule detail, source
+// links, the editable proposed fix, and the accept/amend/reject controls.
+function findingRow(f, tabMode){
   const fid = f.typology_id;
-  const decided = decisions[fid];
+  const fired = f.fired_rules||[], evaded = f.evaded_rules||[];
+  const open = openRows.has(fid);
+  const headline = f.attack_description || f.typology_name;
+  const isGap = fired.length===0;
+  const summary = isGap
+    ? `DRIFT GAP — no rule in the corpus catches this${evaded.length?` (${evaded.length} relevant rule${evaded.length===1?'':'s'} silent)`:''}`
+    : `caught by ${fired.length} rule${fired.length===1?'':'s'}${evaded.length?`, slipped past ${evaded.length} rule${evaded.length===1?'':'s'}`:''}`;
+  const genBadge = tabMode==='generation'
+    ? '<span class="badge-unverified">AI-generated hypothesis — not a documented typology</span>' : '';
   const delta = f.delta==='new'?'<span class="diff-badge diff-new">NEW</span>'
               : f.delta==='repeat'?'<span class="diff-badge diff-repeat">REPEAT</span>':'';
+
+  return `<div class="row ${open?'open':''} ${isGap?'gap':''}" id="f-${esc(fid)}" data-fid="${esc(fid)}">
+    <div class="row-head" onclick="toggleRow('${esc(fid)}')">
+      <span class="row-chevron">${open?'▾':'▸'}</span>
+      <div class="row-main">
+        <div class="row-headline">${delta} ${esc(headline)}</div>
+        <div class="row-sub">${summary} ${genBadge}</div>
+      </div>
+      <span class="fid">ref: ${esc(fid)}</span>
+    </div>
+    ${open ? findingDetail(f, tabMode) : ''}
+  </div>`;
+}
+
+function findingDetail(f, tabMode){
+  const fid = f.typology_id;
+  const fired = f.fired_rules||[], evaded = f.evaded_rules||[];
   const instituted = amendments.covered.includes(fid);
   const isCustom = customIds.has(fid);
   const instBtn = instituted
     ? '<span class="chip good" style="font-size:11px">✦ instituted · gap closed</span>'
     : isCustom
       ? '<span class="chip dim" style="font-size:11px">your test attack · review above</span>'
-      : `<button class="btn-sm btn-institute" onclick="institute('${esc(fid)}')" ${decided?'':'disabled title="decide first" style="opacity:.45"'} >Institute rule</button>`;
-  const fired = f.fired_rules||[], evaded = f.evaded_rules||[];
+      : `<button class="btn-sm btn-institute" onclick="event.stopPropagation();institute('${esc(fid)}')">Institute rule</button>`;
   const draft = rationaleDrafts[fid]||'';
-  return `<div class="finding" id="f-${esc(fid)}" data-fid="${esc(fid)}">
-    <div class="attack-desc">${esc(f.attack_description||f.typology_name)}</div>
-    <div class="ref-line">${delta} <span class="fid">ref: ${esc(fid)}</span> <span>${esc(f.typology_name)}</span> ${decided?`<span class="decided">${esc(decided)}</span>`:''}</div>
+  return `<div class="row-detail" onclick="event.stopPropagation()">
+    <div class="ref-line">${esc(f.typology_name)}</div>
 
     <div class="section-kd">What the rulebook did</div>
     <div class="chip-row mt" style="margin-top:4px">
@@ -230,7 +263,9 @@ function findingCard(f){
     ${rulesDetail(fired, true)}
     ${rulesDetail(evaded, false)}
 
-    ${f.drafted_candidate_red_flag?`<div class="fix-label">Proposed fix</div><div class="flag">${esc(f.drafted_candidate_red_flag)}</div>`:''}
+    <div class="fix-label">Proposed fix ${tabMode==='generation'?'(unverified hypothesis)':''}</div>
+    <textarea class="fix-box" id="fix-${esc(fid)}" placeholder="No candidate fix drafted.">${esc(f.drafted_candidate_red_flag||'')}</textarea>
+    <div class="rationale-req" style="margin-top:2px">Editing this box before choosing Amend records your edited wording as the final rule text.</div>
 
     <div class="actions" style="flex-direction:column;align-items:stretch;gap:4px">
       <textarea class="rationale-box" id="rat-${esc(fid)}" placeholder="Required: explain your decision in plain language (what the rulebook got right or missed, and why)." oninput="rationaleDrafts['${esc(fid)}']=this.value; this.classList.remove('err')">${esc(draft)}</textarea>
@@ -253,10 +288,13 @@ async function decide(fid, decision){
     toast('A rationale is required before you can decide this finding.');
     return;
   }
+  const fixBox = $('fix-'+fid);
+  const rule_text = fixBox ? fixBox.value.trim() : '';
   try{
-    await api('/api/decide', {method:'POST', body:JSON.stringify({fid, decision, rationale})});
+    await api('/api/decide', {method:'POST', body:JSON.stringify({fid, decision, rationale, rule_text})});
     delete rationaleDrafts[fid];
-    toast('Finding '+fid+' → '+decision);
+    openRows.delete(fid);
+    toast('Finding '+fid+' → '+decision+' · moved to the Decided log');
     refresh();
   }catch(e){ toast('Decide failed: '+e.message); }
 }
@@ -293,46 +331,61 @@ async function exportDossier(kind){
   }catch(e){ toast('Dossier export failed: '+e.message); }
 }
 
-function setFilter(tab){
-  filterTab = tab;
-  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.f===tab));
-  renderFindings();
-}
+const TAB_DESC = {
+  reconciliation: 'Known Attacks — the 12 documented AI-capability-primitive attacks stepped through the rulebook. Grounded in recorded real-world techniques; every gap here is a genuine, reproducible finding.',
+  generation: 'Emerging Threats — the generation arm inventing new, unrecorded typologies. Every item below is a machine-generated hypothesis, not a documented attack: verify independently before acting on it.',
+};
 
-function matchesFilter(f){
-  const d = decisions[f.typology_id];
-  if(filterTab==='all') return true;
-  if(filterTab==='undecided') return !d;
-  const kind = (d||'').includes('✓')?'accepted':(d||'').includes('✎')?'amended':(d||'').includes('✗')?'rejected':null;
-  return kind===filterTab;
+let reviewTab = 'reconciliation';
+function setReviewTab(tab){
+  reviewTab = tab;
+  document.querySelectorAll('.rtab').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  renderFindings();
+  renderDecidedLog();
 }
 
 function renderFindings(){
-  const all = allFindings||[];
-  const counts = {all:all.length, accepted:0, amended:0, rejected:0, undecided:0};
-  all.forEach(f=>{
-    const d = decisions[f.typology_id];
-    if(!d){ counts.undecided++; return; }
-    if(d.includes('✓')) counts.accepted++;
-    else if(d.includes('✎')) counts.amended++;
-    else if(d.includes('✗')) counts.rejected++;
-  });
-  ['All','Accepted','Amended','Rejected','Undecided'].forEach(k=>{
-    const el=$('c'+k); if(el) el.textContent = counts[k.toLowerCase()];
-  });
-  const shown = all.filter(matchesFilter);
-  $('findings').innerHTML = shown.map(findingCard).join('');
-  $('emptyFilter').style.display = shown.length?'none':'block';
+  const list = reviewTab==='reconciliation' ? (reconFindings||[]) : (genFindings||[]);
+  $('cReconRev').textContent = (reconFindings||[]).length;
+  $('cGenRev').textContent = (genFindings||[]).length;
+  $('tabDesc').textContent = TAB_DESC[reviewTab];
+  $('findings').innerHTML = list.map(f=>findingRow(f, reviewTab)).join('');
+  $('emptyFilter').style.display = list.length?'none':'block';
 }
 
-let allFindings = [];
+function decidedRow(d){
+  const finalLabel = d.rule_text_amended ? 'amended' : 'original';
+  return `<div class="row decided-row">
+    <div class="row-main" style="padding:11px 12px">
+      <div class="row-headline">${esc(d.headline||d.typology_name)}</div>
+      <div class="row-sub"><span class="decided-tag ${esc(d.decision)}">${esc(d.decision_label)}</span> · ${esc(d.analyst)} · ${esc((d.timestamp||'').replace('T',' '))}</div>
+      ${d.final_rule_text?`<div class="rp-text" style="margin-top:6px">Final rule text (${finalLabel}): ${esc(d.final_rule_text)}</div>`:''}
+      <div class="rp-text" style="margin-top:4px"><i>Rationale:</i> ${esc(d.rationale)}</div>
+      <div class="rp-ref">ref: ${esc(d.fid)}${(d.fired_rules&&d.fired_rules.length)?' · fired '+d.fired_rules.join(', '):''}${(d.evaded_rules&&d.evaded_rules.length)?' · evaded '+d.evaded_rules.join(', '):''}</div>
+    </div>
+  </div>`;
+}
+
+function renderDecidedLog(){
+  const list = (decisionsLog||[]).filter(d=>d.mode===reviewTab);
+  $('decidedTitle').textContent = 'Decided · ' + (reviewTab==='reconciliation'?'Known Attacks':'Emerging Threats') + ' (' + list.length + ')';
+  $('decidedLog').innerHTML = list.length
+    ? list.slice().reverse().map(decidedRow).join('')
+    : '<div class="empty blocked">No decisions recorded yet in this tab.</div>';
+}
+
+let reconFindings = [];
+let genFindings = [];
+let decisionsLog = [];
 let amendments = {rules:[], covered:[], resolved_findings:[]};
 async function refresh(){
   let s;
   try{ s = await api('/api/state'); }catch(e){ $('statusPill').textContent='● Offline'; return; }
   decisions = s.decisions||{};
   running = Boolean(s.running);
-  allFindings = s.findings||[];
+  reconFindings = s.reconciliation_findings||[];
+  genFindings = s.generation_findings||[];
+  decisionsLog = s.decisions_log||[];
   amendments = s.amendments||{rules:[], covered:[], resolved_findings:[]};
   $('runId').textContent = s.run_id||'none';
   $('rulebookVersion').textContent = s.rulebook_version||'—';
@@ -369,6 +422,7 @@ async function refresh(){
 
   renderLog(s.log, running);
   renderFindings();
+  renderDecidedLog();
   renderAmendments();
   renderDiff(s.diff);
   $('rejTitle').style.display = (s.discarded||[]).length?'block':'none';
@@ -630,7 +684,7 @@ $('runBtn').addEventListener('click', async ()=>{
   try{
     $('runBtn').disabled = true; $('runBtnIcon').innerHTML='<span class="spinner"></span>';
     stepIndex=-1; logCache=null; runFinishedShown=false;
-    decisions={}; allFindings=[];
+    decisions={}; reconFindings=[]; genFindings=[];
     buildPipe();
     await api('/api/run', {method:'POST', body:JSON.stringify({trigger:'manual'})});
   }catch(e){ toast('Could not start run: '+e.message); $('runBtn').disabled=false; $('runBtnIcon').textContent='▶'; }
@@ -677,7 +731,7 @@ $('fxRun').addEventListener('click', runFx);
 
 function doResetUI(){
   stepIndex=-1; logCache=null; runFinishedShown=false;
-  decisions={}; allFindings=[];
+  decisions={}; reconFindings=[]; genFindings=[];
   buildPipe();
   refresh();
 }

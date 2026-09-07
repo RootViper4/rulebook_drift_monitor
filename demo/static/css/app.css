@@ -162,6 +162,35 @@ button{font-family:inherit}
 .rationale-box{width:100%;min-height:56px;margin-top:10px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:12.5px;resize:vertical;background:#fff;color:var(--text)}
 .rationale-box.err{border-color:var(--bad);background:var(--bad-soft)}
 .rationale-req{font-size:10.5px;color:var(--dim);margin-top:3px}
+.fix-box{width:100%;min-height:60px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;background:var(--panel-2);color:var(--text)}
+
+/* ---------- Known Attacks / Emerging Threats tabs ---------- */
+.review-type-tabs{display:flex;gap:8px;margin:2px 0 8px}
+.rtab{background:var(--panel);border:1px solid var(--border);color:var(--muted);font-weight:700;font-size:13px;padding:8px 14px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:7px}
+.rtab:hover{border-color:var(--border-2);color:var(--text)}
+.rtab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.rtab-count{font-family:var(--mono);font-size:11px;font-weight:800;background:rgba(0,0,0,.08);padding:1px 7px;border-radius:999px}
+.rtab.active .rtab-count{background:rgba(255,255,255,.22)}
+.tab-desc{font-size:12px;color:var(--dim);margin-bottom:10px}
+.badge-unverified{display:inline-block;background:var(--warn-soft);color:var(--warn);border:1px solid #f0dcae;font-weight:700;font-size:10.5px;padding:2px 8px;border-radius:6px;margin-left:6px}
+
+/* ---------- Collapsible triage rows + decided log ---------- */
+.list-rows{display:flex;flex-direction:column;gap:8px}
+.row{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.row.gap{border-left:3px solid var(--bad)}
+.row-head{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;cursor:pointer}
+.row-head:hover{background:var(--panel-2)}
+.row-chevron{flex:none;color:var(--dim);font-size:12px;margin-top:2px}
+.row-main{flex:1;min-width:0}
+.row-headline{font-weight:700;font-size:14px;color:var(--text);line-height:1.4}
+.row-sub{font-size:12px;color:var(--dim);margin-top:3px}
+.row.gap .row-sub{color:var(--bad);font-weight:600}
+.row-detail{padding:0 14px 14px;border-top:1px dashed var(--border);margin-top:2px;padding-top:10px}
+.decided-row{background:var(--panel-2)}
+.decided-tag{font-weight:800;font-size:11px;padding:2px 8px;border-radius:6px}
+.decided-tag.accept{background:var(--good-soft);color:var(--good)}
+.decided-tag.amend{background:#ece9fe;color:var(--accent-2)}
+.decided-tag.reject{background:var(--bad-soft);color:var(--bad)}
 
 /* ---------- Tables ---------- */
 table{width:100%;border-collapse:collapse;font-size:13px}

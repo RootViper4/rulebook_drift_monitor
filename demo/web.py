@@ -29,6 +29,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(BASE, "static")
 DATA_DIR = os.path.join(os.path.dirname(BASE), "data")
 HISTORY_PATH = os.path.join(DATA_DIR, "run_history.json")
+DECISIONS_LOG_PATH = os.path.join(DATA_DIR, "decisions_log.json")
 
 # In-memory store.
 STORE = {
@@ -68,6 +69,55 @@ def _save_history(entries: list[dict]) -> None:
     os.makedirs(DATA_DIR, exist_ok=True)
     with open(HISTORY_PATH, "w", encoding="utf-8") as f:
         json.dump(entries, f, indent=2, ensure_ascii=False)
+
+
+# ---------------------------------------------------------------------------
+# Decided-log persistence (data/decisions_log.json)
+#
+# One shared file across both review tabs (reconciliation + generation) - the
+# UI renders it as two separate per-tab logs (filtered by each entry's `mode`),
+# keeping the same trust-level separation as the review lists themselves,
+# without needing two files on disk. This is the durable source of truth for
+# "is this finding decided" - it survives page reloads AND server restarts,
+# unlike STORE["decisions"] which is only in-memory for the current process.
+# ---------------------------------------------------------------------------
+def _load_decisions_log() -> list[dict]:
+    try:
+        with open(DECISIONS_LOG_PATH, "r", encoding="utf-8") as f:
+            arr = json.load(f)
+        return [d for d in arr if isinstance(d, dict)]
+    except Exception:
+        return []
+
+
+def _append_decision_log(entry: dict) -> None:
+    os.makedirs(DATA_DIR, exist_ok=True)
+    entries = _load_decisions_log()
+    entries = [e for e in entries if e.get("fid") != entry["fid"]]
+    entries.append(entry)
+    with open(DECISIONS_LOG_PATH, "w", encoding="utf-8") as f:
+        json.dump(entries, f, indent=2, ensure_ascii=False)
+
+
+def _attack_description(f, desc_by_id: dict) -> str:
+    """Plain-language headline for a finding.
+
+    Reconciliation findings: prefer the typology's own prose description (TYP
+    corpus) or, for capability-primitive findings, the finding's evidential
+    basis - which IS the descriptive sentence for those (see
+    SimulationAgent.run_capability_primitive_reconciliation).
+
+    Generation findings: evidential_basis is boilerplate ("self-generated from
+    AI capability primitives (novel, unverified)") identical across every
+    generation-arm candidate, so it is useless as a headline - typology_name
+    (the actual invented scenario's name) is the specific, human-readable
+    description here instead.
+    """
+    if desc_by_id.get(f.typology_id):
+        return desc_by_id[f.typology_id]
+    if getattr(f, "mode", "reconciliation") == "generation":
+        return f.typology_name or f.evidential_basis
+    return f.evidential_basis or f.typology_name
 
 
 def _forecast_snapshot() -> dict:
@@ -160,14 +210,11 @@ def _start_background_run(trigger: str) -> None:
 # ---------------------------------------------------------------------------
 def _finding_json(f, desc_by_id=None):
     desc_by_id = desc_by_id or {}
-    # Plain-language attack description for the regulator-facing review screen:
-    # prefer the typology's own prose description, then the finding's evidential
-    # basis, and only fall back to the (still human-readable) typology_name.
-    attack_description = desc_by_id.get(f.typology_id) or f.evidential_basis or f.typology_name
     return {
         "typology_id": f.typology_id,
         "typology_name": f.typology_name,
-        "attack_description": attack_description,
+        "attack_description": _attack_description(f, desc_by_id),
+        "mode": getattr(f, "mode", "reconciliation"),
         "fired_rules": f.fired_rules,
         "evaded_rules": f.evaded_rules,
         "mitre_atlas": f.mitre_atlas,
@@ -191,15 +238,34 @@ def _state_json():
     covered = sorted(inst.get("covered", {}).keys())
     prev_ids = set(STORE.get("prev_ids") or [])
     desc_by_id = {t.id: t.description for t in load_typologies()}
+    decisions_log = _load_decisions_log()
+    decided_fids = {d.get("fid") for d in decisions_log}
+
     findings = [_finding_json(f, desc_by_id) for f in (run.results if run else [])]
     for f in findings:
         f["delta"] = "new" if f["typology_id"] not in prev_ids else "repeat"
     diff_new = [f["typology_id"] for f in findings if f["delta"] == "new"]
     diff_repeat = [f["typology_id"] for f in findings if f["delta"] == "repeat"]
     diff_regressed = [t for t in (prev_ids - {f["typology_id"] for f in findings})]
-    reviewed = sum(1 for f in findings if f["typology_id"] in decisions)
+    reviewed = sum(1 for f in findings if f["typology_id"] in decided_fids)
     total = len(findings)
     all_decided = bool(total) and reviewed == total
+
+    # The two review tabs read from strictly separate slices of the same run -
+    # "Known Attacks" (mode=reconciliation, documented capability-primitive
+    # attacks) never mixes with "Emerging Threats" (mode=generation,
+    # self-invented novelties). A decided finding (present in the persisted
+    # decisions_log) is removed from both review lists - it now lives only in
+    # the Decided log, and stays removed across reloads/restarts because the
+    # filter is keyed off the on-disk log, not in-memory state.
+    reconciliation_findings = [
+        f for f in findings
+        if f.get("mode", "reconciliation") == "reconciliation" and f["typology_id"] not in decided_fids
+    ]
+    generation_findings = [
+        f for f in findings
+        if f.get("mode") == "generation" and f["typology_id"] not in decided_fids
+    ]
 
     status = None
     if run is not None:
@@ -226,6 +292,9 @@ def _state_json():
         "total": total,
         "all_decided": all_decided,
         "findings": findings,
+        "reconciliation_findings": reconciliation_findings,
+        "generation_findings": generation_findings,
+        "decisions_log": decisions_log,
         "discarded": [_discarded_json(d) for d in (run.discarded if run else [])],
         "decisions": decisions,
         "audit": list(run.audit) if run else [],
@@ -308,6 +377,7 @@ def api_decide():
     fid = data.get("fid")
     decision = data.get("decision")
     rationale = (data.get("rationale") or "").strip()
+    rule_text = (data.get("rule_text") or "").strip()
     if not fid or decision not in ("accept", "amend", "reject"):
         return jsonify({"error": "bad request"}), 400
     if not rationale:
@@ -322,17 +392,48 @@ def api_decide():
     }[decision]
     run = STORE["run"]
     finding = next((f for f in (run.results if run else []) if f.typology_id == fid), None)
+    mode = getattr(finding, "mode", "reconciliation") if finding else "reconciliation"
+    desc_by_id = {t.id: t.description for t in load_typologies()}
+    headline = _attack_description(finding, desc_by_id) if finding else fid
+    original_text = (finding.drafted_candidate_red_flag or "").strip() if finding else ""
+    final_text = rule_text or original_text
+    rule_text_amended = bool(rule_text) and rule_text != original_text
+
     STORE["log"].append({
         "node": "human-gate",
         "message": (f"Analyst {STORE['analyst']} → {label} finding "
-                    f"'{finding.typology_name if finding else fid}'. {verb} Rationale: {rationale}"),
-        # DS/CP codes kept here for audit traceability, never surfaced as the
-        # primary log line - the plain-language `message` above is what renders.
+                    f"'{finding.typology_name if finding else fid}' "
+                    f"[{'Known Attacks' if mode == 'reconciliation' else 'Emerging Threats'}]. "
+                    f"{verb} Rationale: {rationale}"),
+        # DS/CP codes and the source tab kept here for audit traceability,
+        # never surfaced as the primary log line - the plain-language
+        # `message` above is what renders.
         "reference": {
             "typology_id": fid,
+            "mode": mode,
             "fired_rules": finding.fired_rules if finding else [],
             "evaded_rules": finding.evaded_rules if finding else [],
         },
+    })
+
+    # Durable decided-log entry (data/decisions_log.json) - this is what
+    # removes the finding from the review list across reloads/restarts and
+    # what backs the "Decided" log in the UI.
+    _append_decision_log({
+        "fid": fid,
+        "mode": mode,
+        "headline": headline,
+        "typology_name": finding.typology_name if finding else fid,
+        "decision": decision,
+        "decision_label": label,
+        "rationale": rationale,
+        "analyst": STORE["analyst"],
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "fired_rules": finding.fired_rules if finding else [],
+        "evaded_rules": finding.evaded_rules if finding else [],
+        "original_rule_text": original_text,
+        "final_rule_text": final_text,
+        "rule_text_amended": rule_text_amended,
     })
     return jsonify({"ok": True, "decision": label})
 

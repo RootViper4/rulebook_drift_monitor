@@ -74,30 +74,100 @@ class SimulationAgent:
                 return True
         return False
 
+    def run_capability_primitive_reconciliation(self, rulebook: list[Rule], fixtures_path: str) -> list[dict]:
+        """Reconciliation arm, capability-primitive edition - the 'Known Attacks'
+        tab's data source.
+
+        Steps each of the documented AI-capability-primitive attack fixtures
+        (data/fixtures.capability_primitives.json) through the rulebook, one
+        finding per primitive (its fixture(s) aggregated by union of fired
+        rules), recording which rules fire and which topically-relevant rules
+        stay silent. Primitives explicitly marked as non-control-surfaces
+        (upstream aggravating factors with no detection point of their own -
+        CP-09 reconnaissance, CP-10 dark-LLM tooling) are skipped: they are not
+        attacks a rule could ever catch, so they are not reportable gaps.
+
+        Unlike `run_reconciliation` (kept below, untouched, for the legacy
+        typology corpus), every remaining primitive is reported regardless of
+        whether any rule fired - a primitive with zero relevant rules at all
+        (e.g. CP-02 vishing) is exactly the kind of drift gap this tab exists
+        to surface, not a candidate to filter out.
+        """
+        from agents.loader import load_fixture_set
+
+        not_a_control_surface = {"CP-09", "CP-10"}
+        fixtures = load_fixture_set(fixtures_path)
+        by_primitive: dict[str, list[dict]] = {}
+        for fx in fixtures:
+            for cp in (fx.get("capability_primitives") or []):
+                if cp in not_a_control_surface:
+                    continue
+                by_primitive.setdefault(cp, []).append(fx)
+
+        findings = []
+        for cp in sorted(by_primitive):
+            fxs = by_primitive[cp]
+            fired: set[str] = set()
+            vocab_parts = [cp]
+            notes = []
+            for fx in fxs:
+                results = self.engine.evaluate(rulebook, fx["tx"])
+                fired |= {r.rule_id for r in results if r.fired}
+                if fx.get("label"):
+                    vocab_parts.append(fx["label"])
+                if fx.get("representation_note"):
+                    vocab_parts.append(fx["representation_note"])
+                    notes.append(fx["representation_note"])
+            vocab = " ".join(vocab_parts).lower()
+            relevant = [r for r in rulebook if self._rule_relevant(r, vocab)]
+            evaded = sorted(r.id for r in relevant if r.id not in fired)
+
+            raw_label = fxs[0].get("label", cp)
+            desc = raw_label.split(":", 1)[1].strip() if ":" in raw_label else raw_label
+            short_name = desc.split(",")[0].split(";")[0].strip()
+
+            findings.append({
+                "typology_id": cp,
+                "typology_name": short_name,
+                "evidential_basis": desc,
+                "fired_rules": sorted(fired),
+                "evaded_rules": evaded,
+                "techniques": vocab_parts,
+                "mitre_atlas": [],
+                "fixtures": [fx["tx"] for fx in fxs],
+                "mode": "reconciliation",
+            })
+        return findings
+
     def run_generation(self, rulebook: list[Rule]) -> list[dict]:
         """Generation arm: spawn novel evasion-candidate scenarios from AI
         capability primitives, using the LLM to imagine them, then test each
         against the rulebook deterministically."""
+        # NOTE: these fixtures/keyword sets are written against the CURRENT
+        # 20-rule real corpus (data/rulebook.json's fixture field names and
+        # keywords) - not the legacy 40-rule placeholder set. They describe
+        # genuinely novel patterns not among the 12 documented capability
+        # primitives (data/fixtures.capability_primitives.json), which is
+        # what makes this the "invent something unrecorded" arm rather than a
+        # restatement of Known Attacks.
         primitives = [
             {
-                "name": "deepfake KYC bypass",
-                "techniques": ["deepfake_media", "synthetic identity", "ai social engineering"],
-                "mitre_atlas": ["TA0005 ML Development", "TA0007 Evasion", "T1592 Gather Victim Org Info"],
-                "fixture": {"kyc_complete": True, "identity_markers": ["deepfake_media"], "fresh_onboarding": True,
-                            "customer_profile_consistent": False, "round_amount": True},
-            },
-            {
-                "name": "AI-coordinated pass-through layering",
-                "techniques": ["pass through", "fresh wallet", "layering", "multiple accounts"],
+                "name": "AI-negotiated OTC settlement structuring",
+                "techniques": ["unregistered exchange", "structuring", "ai negotiation", "otc settlement"],
                 "mitre_atlas": ["TA0007 Evasion", "T1071 Layer"],
-                "fixture": {"pass_through": True, "fresh_wallet": True, "multiple_accounts": True,
-                            "wallet_age_days": 0, "counterparty_jurisdiction": "normal"},
+                "fixture": {},
             },
             {
-                "name": "stylometric-phishing fund sweep",
-                "techniques": ["social engineering", "cloned app", "anomalous login"],
-                "mitre_atlas": ["T1552 Phishing", "TA0001 Reconnaissance", "T1566 Social Engineering"],
-                "fixture": {"anomalous_login": True, "uses_vpn_tor": True, "sudden_behaviour_change": True},
+                "name": "Deepfake board-resolution corporate onboarding",
+                "techniques": ["forged documents", "identity fraud", "corporate onboarding", "deepfake board resolution"],
+                "mitre_atlas": ["TA0005 ML Development", "T1592 Gather Victim Org Info"],
+                "fixture": {},
+            },
+            {
+                "name": "AI-scripted multi-hop settlement evading travel-rule disclosure",
+                "techniques": ["travel rule", "originator", "beneficiary", "cross-border", "ai-scripted multi-hop settlement"],
+                "mitre_atlas": ["TA0007 Evasion"],
+                "fixture": {},
             },
             {
                 "name": "prompt-poisoned global settlement reroute",
@@ -108,7 +178,7 @@ class SimulationAgent:
             },
         ]
         findings = []
-        for prim in primitives:
+        for idx, prim in enumerate(primitives, 1):
             results = self.engine.evaluate(rulebook, prim["fixture"])
             fired = {r.rule_id for r in results if r.fired}
             vocab = " ".join(prim["techniques"] + [prim["name"]]).lower()
@@ -121,7 +191,10 @@ class SimulationAgent:
                     else "self-generated from AI capability primitives (novel, unverified)"
                 )
                 findings.append({
-                    "typology_id": "GEN-NOVEL",
+                    # Unique per candidate - these previously all shared the
+                    # literal id "GEN-NOVEL", which silently collapsed every
+                    # generation-arm novelty onto one review-list entry.
+                    "typology_id": f"GEN-{idx:02d}",
                     "typology_name": prim["name"],
                     "evidential_basis": basis,
                     "fired_rules": sorted(fired),

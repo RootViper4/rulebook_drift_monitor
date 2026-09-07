@@ -66,6 +66,11 @@ class GapFinding:
     drafted_candidate_red_flag: str = ""
     plausible: bool = True
     verified: bool = False
+    # "reconciliation" (documented capability-primitive attacks stepped through
+    # the rulebook) or "generation" (novel, unverified, self-generated evasion
+    # hypotheses). Drives the two-tab split in the review UI - the two modes
+    # must never be displayed as one merged list.
+    mode: str = "reconciliation"
 
 
 @dataclass

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 import uuid
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
@@ -12,6 +13,11 @@ from agents.retrieval_agent import RetrievalAgent
 from agents.rule_engine import RuleEvaluationEngine
 from agents.simulation_agent import SimulationAgent
 from agents.critic_agent import CriticAgent
+
+CAPABILITY_PRIMITIVES_FIXTURES_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "data", "fixtures.capability_primitives.json",
+)
 
 
 class Orchestrator:
@@ -62,8 +68,15 @@ class Orchestrator:
         }
 
         # --- Two arms run in parallel: reconciliation + generation ---
-        _progress("reconcile", "Reconciliation arm · stepping documented typologies through the rulebook")
-        rec_findings = self.simulation.run_reconciliation(self.typologies, self.rulebook)
+        # Reconciliation arm = "Known Attacks" tab: the 12 documented AI
+        # capability-primitive attacks stepped through the rulebook (not the
+        # legacy 35-typology corpus - kept in data/typologies.json and
+        # SimulationAgent.run_reconciliation for other tooling, but no longer
+        # the review UI's reconciliation data source).
+        _progress("reconcile", "Reconciliation arm · stepping the 12 capability-primitive attacks through the rulebook")
+        rec_findings = self.simulation.run_capability_primitive_reconciliation(
+            self.rulebook, CAPABILITY_PRIMITIVES_FIXTURES_PATH
+        )
         if _aborted():
             return self._abort(state)
         _progress("generate", "Generation arm · spawning novel AI evasion paths")
@@ -113,13 +126,30 @@ class Orchestrator:
 
         def _draft(cand: dict) -> None:
             t = self._find_typology(cand["typology_id"])
+            evaded_rule_objs = [r for r in self.rulebook if r.id in cand.get("evaded_rules", [])]
             if t:
-                evaded_rule_objs = [r for r in self.rulebook if r.id in cand.get("evaded_rules", [])]
                 cand["drafted_candidate_red_flag"] = self.retrieval.draft_candidate_red_flag(t, evaded_rule_objs)
+            elif cand.get("mode") == "reconciliation":
+                # Capability-primitive reconciliation candidate: a documented
+                # attack (CP-XX), not a typology-corpus entry and not a
+                # self-generated novelty - word the draft accordingly.
+                name = cand.get("typology_name", cand["typology_id"])
+                if evaded_rule_objs:
+                    cand["drafted_candidate_red_flag"] = (
+                        f"Documented attack '{name}' is not adequately detected because the "
+                        f"following indicator(s) do not fire: {'; '.join(r.name for r in evaded_rule_objs)}. "
+                        f"Draft indicator: assess transactions/onboarding exhibiting this pattern, "
+                        f"currently outside explicit coverage of the existing rulebook."
+                    )
+                else:
+                    cand["drafted_candidate_red_flag"] = (
+                        f"Documented attack '{name}' has no rule in the current corpus addressing it, "
+                        f"even partially. Draft indicator: this needs a new, dedicated red flag - "
+                        f"there is nothing existing to amend."
+                    )
             else:
                 # Generation-arm novelty: draft from the self-description.
                 name = cand.get("typology_name", "novel evasion")
-                evaded_rule_objs = [r for r in self.rulebook if r.id in cand.get("evaded_rules", [])]
                 cand["drafted_candidate_red_flag"] = (
                     f"Novel pattern '{name}' evades existing indicators covering "
                     f"{'; '.join(r.name for r in evaded_rule_objs)}; candidate indicator: "
@@ -162,6 +192,7 @@ class Orchestrator:
                 evidential_basis=cand.get("evidential_basis", ""),
                 drafted_candidate_red_flag=cand.get("drafted_candidate_red_flag", ""),
                 verified=True,
+                mode=cand.get("mode", "reconciliation"),
             )
             state.results.append(funding)
 

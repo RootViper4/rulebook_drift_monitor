@@ -31,13 +31,23 @@ class CriticAgent:
         # Reproducibility: re-run the deterministic engine on the same fixture.
         reproduced = True
         if candidate.get("mode") == "reconciliation":
-            fixture = self._get_fixture(candidate, fixtures_by_typology)
-            if fixture is None:
-                return self._discard(result, "no fixture available to re-run")
+            # Capability-primitive reconciliation candidates carry their own
+            # fixture(s) inline (no per-typology test_fixtures lookup needed -
+            # there is no typology behind a CP-XX id).
+            inline_fixtures = candidate.get("fixtures")
+            if inline_fixtures:
+                fired: set[str] = set()
+                for fx in inline_fixtures:
+                    results = self.engine.evaluate(rulebook, fx)
+                    fired |= {r.rule_id for r in results if r.fired}
+            else:
+                fixture = self._get_fixture(candidate, fixtures_by_typology)
+                if fixture is None:
+                    return self._discard(result, "no fixture available to re-run")
+                results = self.engine.evaluate(rulebook, fixture)
+                fired = {r.rule_id for r in results if r.fired}
             # Recompute the expected evasion set (relevant rules that don't fire),
             # using the same independence-preserving logic as the reporter.
-            results = self.engine.evaluate(rulebook, fixture)
-            fired = {r.rule_id for r in results if r.fired}
             vocab = " ".join(
                 candidate.get("techniques", []) + [candidate.get("typology_name", "")]
             ).lower()

@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+import os
 from typing import Optional
 
 import requests
 
-OLLAMA_URL = "http://localhost:11434"
-MODEL = "llama3.2:1b"
+# Both overridable via environment variables so a bigger/different local
+# model can be tried without touching code, e.g. on Windows PowerShell:
+#   $env:OLLAMA_MODEL = "llama3.2:3b"
+#   python -m demo.web
+# A bigger model materially improves the generation arm's success rate (see
+# agents/simulation_agent.py) - llama3.2:1b was observed restating existing
+# rules and copying prompt templates verbatim, which a 3B+ model does more
+# reliably avoid, at the cost of slower responses and a larger download/pull.
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2:1b")
 
 
 class LocalLLMClient:

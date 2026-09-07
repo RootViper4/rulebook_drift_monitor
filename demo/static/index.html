@@ -65,8 +65,12 @@
       <div class="pipe" id="pipe"></div>
 
       <div class="live-pane">
-        <div class="pane-title"><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good)"></span> What the agents are doing right now</div>
-        <div id="logPane"></div>
+        <div class="pane-title-row">
+          <div class="pane-title"><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good)"></span> What's happening right now</div>
+          <button class="btn-tiny" id="logToggle" onclick="toggleTechLog()">Show technical detail</button>
+        </div>
+        <div id="friendlyLog" class="friendly-log"></div>
+        <div id="logPane" class="tech-log" style="display:none"></div>
       </div>
 
       <div class="caveat-banner" id="caveatBanner" style="display:none">
@@ -153,8 +157,8 @@
 <script src="static/js/app.js"></script>
 <script>
 const MILESTONES = {ingest:0, reconcile:1, generate_meta:2, critic_meta:3, draft:4, report:5};
-const STEP_NAMES = ['Ingest corpora', 'Reconciliation arm', 'Generation arm', 'Critic verification', 'Draft candidate red flags', 'Human approval gate'];
-const STEP_DESC  = ['load the rulebook', 'step the 12 capability-primitive attacks through the rulebook', 'spawn novel AI evasion paths', 'reproduce every claim · discard unsupported', 'draft candidate indicators (LLM assist)', 'analyst accepts, amends or rejects'];
+const STEP_NAMES = ['Load the rulebook', 'Test known scam tricks', 'Invent new scam tricks', 'Double-check every result', 'Write plain-English fixes', 'Wait for your decision'];
+const STEP_DESC  = ['getting today\u2019s rules ready to test', 'running 12 real, reported scams through every rule', 'having the system dream up scams nobody has reported yet', 'independently re-checking every claim before trusting it', 'drafting a plain-English fix for each real gap', 'nothing changes until you accept, amend or reject it'];
 
 let stepIndex = -1;
 let logCache = null;
@@ -201,6 +205,49 @@ function renderLog(log, running){
   pane.innerHTML=(log||[]).map(l=>`<div class="logline"><span class="ln">[${l.ts||''}]</span> <b>${esc(NODE_LABEL[l.node]||l.node)}</b>: ${esc(l.message)}</div>`).join('');
   if(!log.length) pane.innerHTML='<div class="logline"><span class="ln">[—]</span> idle · click New run to start a scan of the rules</div>';
   if(running && pane.lastElementChild) pane.lastElementChild.scrollIntoView({block:'nearest'});
+  renderFriendlyLog(log, running);
+}
+
+// Plain-English version of the same log, for anyone who doesn't need (or
+// want) the raw technical trail. Never invents information the log entry
+// doesn't already carry - just re-words it and pulls out the numbers that
+// matter (counts of gaps found, confirmed, discarded), so a non-coder gets
+// the same facts a developer gets from the technical log below it.
+function friendlyLine(l){
+  const n = l.node;
+  if(n==='orchestrator') return '🚀 Starting a new scan of the rulebook…';
+  if(n==='ingest') return '📖 Getting the rulebook and scam catalogue ready…';
+  if(n==='simulation'){
+    const rec = l.reconciliation, gen = l.generation;
+    if(rec!=null && gen!=null) return `🔍 Tested the rules — found ${rec} weak spot${rec===1?'':'s'} in known scams, plus ${gen} brand-new idea${gen===1?'':'s'} to check.`;
+    return '🔍 Testing the rulebook against real and invented scams…';
+  }
+  if(n==='critic'){
+    const c = l.confirmed, d = l.discarded;
+    if(c!=null && d!=null) return `🔬 Double-checked every result — ${c} held up, ${d} ${d===1?'didn\u2019t':'didn\u2019t'} and ${d===1?'was':'were'} thrown out.`;
+    return '🔬 Double-checking every claim before trusting it…';
+  }
+  if(n==='draft') return '✍️ Writing a plain-English suggested fix for each real gap…';
+  if(n==='report') return `📋 Done — ${esc(l.analyst||'the analyst')} now has a list to review. Nothing changes until a decision is made.`;
+  if(n==='human-gate') return '🧑\u200d⚖️ '+(l.message||'A decision was recorded.');
+  if(n==='probe') return '🧪 Ran a red-team test to make sure the checker itself can\u2019t be fooled.';
+  if(n==='error') return '⚠️ Something went wrong — see the technical detail for what happened.';
+  return l.message||'';
+}
+
+function renderFriendlyLog(log, running){
+  const pane = $('friendlyLog'); if(!pane) return;
+  pane.innerHTML = (log||[]).map(l=>`<div class="friendly-line">${friendlyLine(l)}</div>`).join('');
+  if(!log || !log.length) pane.innerHTML = '<div class="friendly-line dim">Nothing running yet — click New run to start a scan.</div>';
+  if(running && pane.lastElementChild) pane.lastElementChild.scrollIntoView({block:'nearest'});
+}
+
+let showingTechLog = false;
+function toggleTechLog(){
+  showingTechLog = !showingTechLog;
+  $('friendlyLog').style.display = showingTechLog ? 'none' : 'block';
+  $('logPane').style.display = showingTechLog ? 'block' : 'none';
+  $('logToggle').textContent = showingTechLog ? 'Show plain-English summary' : 'Show technical detail';
 }
 
 let rationaleDrafts = {};
@@ -209,6 +256,18 @@ let openRows = new Set();
 function toggleRow(fid){
   if(openRows.has(fid)) openRows.delete(fid); else openRows.add(fid);
   renderFindings();
+}
+
+// Honest provenance for a generation-arm finding: did the local model
+// actually propose this, or did the platform fall back to a hand-authored
+// scenario (because no model was available, or the model's output failed
+// validation)? Never claim "AI-generated" for a fallback finding - that
+// would overstate what actually happened. See agents/simulation_agent.py.
+function sourceBadgeHtml(source){
+  if(source==='llm') return '<span class="badge-source badge-source-llm">🤖 Written by the AI model, then checked</span>';
+  if(source==='fixed_probe') return '<span class="badge-source badge-source-probe">🧪 Test case, not a real scam</span>';
+  if(source==='deterministic_fallback') return '<span class="badge-source badge-source-fallback">🧩 Built by the system (AI model wasn\u2019t used this time)</span>';
+  return '';
 }
 
 // Collapsed: headline + one-line result summary only - a scannable triage
@@ -221,10 +280,11 @@ function findingRow(f, tabMode){
   const headline = f.attack_description || f.typology_name;
   const isGap = fired.length===0;
   const summary = isGap
-    ? `DRIFT GAP — no rule in the corpus catches this${evaded.length?` (${evaded.length} relevant rule${evaded.length===1?'':'s'} silent)`:''}`
-    : `caught by ${fired.length} rule${fired.length===1?'':'s'}${evaded.length?`, slipped past ${evaded.length} rule${evaded.length===1?'':'s'}`:''}`;
+    ? `⚠ Nothing in the rulebook catches this${evaded.length?` (${evaded.length} rule${evaded.length===1?'':'s'} stayed quiet)`:''}`
+    : `✅ Caught by ${fired.length} rule${fired.length===1?'':'s'}${evaded.length?`, but missed by ${evaded.length} rule${evaded.length===1?'':'s'}`:''}`;
   const genBadge = tabMode==='generation'
-    ? '<span class="badge-unverified">AI-generated hypothesis — not a documented typology</span>' : '';
+    ? '<span class="badge-unverified">💡 New idea — not a reported attack yet</span>' : '';
+  const sourceBadge = tabMode==='generation' ? sourceBadgeHtml(f.generation_source) : '';
   const delta = f.delta==='new'?'<span class="diff-badge diff-new">NEW</span>'
               : f.delta==='repeat'?'<span class="diff-badge diff-repeat">REPEAT</span>':'';
 
@@ -233,7 +293,7 @@ function findingRow(f, tabMode){
       <span class="row-chevron">${open?'▾':'▸'}</span>
       <div class="row-main">
         <div class="row-headline">${delta} ${esc(headline)}</div>
-        <div class="row-sub">${summary} ${genBadge}</div>
+        <div class="row-sub">${summary} ${genBadge} ${sourceBadge}</div>
       </div>
       <span class="fid">ref: ${esc(fid)}</span>
     </div>
@@ -257,13 +317,13 @@ function findingDetail(f, tabMode){
 
     <div class="section-kd">What the rulebook did</div>
     <div class="chip-row mt" style="margin-top:4px">
-      <span class="chip good">🛡 caught by ${fired.length} rule${fired.length===1?'':'s'}</span>
-      <span class="chip bad">⚠ slipped past ${evaded.length} rule${evaded.length===1?'':'s'}</span>
+      <span class="chip good">✅ Caught by ${fired.length} rule${fired.length===1?'':'s'}</span>
+      <span class="chip bad">⚠ Missed by ${evaded.length} rule${evaded.length===1?'':'s'}</span>
     </div>
     ${rulesDetail(fired, true)}
     ${rulesDetail(evaded, false)}
 
-    <div class="fix-label">Proposed fix ${tabMode==='generation'?'(unverified hypothesis)':''}</div>
+    <div class="fix-label">Suggested fix ${tabMode==='generation'?'(not yet checked by a human)':''}</div>
     <textarea class="fix-box" id="fix-${esc(fid)}" placeholder="No candidate fix drafted.">${esc(f.drafted_candidate_red_flag||'')}</textarea>
     <div class="rationale-req" style="margin-top:2px">Editing this box before choosing Amend records your edited wording as the final rule text.</div>
 
@@ -332,8 +392,8 @@ async function exportDossier(kind){
 }
 
 const TAB_DESC = {
-  reconciliation: 'Known Attacks — the 12 documented AI-capability-primitive attacks stepped through the rulebook. Grounded in recorded real-world techniques; every gap here is a genuine, reproducible finding.',
-  generation: 'Emerging Threats — the generation arm inventing new, unrecorded typologies. Every item below is a machine-generated hypothesis, not a documented attack: verify independently before acting on it.',
+  reconciliation: 'Known Attacks — 12 scams that have actually happened, tested against every single rule. If one is marked as a gap here, that is a real, provable weakness, not a guess.',
+  generation: 'Emerging Threats — new scams nobody has reported yet. The system dreams these up itself, so treat each one as a "what if?" worth a second look, not a confirmed attack.',
 };
 
 let reviewTab = 'reconciliation';
@@ -615,22 +675,22 @@ function ruleSentence(id, fired){
   const r = RULES_MAP[id];
   if(!r){
     return `<div class="rule-plain ${fired?'ok':'miss'}">
-      <div class="rp-verdict">${fired?'✓ Fired':'— Stayed silent'}</div>
-      <div class="rp-name">Rule ${esc(id)} (description not loaded)</div>
+      <div class="rp-verdict">${fired?'✅ Caught it':'🚫 Missed it'}</div>
+      <div class="rp-name">Rule ${esc(id)} (details still loading)</div>
     </div>`;
   }
   const verdict = fired
-    ? '✓ Fired — this rule caught the activity.'
-    : '— Stayed silent — this rule did not catch the activity.';
+    ? '✅ Caught it — this rule spotted the activity and would have flagged it.'
+    : '🚫 Missed it — this rule looked, but didn\u2019t find what it was looking for here.';
   const why = (!fired && r.trigger)
-    ? `<div class="rp-why">Its trigger — “${esc(r.trigger)}” — was not met in this scenario.</div>`
+    ? `<div class="rp-why">Why it missed: the rule only fires when <i>“${esc(r.trigger)}”</i> — and that specific pattern wasn\u2019t present in this case.</div>`
     : '';
   return `<div class="rule-plain ${fired?'ok':'miss'}">
     <div class="rp-verdict">${verdict}</div>
-    <div class="rp-name">The rule on ${esc(lowerFirst(r.name))}</div>
-    ${r.text?`<div class="rp-text">${esc(r.text)}</div>`:''}
+    <div class="rp-name">Rule: ${esc(r.name)}</div>
+    ${r.text?`<div class="rp-text">In plain terms: ${esc(r.text)}</div>`:''}
     ${why}
-    <div class="rp-source">Source: ${sourceLinksHtml(r)}</div>
+    <div class="rp-source">Where this rule comes from: ${sourceLinksHtml(r)}</div>
     <div class="rp-ref">ref: ${esc(id)}${cpRefSuffix(r)}</div>
   </div>`;
 }

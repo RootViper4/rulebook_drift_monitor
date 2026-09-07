@@ -220,6 +220,12 @@ def _finding_json(f, desc_by_id=None):
         "mitre_atlas": f.mitre_atlas,
         "evidential_basis": f.evidential_basis or "documented typology",
         "drafted_candidate_red_flag": f.drafted_candidate_red_flag,
+        # Provenance for generation-mode findings ("llm" / "deterministic_fallback"
+        # / "fixed_probe"); blank for reconciliation findings. getattr default
+        # keeps this safe against any GapFinding built before this field existed
+        # (e.g. cached objects from data/drafted_flags.json predating this change).
+        "generation_source": getattr(f, "generation_source", ""),
+        "capability_primitives": getattr(f, "capability_primitives", []),
     }
 
 

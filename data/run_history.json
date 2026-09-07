@@ -206,5 +206,137 @@
     "findings": 13,
     "discarded": 1,
     "rulebook_version": "DS-01..DS-20 · 20 rules"
+  },
+  {
+    "run_id": "run-f6ad0fd2",
+    "ts": "2026-09-07T04:15:40",
+    "kind": "run",
+    "drift_index": 68.9,
+    "coverage": 0.179,
+    "ai_pressure": 0.391,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-20 · 20 rules"
+  },
+  {
+    "run_id": "run-afc97fa1",
+    "ts": "2026-09-07T04:41:26",
+    "kind": "run",
+    "drift_index": 68.9,
+    "coverage": 0.179,
+    "ai_pressure": 0.391,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-20 · 20 rules"
+  },
+  {
+    "run_id": "run-216b6d7d",
+    "ts": "2026-09-07T04:45:35",
+    "kind": "run",
+    "drift_index": 68.9,
+    "coverage": 0.179,
+    "ai_pressure": 0.391,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-20 · 20 rules"
+  },
+  {
+    "run_id": "run-472791a8",
+    "ts": "2026-09-07T04:49:02",
+    "kind": "run",
+    "drift_index": 68.9,
+    "coverage": 0.179,
+    "ai_pressure": 0.391,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-20 · 20 rules"
+  },
+  {
+    "run_id": "run-bb6efd7a",
+    "ts": "2026-09-07T04:58:36",
+    "kind": "run",
+    "drift_index": 68.9,
+    "coverage": 0.179,
+    "ai_pressure": 0.391,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-20 · 20 rules"
+  },
+  {
+    "run_id": "run-b03fe68a",
+    "ts": "2026-09-07T05:00:58",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-40 · 40 rules"
+  },
+  {
+    "run_id": "run-a0ad8a72",
+    "ts": "2026-09-07T05:24:31",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-40 · 40 rules"
+  },
+  {
+    "run_id": "run-2acd8656",
+    "ts": "2026-09-07T05:37:05",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-40 · 40 rules"
+  },
+  {
+    "run_id": "run-28f7a18d",
+    "ts": "2026-09-07T05:50:10",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-40 · 40 rules"
+  },
+  {
+    "run_id": "run-94c0a4b7",
+    "ts": "2026-09-07T06:08:39",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-40 · 40 rules"
+  },
+  {
+    "run_id": "run-3d9da04a",
+    "ts": "2026-09-07T06:19:37",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-40 · 40 rules"
+  },
+  {
+    "run_id": "run-45b89be2",
+    "ts": "2026-09-07T06:43:22",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-40 · 40 rules"
   }
 ]

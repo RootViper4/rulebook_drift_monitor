@@ -1,7 +1,7 @@
 {
-  "version": "2026.09.06-real-corpus-v0",
-  "jurisdiction": "South Africa — FIC Act 38 of 2001, Directive 9 (crypto-asset Travel Rule); FATF (2020) Virtual Asset Red Flag Indicators; FATF Recommendations 15 & 16",
-  "source_notes": "ACTIVE rulebook. Real regulatory corpus prepared by the domain team, replacing the 40-rule placeholder demo set (preserved unmodified in data/rulebook.legacy.json for diffing). All 20 rules (DS-01..DS-20) are populated, covering FATF (2020) Virtual Asset Red Flag Indicators and FIC (2024) Directive 9. ALL rule text in the `text` field is a PROVISIONAL PARAPHRASE by the domain team, NOT verified exact regulatory wording - do not present it as authoritative without checking the cited source_ref. Demonstration/development data only.",
+  "version": "2026.09.02",
+  "jurisdiction": "South Africa — FIC Act 38 of 2001, Directive 9 (crypto-asset Travel Rule); FATF (2020) Virtual Asset Red Flag Indicators; FATF Recommendations 15 & 16; UNSC TFS (s.26A-26C)",
+  "source_notes": "Drift Sentinel rulebook — professional draft schema (Rule ID, risk category, rule text, trigger, source, rule type, ATLAS mapping, capability primitives). DS-01..21 transcribed from the Drift Sentinel Twenty Example Rules DRAFT (09.2026). DS-22..40 extend the FATF (2020) red-flag indicator set and Directive 9 obligation themes to reach a 40-rule reference rulebook. All rule text is paraphrased for schema demonstration; verify exact wording against source before production use. Demonstration data only.",
   "rules": [
     {
       "id": "DS-01",
@@ -10,13 +10,21 @@
       "rule_type": "indicator",
       "risk_severity": "high",
       "ai_relevant": true,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. A large initial deposit is made to open a new account, inconsistent with the customer's declared profile, and the customer trades or withdraws most or all of the balance within a day or two of account opening.",
-      "trigger": "New account AND deposit value inconsistent with stated profile AND rapid trade/withdrawal (same day or next day).",
+      "text": "A large initial deposit is made to open a new account, inconsistent with the customer's declared profile, and the customer trades or withdraws most or all of the balance within a day or two of account opening.",
+      "trigger": "New account; deposit value inconsistent with stated profile; rapid trade/withdrawal (same day or next day).",
       "trigger_schema": {
         "all": [
           {
-            "field": "new_account",
-            "op": "truthy"
+            "any": [
+              {
+                "field": "new_account",
+                "op": "truthy"
+              },
+              {
+                "field": "fresh_onboarding",
+                "op": "truthy"
+              }
+            ]
           },
           {
             "field": "customer_profile_consistent",
@@ -30,7 +38,7 @@
         ]
       },
       "source": "FATF (2020) Virtual Assets Red Flags",
-      "source_ref": "FATF 2020, p.7",
+      "source_ref": "FATF 2020, p.7, 'Transactions concerning new users'",
       "keywords": [
         "rapid deposit",
         "new account",
@@ -38,22 +46,24 @@
         "profile mismatch"
       ],
       "mitre_atlas": [
-        "AML.CS0033 (technique ID unverified) - deepfake/liveness-bypass identity onboarding",
-        "AML.CS0034 (technique ID unverified)"
+        "AML.T0087 Gather Victim Identity",
+        "AML.T0073 Impersonation",
+        "AML.T0048 Financial Harm"
       ],
       "capability_primitives": [
-        "CP-01: Deepfake/synthetic-identity account opening"
+        "CP-01: Deepfake/synthetic-identity account opening",
+        "CP-03: AI-generated synthetic identity"
       ]
     },
     {
       "id": "DS-02",
-      "name": "Structuring or high-value clustering in transaction pattern",
-      "category": "transaction_pattern",
+      "name": "Structuring into sub-threshold transfers",
+      "category": "structuring",
       "rule_type": "indicator",
       "risk_severity": "medium",
-      "ai_relevant": false,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. Transfers are structured into amounts just under a reporting threshold, or multiple high-value transfers are made in quick succession within a short window (e.g. 24 hours).",
-      "trigger": "Repeated sub-threshold transfers OR high-value transfers clustered in a short (e.g. 24-hour) window.",
+      "ai_relevant": true,
+      "text": "Transfers are structured into amounts just under record-keeping or reporting thresholds, or multiple high-value transfers are made in quick succession (e.g. within a 24-hour period).",
+      "trigger": "Repeated sub-threshold transfers, or high-value transfers clustered in a short time window.",
       "trigger_schema": {
         "any": [
           {
@@ -61,30 +71,31 @@
             "op": "truthy"
           },
           {
-            "all": [
-              {
-                "field": "high_value",
-                "op": "truthy"
-              },
-              {
-                "field": "quick_succession",
-                "op": "truthy"
-              }
-            ]
+            "field": "round_amount",
+            "op": "truthy"
+          },
+          {
+            "field": "economic_rationale",
+            "op": "eq",
+            "value": "structuring"
           }
         ]
       },
       "source": "FATF (2020) Virtual Assets Red Flags",
-      "source_ref": "FATF 2020, p.5",
+      "source_ref": "FATF 2020, p.5, 'Size and frequency of transactions'",
       "keywords": [
         "structuring",
         "sub-threshold",
         "high-value",
-        "clustered",
-        "24-hour"
+        "24-hour",
+        "clustered"
       ],
-      "mitre_atlas": [],
-      "capability_primitives": []
+      "mitre_atlas": [
+        "AML.T1071 Layer"
+      ],
+      "capability_primitives": [
+        "CP-11: AI auto-generated structured transfers (gap)"
+      ]
     },
     {
       "id": "DS-03",
@@ -93,19 +104,17 @@
       "rule_type": "obligation",
       "risk_severity": "high",
       "ai_relevant": false,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. An ordering CASP must transmit the originator's and beneficiary's required identifying information to the recipient CASP at or before the transfer, and must not execute the transfer if it cannot meet this requirement.",
-      "trigger": "OBLIGATION, encoded as its breach: fires when a qualifying transfer occurs AND the required originator/beneficiary information was not transmitted.",
+      "text": "An ordering CASP must transmit the originator's and beneficiary's required identifying information to the recipient CASP prior to or simultaneously with the transfer and may not execute the transfer if it cannot meet this requirement.",
+      "trigger": "Any qualifying crypto asset transfer between ordering and recipient CASPs.",
       "trigger_schema": {
-        "all": [
+        "any": [
           {
-            "field": "qualifying_transfer",
+            "field": "travel_rule_missing",
             "op": "truthy"
           },
           {
-            "not": {
-              "field": "travel_rule_info_transmitted",
-              "op": "truthy"
-            }
+            "field": "missing_orig_benef",
+            "op": "truthy"
           }
         ]
       },
@@ -115,8 +124,7 @@
         "travel rule",
         "originator",
         "beneficiary",
-        "identifying information",
-        "obligation"
+        "identifying information"
       ],
       "mitre_atlas": [],
       "capability_primitives": []
@@ -124,12 +132,12 @@
     {
       "id": "DS-04",
       "name": "Transactions with counterparties with weak or absent KYC controls",
-      "category": "counterparty_wallet_risk",
-      "rule_type": "indicator",
+      "category": "counterparty_wallet",
+      "rule_type": "mixed",
       "risk_severity": "high",
       "ai_relevant": true,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. Funds are sent to, or received from, a VASP with demonstrably weak or absent CDD controls, or the transfer involves an unhosted wallet. NOTE: this rule also carries an obligation aspect (Directive 9 para 8.2 imposes risk-based controls on unhosted-wallet transfers) that is encoded here only as the indicator half - see the mismatch note for this rule.",
-      "trigger": "Counterparty VASP has demonstrably weak/no CDD, OR transfer involves an unhosted wallet.",
+      "text": "Funds are sent to, or received from, a VASP with weak or absent KYC/AML controls; separately, transfers involving an unhosted wallet must be subject to the CASP's own risk-based policy.",
+      "trigger": "Counterparty VASP has demonstrably weak/no CDD; or transfer involves an unhosted wallet.",
       "trigger_schema": {
         "any": [
           {
@@ -142,15 +150,17 @@
           }
         ]
       },
-      "source": "FATF (2020) Virtual Assets Red Flags; FIC (2024) Directive 9",
-      "source_ref": "FATF 2020, p.10; Directive 9, para 8.2",
+      "source": "FATF (2020) Virtual Assets Red Flags; FIC Directive 9",
+      "source_ref": "FATF 2020, p.10, 'Red Flag Indicators Related to Anonymity'; Directive 9, para 8.2",
       "keywords": [
         "weak counterparty",
         "unhosted wallet",
         "vasp",
         "cdd"
       ],
-      "mitre_atlas": [],
+      "mitre_atlas": [
+        "AML.T1071 Layer"
+      ],
       "capability_primitives": [
         "CP-06: Unhosted-wallet counterparty risk"
       ]
@@ -158,12 +168,12 @@
     {
       "id": "DS-05",
       "name": "Fan-in / fan-out accumulation to a single account",
-      "category": "behavioural_pattern",
+      "category": "layering",
       "rule_type": "indicator",
       "risk_severity": "high",
-      "ai_relevant": false,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. Repeated transfers are made to one account from multiple senders or IP addresses within a time window, or funds accumulate from many wallets before being consolidated and moved on.",
-      "trigger": "Repeated transfers to one account from multiple senders/IPs within a time window, OR fan-in accumulation followed by consolidation.",
+      "ai_relevant": true,
+      "text": "Frequent transfers are made to the same VA account within a set period by more than one person or from the same IP address, or funds accumulate from many small, unrelated wallets before being consolidated and moved on.",
+      "trigger": "Repeated transfers to one account from multiple senders/IPs within a time window; or fan-in accumulation followed by consolidation.",
       "trigger_schema": {
         "any": [
           {
@@ -185,455 +195,879 @@
         ]
       },
       "source": "FATF (2020) Virtual Assets Red Flags",
-      "source_ref": "FATF 2020, p.8",
+      "source_ref": "FATF 2020, p.8, 'Transactions concerning all users'",
       "keywords": [
         "fan-in",
         "fan-out",
         "consolidation",
+        "layering",
         "multiple senders"
       ],
-      "mitre_atlas": [],
-      "capability_primitives": []
+      "mitre_atlas": [
+        "AML.T1071 Layer"
+      ],
+      "capability_primitives": [
+        "CP-12: AI-orchestrated layering across synthetic wallets (gap)"
+      ]
     },
     {
       "id": "DS-06",
-      "name": "Identification or credentials shared across accounts",
-      "category": "behavioural_pattern",
+      "name": "Credentials or identifiers shared with another account",
+      "category": "identity_and_cdd",
       "rule_type": "indicator",
       "risk_severity": "medium",
-      "ai_relevant": false,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. The customer provides identification information or account credentials (e.g. a non-standard IP address, or flash cookies/device fingerprints) that are shared with, or match, another account.",
-      "trigger": "Customer's identification info or account credentials (non-standard IP, flash cookies/device fingerprint) are shared with another account.",
+      "ai_relevant": true,
+      "text": "A customer provides identification or account credentials (e.g. a non-standard IP address, or flash cookies) shared by another account.",
+      "trigger": "Identification or account credentials shared with another account.",
       "trigger_schema": {
-        "any": [
-          {
-            "field": "ip_shared_with_other_account",
-            "op": "truthy"
-          },
-          {
-            "field": "device_fingerprint_shared_with_other_account",
-            "op": "truthy"
-          },
-          {
-            "field": "credentials_shared_with_other_account",
-            "op": "truthy"
-          }
-        ]
+        "field": "shared_credentials",
+        "op": "truthy"
       },
       "source": "FATF (2020) Virtual Assets Red Flags",
-      "source_ref": "FATF 2020, p.12",
+      "source_ref": "FATF 2020, p.12, 'Red Flag Indicators about Senders or Recipients'",
       "keywords": [
         "shared credentials",
-        "shared IP",
+        "shared ip",
         "flash cookies",
-        "device fingerprint"
+        "identity"
       ],
-      "mitre_atlas": [],
-      "capability_primitives": []
+      "mitre_atlas": [
+        "AML.T1586 Compromise Accounts"
+      ],
+      "capability_primitives": [
+        "CP-08: Identity reuse / shared identifiers"
+      ]
     },
     {
       "id": "DS-07",
-      "name": "Incomplete KYC or refusal of KYC/source-of-funds requests",
-      "category": "cdd_irregularity",
+      "name": "Incomplete or insufficient KYC information",
+      "category": "identity_and_cdd",
       "rule_type": "indicator",
-      "risk_severity": "high",
+      "risk_severity": "medium",
       "ai_relevant": false,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. The customer provides incomplete or insufficient KYC information, or declines to respond to requests for KYC documentation or source-of-funds inquiries.",
-      "trigger": "KYC information incomplete/insufficient, OR customer declines KYC document requests or source-of-funds inquiries.",
+      "text": "Incomplete or insufficient KYC information, or a customer declines requests for KYC documents or inquiries regarding source of funds.",
+      "trigger": "Customer provides incomplete KYC, or declines requests for documents or source-of-funds inquiry.",
       "trigger_schema": {
         "any": [
           {
-            "field": "kyc_info_insufficient",
-            "op": "truthy"
+            "field": "kyc_complete",
+            "op": "eq",
+            "value": false
           },
           {
-            "field": "kyc_document_request_declined",
-            "op": "truthy"
-          },
-          {
-            "field": "source_of_funds_inquiry_declined",
+            "field": "unwilling_identity",
             "op": "truthy"
           }
         ]
       },
       "source": "FATF (2020) Virtual Assets Red Flags",
-      "source_ref": "FATF 2020, p.12",
+      "source_ref": "FATF 2020, p.12, 'Red Flag Indicators about Senders or Recipients'",
       "keywords": [
-        "incomplete KYC",
-        "declined KYC request",
+        "incomplete kyc",
+        "declines requests",
         "source of funds",
-        "CDD irregularity"
-      ],
-      "mitre_atlas": [],
-      "capability_primitives": []
-    },
-    {
-      "id": "DS-08",
-      "name": "Party lacks knowledge of transaction, funds source, or counterparty relationship",
-      "category": "cdd_irregularity",
-      "rule_type": "indicator",
-      "risk_severity": "high",
-      "ai_relevant": false,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. The sender or recipient appears to lack knowledge of, or provides inaccurate information about, the transaction, the source of funds, or the relationship with the counterparty.",
-      "trigger": "Sender or recipient lacks knowledge, or provides inaccurate information, about the transaction, source of funds, or counterparty relationship.",
-      "trigger_schema": {
-        "any": [
-          {
-            "field": "party_lacks_transaction_knowledge",
-            "op": "truthy"
-          },
-          {
-            "field": "inaccurate_source_of_funds_info",
-            "op": "truthy"
-          },
-          {
-            "field": "inaccurate_counterparty_relationship_info",
-            "op": "truthy"
-          }
-        ]
-      },
-      "source": "FATF (2020) Virtual Assets Red Flags",
-      "source_ref": "FATF 2020, p.12",
-      "keywords": [
-        "lacks knowledge",
-        "inaccurate information",
-        "counterparty relationship",
-        "CDD irregularity"
-      ],
-      "mitre_atlas": [],
-      "capability_primitives": []
-    },
-    {
-      "id": "DS-09",
-      "name": "Forged or edited identity documents at onboarding",
-      "category": "cdd_irregularity",
-      "rule_type": "indicator",
-      "risk_severity": "high",
-      "ai_relevant": true,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. The customer provided forged documents, or edited photographs or ID documents, during onboarding.",
-      "trigger": "Customer provided forged documents OR edited photographs/ID documents during onboarding.",
-      "trigger_schema": {
-        "any": [
-          {
-            "field": "forged_document_provided",
-            "op": "truthy"
-          },
-          {
-            "field": "edited_id_photograph_provided",
-            "op": "truthy"
-          }
-        ]
-      },
-      "source": "FATF (2020) Virtual Assets Red Flags",
-      "source_ref": "FATF 2020, p.12",
-      "keywords": [
-        "forged documents",
-        "edited photograph",
-        "onboarding",
-        "identity fraud"
+        "cdd"
       ],
       "mitre_atlas": [],
       "capability_primitives": [
-        "CP-01",
-        "CP-03"
+        "CP-05: Coached mule/victim unable to complete CDD"
+      ]
+    },
+    {
+      "id": "DS-08",
+      "name": "Sender or recipient lacks knowledge of the transaction",
+      "category": "identity_and_cdd",
+      "rule_type": "indicator",
+      "risk_severity": "medium",
+      "ai_relevant": true,
+      "text": "Sender or recipient lacking knowledge or providing inaccurate information about the transaction, the source of funds, or the relationship with the counterparty.",
+      "trigger": "Customer cannot explain the transaction, source of funds, or counterparty relationship.",
+      "trigger_schema": {
+        "field": "lacks_transaction_knowledge",
+        "op": "truthy"
+      },
+      "source": "FATF (2020) Virtual Assets Red Flags",
+      "source_ref": "FATF 2020, p.12, 'Red Flag Indicators about Senders or Recipients'",
+      "keywords": [
+        "lacks knowledge",
+        "inaccurate information",
+        "source of funds"
+      ],
+      "mitre_atlas": [
+        "AML.T1566 Social Engineering"
+      ],
+      "capability_primitives": [
+        "CP-05: Coached mule/victim"
+      ]
+    },
+    {
+      "id": "DS-09",
+      "name": "Forged or edited identification documents",
+      "category": "onboarding",
+      "rule_type": "indicator",
+      "risk_severity": "critical",
+      "ai_relevant": true,
+      "text": "Customer has provided forged documents or has edited photographs and/or identification documents as part of the on-boarding process.",
+      "trigger": "Customer presents forged or edited identification documents during onboarding.",
+      "trigger_schema": {
+        "field": "identity_markers",
+        "op": "in",
+        "value": [
+          "forged",
+          "deepfake_media",
+          "edited",
+          "liveness_bypass"
+        ],
+        "ci": true
+      },
+      "source": "FATF (2020) Virtual Assets Red Flags",
+      "source_ref": "FATF 2020, p.12, 'Red Flag Indicators about Senders or Recipients'",
+      "keywords": [
+        "forged documents",
+        "edited photos",
+        "deepfake",
+        "liveness"
+      ],
+      "mitre_atlas": [
+        "AML.T0015 Evade AI Model",
+        "AML.T1586 Compromise Accounts"
+      ],
+      "capability_primitives": [
+        "CP-01: Real-time deepfake/video face-swap (liveness bypass)",
+        "CP-03: AI-generated synthetic identity documents"
       ]
     },
     {
       "id": "DS-10",
-      "name": "Customer VA address linked to illegal activity on public forums",
-      "category": "profile",
+      "name": "VA address appears on public forums linked to illegal activity",
+      "category": "profile_risk",
       "rule_type": "indicator",
       "risk_severity": "medium",
       "ai_relevant": false,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. The customer's virtual asset address appears on public forums associated with illegal activity.",
-      "trigger": "Customer's VA address appears on a public forum associated with illegal activity.",
+      "text": "A customer's VA address appears on public forums associated with illegal activity.",
+      "trigger": "Customer VA address appears on forums associated with illegal activity.",
       "trigger_schema": {
-        "all": [
-          {
-            "field": "va_address_on_public_forum",
-            "op": "truthy"
-          },
-          {
-            "field": "forum_associated_with_illegal_activity",
-            "op": "truthy"
-          }
-        ]
+        "field": "osint_illegal",
+        "op": "truthy"
       },
       "source": "FATF (2020) Virtual Assets Red Flags",
-      "source_ref": "FATF 2020, p.13",
+      "source_ref": "FATF 2020, p.13, 'Red Flag Indicators about Senders or Recipients'",
       "keywords": [
-        "public forum",
-        "VA address",
+        "osint",
+        "darkweb forum",
         "illegal activity",
-        "profile"
+        "public forum"
       ],
       "mitre_atlas": [],
       "capability_primitives": []
     },
     {
       "id": "DS-11",
-      "name": "Customer publicly known to law enforcement for prior criminal association",
-      "category": "profile",
+      "name": "Customer known to law enforcement for criminal association",
+      "category": "profile_risk",
       "rule_type": "indicator",
-      "risk_severity": "medium",
+      "risk_severity": "high",
       "ai_relevant": false,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. The customer is known, via publicly available information, to law enforcement due to a previous criminal association.",
-      "trigger": "Customer known via publicly available information to law enforcement due to previous criminal association.",
+      "text": "A customer is known via publicly available information to law enforcement due to previous criminal association.",
+      "trigger": "Customer is publicly known to law enforcement for prior criminal association.",
       "trigger_schema": {
-        "all": [
-          {
-            "field": "known_to_law_enforcement",
-            "op": "truthy"
-          },
-          {
-            "field": "prior_criminal_association",
-            "op": "truthy"
-          }
-        ]
+        "field": "criminal_association",
+        "op": "truthy"
       },
       "source": "FATF (2020) Virtual Assets Red Flags",
-      "source_ref": "FATF 2020, p.13",
+      "source_ref": "FATF 2020, p.13, 'Red Flag Indicators about Senders or Recipients'",
       "keywords": [
+        "prior criminal",
+        "osint",
         "law enforcement",
-        "criminal association",
-        "public information",
-        "profile"
+        "adverse media"
       ],
       "mitre_atlas": [],
       "capability_primitives": []
     },
     {
       "id": "DS-12",
-      "name": "Sender unfamiliar with VA technology or custodial wallet solutions",
-      "category": "mule_scam_victim_profile",
+      "name": "Sender unfamiliar with VA technology or custodial wallets",
+      "category": "profile_mule",
       "rule_type": "indicator",
       "risk_severity": "medium",
-      "ai_relevant": false,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. The sender does not appear familiar with virtual asset technology or online custodial wallet solutions.",
-      "trigger": "Sender does not appear familiar with VA technology or online custodial wallet solutions.",
+      "ai_relevant": true,
+      "text": "Sender does not appear to be familiar with VA technology or online custodial wallet solutions.",
+      "trigger": "Customer demonstrates unfamiliarity with VA/custodial wallet technology.",
       "trigger_schema": {
-        "any": [
-          {
-            "field": "sender_unfamiliar_with_va_technology",
-            "op": "truthy"
-          },
-          {
-            "field": "sender_unfamiliar_with_custodial_wallet",
-            "op": "truthy"
-          }
-        ]
+        "field": "crypto_naive",
+        "op": "truthy"
       },
       "source": "FATF (2020) Virtual Assets Red Flags",
-      "source_ref": "FATF 2020, p.14",
+      "source_ref": "FATF 2020, p.14, 'Red Flag Indicators about Senders or Recipients'",
       "keywords": [
-        "unfamiliar with VA",
-        "custodial wallet",
+        "crypto-naive",
         "mule",
-        "scam victim"
+        "unfamiliar",
+        "wallet"
       ],
-      "mitre_atlas": [],
-      "capability_primitives": []
+      "mitre_atlas": [
+        "AML.T1566 Social Engineering"
+      ],
+      "capability_primitives": [
+        "CP-05: Crypto-naive target of AI scam ops",
+        "CP-09: AI-assisted victim targeting"
+      ]
     },
     {
       "id": "DS-13",
       "name": "Frequent changes to identification information",
-      "category": "mule_scam_victim_profile",
+      "category": "profile_mule",
       "rule_type": "indicator",
-      "risk_severity": "medium",
-      "ai_relevant": false,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. The customer frequently changes identification information such as email, IP address, or financial information.",
-      "trigger": "Customer frequently changes identification information (email, IP, or financial information).",
+      "risk_severity": "high",
+      "ai_relevant": true,
+      "text": "A customer frequently changes his or her identification information, including email addresses, IP addresses, or financial information. May indicate account takeover against a customer.",
+      "trigger": "Frequent changes to email, IP, or financial information; possible account takeover.",
       "trigger_schema": {
         "any": [
           {
-            "field": "frequent_email_change",
+            "field": "frequent_identity_change",
             "op": "truthy"
           },
           {
-            "field": "frequent_ip_change",
-            "op": "truthy"
-          },
-          {
-            "field": "frequent_financial_info_change",
+            "field": "changed_credentials",
             "op": "truthy"
           }
         ]
       },
       "source": "FATF (2020) Virtual Assets Red Flags",
-      "source_ref": "FATF 2020, p.14",
+      "source_ref": "FATF 2020, p.14, 'Red Flag Indicators about Senders or Recipients'",
       "keywords": [
-        "frequent changes",
-        "identification information",
-        "mule",
-        "scam victim"
+        "account takeover",
+        "changed credentials",
+        "changed email",
+        "changed ip"
       ],
-      "mitre_atlas": [],
-      "capability_primitives": []
+      "mitre_atlas": [
+        "AML.T1586 Compromise Accounts"
+      ],
+      "capability_primitives": [
+        "CP-08: Identity reuse / rapid change"
+      ]
     },
     {
       "id": "DS-14",
-      "name": "Illicit-activity language in VA message fields",
-      "category": "mule_scam_victim_profile",
+      "name": "Language in message fields indicating illicit activity",
+      "category": "profile_mule",
       "rule_type": "indicator",
-      "risk_severity": "high",
+      "risk_severity": "medium",
       "ai_relevant": false,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. Language used in virtual asset message fields is indicative of transactions supporting illicit activity or the purchase of illicit goods.",
-      "trigger": "Language in VA message fields indicative of transactions supporting illicit activity or purchase of illicit goods.",
+      "text": "Use of language in VA message fields indicative of the transactions being conducted in support of illicit activity or in the purchase of illicit goods, such as drugs or stolen credit card information.",
+      "trigger": "Message-field language indicates support of illicit activity or purchases.",
       "trigger_schema": {
-        "all": [
-          {
-            "field": "message_field_illicit_language",
-            "op": "truthy"
-          }
-        ]
+        "field": "memo_illicit",
+        "op": "truthy"
       },
       "source": "FATF (2020) Virtual Assets Red Flags",
-      "source_ref": "FATF 2020, p.14",
+      "source_ref": "FATF 2020, p.14, 'Red Flag Indicators about Senders or Recipients'",
       "keywords": [
-        "message field",
-        "illicit language",
+        "memo field",
         "illicit goods",
-        "mule"
+        "drugs",
+        "stolen cards"
       ],
       "mitre_atlas": [],
       "capability_primitives": []
     },
     {
       "id": "DS-15",
-      "name": "Repeated transactions with a subset of counterparties at significant profit or loss",
-      "category": "mule_scam_victim_profile",
+      "name": "Repeated transactions with a subset of individuals",
+      "category": "layering",
       "rule_type": "indicator",
       "risk_severity": "high",
       "ai_relevant": true,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. The customer repeatedly conducts transactions with a subset of individuals at a significant profit or loss.",
-      "trigger": "Customer repeatedly conducts transactions with a subset of individuals at significant profit or loss.",
+      "text": "A customer repeatedly conducts transactions with a subset of individuals at significant profit or loss trade, or an ML scheme to obfuscate funds flow within VASP infrastructure.",
+      "trigger": "Customers repeatedly transact with a subset of individuals in a clustering/trading pattern.",
       "trigger_schema": {
-        "all": [
+        "any": [
           {
-            "field": "repeated_transactions_with_subset",
+            "field": "clustering",
             "op": "truthy"
           },
           {
-            "field": "significant_profit_or_loss",
+            "field": "small_wallet_set",
             "op": "truthy"
           }
         ]
       },
       "source": "FATF (2020) Virtual Assets Red Flags",
-      "source_ref": "FATF 2020, p.14",
+      "source_ref": "FATF 2020, p.14, 'Red Flag Indicators about Senders or Recipients'",
       "keywords": [
-        "repeated transactions",
+        "clustering",
         "subset of individuals",
-        "profit or loss",
-        "mule"
+        "layering",
+        "obfuscation"
       ],
-      "mitre_atlas": [],
+      "mitre_atlas": [
+        "AML.T1071 Layer",
+        "AML.T1566 Social Engineering"
+      ],
       "capability_primitives": [
-        "CP-09"
+        "CP-09: AI-assisted reconnaissance & victim targeting"
       ]
     },
     {
       "id": "DS-16",
-      "name": "Counterparty VA address or card linked to known illicit activity",
+      "name": "Transactions with addresses connected to criminal schemes",
       "category": "source_of_funds",
       "rule_type": "indicator",
-      "risk_severity": "high",
+      "risk_severity": "critical",
       "ai_relevant": true,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. The customer transacts with virtual asset addresses or bank cards connected to known fraud, extortion, ransomware, sanctioned addresses, darknet marketplaces, or other illicit websites.",
-      "trigger": "Transacting with VA addresses or bank cards connected to known fraud, extortion, ransomware, sanctioned addresses, darknet marketplaces, or other illicit websites.",
+      "text": "Transacting with VA addresses or bank cards connected to known fraud, extortion, or ransomware schemes, sanctioned addresses, darknet marketplaces, or other illicit websites.",
+      "trigger": "Counterparty VA address/card linked to fraud, extortion, ransomware, sanctions, or darknet.",
       "trigger_schema": {
         "any": [
           {
-            "field": "counterparty_linked_to_fraud",
+            "field": "stolen_card",
             "op": "truthy"
           },
           {
-            "field": "counterparty_linked_to_extortion",
+            "field": "criminal_source",
             "op": "truthy"
           },
           {
-            "field": "counterparty_linked_to_ransomware",
-            "op": "truthy"
-          },
-          {
-            "field": "counterparty_sanctioned",
-            "op": "truthy"
-          },
-          {
-            "field": "counterparty_linked_to_darknet_market",
-            "op": "truthy"
-          },
-          {
-            "field": "counterparty_linked_to_illicit_website",
+            "field": "sanctioned_source",
             "op": "truthy"
           }
         ]
       },
       "source": "FATF (2020) Virtual Assets Red Flags",
-      "source_ref": "FATF 2020, p.15",
+      "source_ref": "FATF 2020, p.15, 'Red Flag Indicators about Senders or Recipients'",
       "keywords": [
-        "fraud",
-        "extortion",
         "ransomware",
-        "sanctioned address",
-        "darknet marketplace",
-        "source of funds"
+        "sanctioned",
+        "darknet",
+        "extortion",
+        "stolen card"
       ],
-      "mitre_atlas": [],
+      "mitre_atlas": [
+        "AML.T1586 Compromise Accounts"
+      ],
       "capability_primitives": [
-        "CP-10"
+        "CP-10: Commoditised dark-LLM tooling (FraudGPT/WormGPT class)"
       ]
     },
     {
       "id": "DS-17",
-      "name": "Card-linked large fiat withdrawals or cash-funded card purchases of VA",
-      "category": "source_of_funds",
+      "name": "Crypto-to-plastic conversion or cash-funded credit cards",
+      "category": "structuring",
       "rule_type": "indicator",
       "risk_severity": "high",
       "ai_relevant": false,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. Credit or debit cards linked to a virtual asset wallet are used to withdraw large fiat amounts, or funds used to purchase virtual assets are sourced from cash deposits into credit cards.",
-      "trigger": "Use of credit/debit cards linked to a VA wallet to withdraw large fiat amounts, OR funds for purchasing VAs sourced from cash deposits into credit cards.",
+      "text": "The use of one or multiple credit and/or debit cards linked to a VA wallet to withdraw large amounts of fiat currency (crypto-to-plastic), or funds for purchasing VAs are sourced from cash deposits into credit cards.",
+      "trigger": "Large crypto-to-plastic withdrawals, or VA purchases funded from cash-deposited cards.",
       "trigger_schema": {
         "any": [
           {
-            "field": "card_linked_wallet_large_fiat_withdrawal",
+            "field": "crypto_to_plastic",
             "op": "truthy"
           },
           {
-            "field": "va_purchase_funded_by_cash_deposit_to_card",
+            "field": "cash_deposit_cards",
             "op": "truthy"
           }
         ]
       },
       "source": "FATF (2020) Virtual Assets Red Flags",
-      "source_ref": "FATF 2020, p.15",
+      "source_ref": "FATF 2020, p.15, 'Red Flag Indicators about Senders or Recipients'",
       "keywords": [
-        "credit card",
-        "debit card",
-        "fiat withdrawal",
+        "crypto-to-plastic",
         "cash deposit",
-        "source of funds"
+        "withdrawal",
+        "fiat"
       ],
       "mitre_atlas": [],
       "capability_primitives": []
     },
     {
       "id": "DS-18",
-      "name": "Funds sourced from mixing services or wallet tumblers",
+      "name": "Funds sourced from mixing services or tumbler wallets",
+      "category": "source_of_funds",
+      "rule_type": "indicator",
+      "risk_severity": "high",
+      "ai_relevant": true,
+      "text": "A customer's funds are sourced directly from third-party mixing services or wallet tumblers.",
+      "trigger": "Inbound funds originate from a known mixing service or tumbler.",
+      "trigger_schema": {
+        "any": [
+          {
+            "field": "uses_mixer",
+            "op": "truthy"
+          },
+          {
+            "field": "tumbler",
+            "op": "truthy"
+          },
+          {
+            "field": "tools",
+            "op": "in",
+            "value": [
+              "mixer"
+            ],
+            "ci": true
+          }
+        ]
+      },
+      "source": "FATF (2020) Virtual Assets Red Flags",
+      "source_ref": "FATF 2020, p.15, 'Red Flag Indicators about Senders or Recipients'",
+      "keywords": [
+        "mixer",
+        "tumbler",
+        "darknet",
+        "sanitisation"
+      ],
+      "mitre_atlas": [
+        "AML.T1071 Layer"
+      ],
+      "capability_primitives": [
+        "CP-10: AI-orchestrated obfuscation via mixing"
+      ]
+    },
+    {
+      "id": "DS-19",
+      "name": "Transfers to/from an exchange not registered in the jurisdiction",
+      "category": "geographic",
+      "rule_type": "indicator",
+      "risk_severity": "high",
+      "ai_relevant": false,
+      "text": "Customer's funds originate from, or are sent to, an exchange that is not registered in the jurisdiction where either the customer or exchange is located.",
+      "trigger": "Counterparty is an unregistered or unlicensed exchange.",
+      "trigger_schema": {
+        "field": "unregistered_exchange",
+        "op": "truthy"
+      },
+      "source": "FATF (2020) Virtual Assets Red Flags",
+      "source_ref": "FATF 2020, p.17, 'Red Flag Indicators about Senders or Recipients'",
+      "keywords": [
+        "unregistered exchange",
+        "unlicensed",
+        "jurisdiction",
+        "high risk"
+      ],
+      "mitre_atlas": [],
+      "capability_primitives": []
+    },
+    {
+      "id": "DS-20",
+      "name": "Offices in unregulated or no-rationale jurisdictions",
+      "category": "geographic",
+      "rule_type": "indicator",
+      "risk_severity": "medium",
+      "ai_relevant": false,
+      "text": "Customer sets up offices in or moves offices to jurisdictions that have no regulation or have not implemented regulations governing VAs, or sets up new offices in jurisdictions where there is no clear business rationale to do so.",
+      "trigger": "Customer presence in unregulated jurisdictions or offices lacking business rationale.",
+      "trigger_schema": {
+        "any": [
+          {
+            "field": "unregulated_jurisdiction",
+            "op": "truthy"
+          },
+          {
+            "field": "offices_relocation",
+            "op": "truthy"
+          }
+        ]
+      },
+      "source": "FATF (2020) Virtual Assets Red Flags",
+      "source_ref": "FATF 2020, p.17, 'Red Flag Indicators about Senders or Recipients'",
+      "keywords": [
+        "unregulated jurisdiction",
+        "no rationale",
+        "relocation",
+        "geographic"
+      ],
+      "mitre_atlas": [],
+      "capability_primitives": []
+    },
+    {
+      "id": "DS-21",
+      "name": "Sanctions / targeted financial sanctions screening",
+      "category": "sanctions",
+      "rule_type": "obligation",
+      "risk_severity": "critical",
+      "ai_relevant": true,
+      "text": "The CASP must screen each customer/prospective customer against the applicable UN Security Council targeted-financial-sanctions list at onboarding and on an ongoing basis as the list updates; on a confirmed match, freeze the customer's assets, cease business with them, and file the required report with the FIC.",
+      "trigger": "Customer/counterparty name or identifier matches an entry on the applicable UNSC sanctions list.",
+      "trigger_schema": {
+        "any": [
+          {
+            "field": "counterparty_jurisdiction",
+            "op": "eq",
+            "value": "sanctioned"
+          },
+          {
+            "field": "sanctions_match",
+            "op": "truthy"
+          }
+        ]
+      },
+      "source": "FIC Act, ss 26A-26C (Targeted Financial Sanctions)",
+      "source_ref": "FIC Act ss 26A-26C",
+      "keywords": [
+        "sanctions",
+        "tfs",
+        "unsc",
+        "freeze",
+        "screening"
+      ],
+      "mitre_atlas": [
+        "AML.T0015 Evade AI Model",
+        "AML.T1586 Compromise Accounts"
+      ],
+      "capability_primitives": [
+        "CP-03: Synthetic identity to dodge a real sanctioned-name match",
+        "CP-08: Identity reuse to slip back past screening"
+      ]
+    },
+    {
+      "id": "DS-22",
+      "name": "Ongoing monitoring of high-risk PEP relationships",
+      "category": "pep_and_connections",
+      "rule_type": "mixed",
+      "risk_severity": "high",
+      "ai_relevant": true,
+      "text": "A CASP must apply enhanced due diligence and ongoing monitoring to business relationships with politically exposed persons, and flag transactions inconsistent with the PEP's known or expected business or profile.",
+      "trigger": "PEP relationship present and transaction inconsistent with the expected profile.",
+      "trigger_schema": {
+        "all": [
+          {
+            "field": "is_pep",
+            "op": "truthy"
+          },
+          {
+            "field": "pep_activity_unusual",
+            "op": "truthy"
+          }
+        ]
+      },
+      "source": "FATF Recommendation 12; FIC Act Schedule 1",
+      "source_ref": "FATF Rec 12; FIC Act Sch 1",
+      "keywords": [
+        "pep",
+        "enhanced due diligence",
+        "monitoring",
+        "unusual activity"
+      ],
+      "mitre_atlas": [
+        "AML.T1566 Social Engineering"
+      ],
+      "capability_primitives": [
+        "CP-09: AI-assisted profiling of high-value targets"
+      ]
+    },
+    {
+      "id": "DS-23",
+      "name": "Rapid pass-through / layering through multiple hops",
+      "category": "layering",
+      "rule_type": "indicator",
+      "risk_severity": "high",
+      "ai_relevant": true,
+      "text": "A relatively small amount of value is passed through multiple VA addresses or accounts in rapid succession, consistent with layering to break the audit trail.",
+      "trigger": "Value passes through several hops/accounts within a short window, with little economic rationale.",
+      "trigger_schema": {
+        "any": [
+          {
+            "field": "pass_through",
+            "op": "truthy"
+          },
+          {
+            "field": "multi_hop",
+            "op": "truthy"
+          }
+        ]
+      },
+      "source": "FATF (2020) Virtual Assets Red Flags",
+      "source_ref": "FATF 2020, p.8, 'Transactions concerning all users'",
+      "keywords": [
+        "pass-through",
+        "hop",
+        "layering",
+        "rapid",
+        "audit trail"
+      ],
+      "mitre_atlas": [
+        "AML.T1071 Layer"
+      ],
+      "capability_primitives": [
+        "CP-12: AI-orchestrated multi-hop layering"
+      ]
+    },
+    {
+      "id": "DS-24",
+      "name": "Use of anonymity-enhancing technologies (VPN/Tor)",
+      "category": "technology",
+      "rule_type": "indicator",
+      "risk_severity": "medium",
+      "ai_relevant": true,
+      "text": "A customer uses anonymity-enhancing technologies such as VPNs, Tor, or IP-geolocation mismatches that obscure the origin of transactions or the customer's true location.",
+      "trigger": "VPN/Tor usage or IP-geolocation mismatch detected on the account or transactions.",
+      "trigger_schema": {
+        "any": [
+          {
+            "field": "uses_vpn_tor",
+            "op": "truthy"
+          },
+          {
+            "field": "ip_geo_mismatch",
+            "op": "truthy"
+          }
+        ]
+      },
+      "source": "FATF (2020) Virtual Assets Red Flags",
+      "source_ref": "FATF 2020, p.10, 'Red Flag Indicators Related to Anonymity'",
+      "keywords": [
+        "vpn",
+        "tor",
+        "geo mismatch",
+        "anonymisation",
+        "proxy"
+      ],
+      "mitre_atlas": [
+        "AML.T1071 Layer"
+      ],
+      "capability_primitives": [
+        "CP-06: Anonymisation tooling to obscure attribution"
+      ]
+    },
+    {
+      "id": "DS-25",
+      "name": "Fresh wallet created immediately before first flow",
+      "category": "technology",
+      "rule_type": "indicator",
+      "risk_severity": "high",
+      "ai_relevant": true,
+      "text": "A wallet is created immediately before the first flow of funds and exhibits little or no transactional history, consistent with mule recruitment or one-time-use obfuscation.",
+      "trigger": "Wallet age very short (days) before its first material transaction.",
+      "trigger_schema": {
+        "all": [
+          {
+            "field": "fresh_wallet",
+            "op": "truthy"
+          },
+          {
+            "field": "wallet_age_days",
+            "op": "exists"
+          },
+          {
+            "field": "wallet_age_days",
+            "op": "lte",
+            "value": 3
+          }
+        ]
+      },
+      "source": "FATF (2020) Virtual Assets Red Flags",
+      "source_ref": "FATF 2020, p.8, 'Transactions concerning all users'",
+      "keywords": [
+        "fresh wallet",
+        "new wallet",
+        "mule",
+        "no history"
+      ],
+      "mitre_atlas": [
+        "AML.T1586 Compromise Accounts"
+      ],
+      "capability_primitives": [
+        "CP-08: On-demand fresh-wallet creation"
+      ]
+    },
+    {
+      "id": "DS-26",
+      "name": "Non-hosted / self-custody wallet with attribution risk",
+      "category": "technology",
+      "rule_type": "indicator",
+      "risk_severity": "medium",
+      "ai_relevant": true,
+      "text": "A transaction involves a non-hosted or self-custody wallet that complicates attribution of beneficial ownership, especially where the counterparty is high-risk.",
+      "trigger": "Transfer involves an unhosted/self-custody wallet.",
+      "trigger_schema": {
+        "any": [
+          {
+            "field": "unhosted_wallet",
+            "op": "truthy"
+          },
+          {
+            "field": "self_custody",
+            "op": "truthy"
+          }
+        ]
+      },
+      "source": "FATF (2020) Virtual Assets Red Flags",
+      "source_ref": "FATF 2020, p.10, 'Red Flag Indicators Related to Anonymity'",
+      "keywords": [
+        "unhosted wallet",
+        "self-custody",
+        "attribution",
+        "non-hosted"
+      ],
+      "mitre_atlas": [
+        "AML.T1071 Layer"
+      ],
+      "capability_primitives": []
+    },
+    {
+      "id": "DS-27",
+      "name": "Source of funds inconsistent with declared wealth",
       "category": "source_of_funds",
       "rule_type": "indicator",
       "risk_severity": "high",
       "ai_relevant": false,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. The customer's funds are sourced directly from third-party mixing services or wallet tumblers.",
-      "trigger": "Customer's funds sourced directly from third-party mixing services or wallet tumblers.",
+      "text": "The source of funds or wealth used for VA purchases is inconsistent with the customer's apparent financial profile or declared occupation/income.",
+      "trigger": "Funds/wealth inconsistent with the customer's declared profile or known legitimate sources.",
       "trigger_schema": {
         "any": [
           {
-            "field": "funds_sourced_from_mixer",
+            "field": "source_inconsistent",
             "op": "truthy"
           },
           {
-            "field": "funds_sourced_from_tumbler",
+            "field": "wealth_mismatch",
+            "op": "truthy"
+          }
+        ]
+      },
+      "source": "FATF Recommendation 10; FIC CDD obligations",
+      "source_ref": "FATF Rec 10; FIC Act s21",
+      "keywords": [
+        "source of funds",
+        "source of wealth",
+        "inconsistent",
+        "profile"
+      ],
+      "mitre_atlas": [],
+      "capability_primitives": []
+    },
+    {
+      "id": "DS-28",
+      "name": "Rapid accumulation then off-boarding of value",
+      "category": "onboarding",
+      "rule_type": "indicator",
+      "risk_severity": "medium",
+      "ai_relevant": false,
+      "text": "An account rapidly accumulates value shortly after onboarding and then off-boards or withdraws nearly the entire balance, with no sustained legitimate activity.",
+      "trigger": "New account rapidly accumulates then withdraws near-total balance.",
+      "trigger_schema": {
+        "any": [
+          {
+            "field": "rapid_accumulation",
+            "op": "truthy"
+          },
+          {
+            "all": [
+              {
+                "field": "new_account",
+                "op": "truthy"
+              },
+              {
+                "field": "rapid_withdrawal",
+                "op": "truthy"
+              }
+            ]
+          }
+        ]
+      },
+      "source": "FATF (2020) Virtual Assets Red Flags",
+      "source_ref": "FATF 2020, p.7",
+      "keywords": [
+        "new account",
+        "accumulate",
+        "withdrawal",
+        "off-board",
+        "no engagement"
+      ],
+      "mitre_atlas": [],
+      "capability_primitives": []
+    },
+    {
+      "id": "DS-29",
+      "name": "Frequent or unusual source-of-funds changes",
+      "category": "source_of_funds",
+      "rule_type": "indicator",
+      "risk_severity": "medium",
+      "ai_relevant": false,
+      "text": "A customer frequently changes the stated source of funds or the payment channels used to fund purchases, contrary to an established legitimate pattern.",
+      "trigger": "Repeated or atypical changes to funding source/channels.",
+      "trigger_schema": {
+        "field": "frequent_funding_change",
+        "op": "truthy"
+      },
+      "source": "FATF (2020) Virtual Assets Red Flags",
+      "source_ref": "FATF 2020, p.15",
+      "keywords": [
+        "source of funds",
+        "payment channel",
+        "funding",
+        "changes"
+      ],
+      "mitre_atlas": [],
+      "capability_primitives": []
+    },
+    {
+      "id": "DS-30",
+      "name": "High-velocity transfer clustering in a short window",
+      "category": "transaction_anomalies",
+      "rule_type": "indicator",
+      "risk_severity": "medium",
+      "ai_relevant": true,
+      "text": "Multiple high-value or high-velocity transfers are made in a short window, diverging from the customer's historical behaviour.",
+      "trigger": "Transaction velocity or value spikes far above the customer's baseline.",
+      "trigger_schema": {
+        "any": [
+          {
+            "field": "velocity",
+            "op": "truthy"
+          },
+          {
+            "all": [
+              {
+                "field": "high_value",
+                "op": "truthy"
+              },
+              {
+                "field": "quick_succession",
+                "op": "truthy"
+              }
+            ]
+          }
+        ]
+      },
+      "source": "FATF (2020) Virtual Assets Red Flags",
+      "source_ref": "FATF 2020, p.5-6",
+      "keywords": [
+        "velocity",
+        "spike",
+        "high-value",
+        "baseline",
+        "behavioural"
+      ],
+      "mitre_atlas": [
+        "AML.T1566 Social Engineering"
+      ],
+      "capability_primitives": [
+        "CP-04: Automated high-volume generation"
+      ]
+    },
+    {
+      "id": "DS-31",
+      "name": "Transfer to address associated with a mix of criminal indicators",
+      "category": "counterparty_wallet",
+      "rule_type": "indicator",
+      "risk_severity": "high",
+      "ai_relevant": false,
+      "text": "A transfer is made to an address associated with a combination of criminal indicators such as darknet markets, ransomware, scams, or other sanctioned activity.",
+      "trigger": "Counterparty address flagged on multiple threat-intelligence risk lists.",
+      "trigger_schema": {
+        "any": [
+          {
+            "field": "threat_list_hit",
+            "op": "truthy"
+          },
+          {
+            "field": "criminal_source",
             "op": "truthy"
           }
         ]
@@ -641,71 +1075,349 @@
       "source": "FATF (2020) Virtual Assets Red Flags",
       "source_ref": "FATF 2020, p.15",
       "keywords": [
-        "mixing service",
-        "wallet tumbler",
-        "source of funds"
+        "threat intelligence",
+        "darknet",
+        "ransomware",
+        "risk list"
       ],
       "mitre_atlas": [],
       "capability_primitives": []
     },
     {
-      "id": "DS-19",
-      "name": "Funds moved via unregistered exchange in either jurisdiction",
-      "category": "geographical_risk",
+      "id": "DS-32",
+      "name": "Intermediate (tier-2) tokens or convertible currencies",
+      "category": "technology",
       "rule_type": "indicator",
-      "risk_severity": "medium",
-      "ai_relevant": false,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. The customer's funds originate from, or are sent to, an exchange that is not registered in the jurisdiction where either the customer or the exchange is located.",
-      "trigger": "Customer's funds originate from or are sent to an exchange not registered in the jurisdiction where either the customer or exchange is located.",
-      "trigger_schema": {
-        "all": [
-          {
-            "field": "counterparty_exchange_unregistered_in_jurisdiction",
-            "op": "truthy"
-          }
-        ]
-      },
-      "source": "FATF (2020) Virtual Assets Red Flags",
-      "source_ref": "FATF 2020, p.17",
-      "keywords": [
-        "unregistered exchange",
-        "jurisdiction",
-        "geographical risk"
-      ],
-      "mitre_atlas": [],
-      "capability_primitives": []
-    },
-    {
-      "id": "DS-20",
-      "name": "Office relocation to unregulated jurisdiction or without business rationale",
-      "category": "geographical_risk",
-      "rule_type": "indicator",
-      "risk_severity": "medium",
-      "ai_relevant": false,
-      "text": "PROVISIONAL PARAPHRASE, not exact regulatory text - to be confirmed by the domain team. The customer sets up or moves offices to jurisdictions with no virtual asset regulation, or opens offices where there is no clear business rationale.",
-      "trigger": "Customer sets up or moves offices to jurisdictions with no VA regulation, OR opens offices where there is no clear business rationale.",
+      "risk_severity": "low",
+      "ai_relevant": true,
+      "text": "Transfers involve intermediate tokens, privacy coins, or directly-convertible currencies used to obscure the economic substance of the transaction.",
+      "trigger": "Use of privacy coins or rapid token-swapping to obscure the trail.",
       "trigger_schema": {
         "any": [
           {
-            "field": "office_moved_to_unregulated_jurisdiction",
+            "field": "privacy_coin",
             "op": "truthy"
           },
           {
-            "field": "office_opened_without_business_rationale",
+            "field": "token_swap",
             "op": "truthy"
           }
         ]
       },
       "source": "FATF (2020) Virtual Assets Red Flags",
-      "source_ref": "FATF 2020, p.17",
+      "source_ref": "FATF 2020, p.11 (anonymity)",
       "keywords": [
-        "office relocation",
-        "unregulated jurisdiction",
-        "business rationale",
-        "geographical risk"
+        "privacy coin",
+        "token swap",
+        "convertible",
+        "obfuscation"
+      ],
+      "mitre_atlas": [
+        "AML.T1071 Layer"
+      ],
+      "capability_primitives": [
+        "CP-12: AI-orchestrated token-swap layering"
+      ]
+    },
+    {
+      "id": "DS-33",
+      "name": "Unwillingness to provide required documentation",
+      "category": "identity_and_cdd",
+      "rule_type": "indicator",
+      "risk_severity": "medium",
+      "ai_relevant": false,
+      "text": "A customer is unwilling or evasive in providing the documentation or information required under CDD obligations.",
+      "trigger": "Customer evasive or unwilling to supply required CDD documentation.",
+      "trigger_schema": {
+        "any": [
+          {
+            "field": "evasive_cdd",
+            "op": "truthy"
+          },
+          {
+            "field": "unwilling_identity",
+            "op": "truthy"
+          }
+        ]
+      },
+      "source": "FATF Recommendation 10; FIC Act",
+      "source_ref": "FATF Rec 10; FIC Act s21",
+      "keywords": [
+        "unwilling",
+        "evasive",
+        "cdd",
+        "documentation"
+      ],
+      "mitre_atlas": [],
+      "capability_primitives": [
+        "CP-05: Coached mule evading CDD"
+      ]
+    },
+    {
+      "id": "DS-34",
+      "name": "Cross-border transfer with missing originator info",
+      "category": "travel_rule",
+      "rule_type": "obligation",
+      "risk_severity": "high",
+      "ai_relevant": false,
+      "text": "A cross-border crypto-asset transfer lacks complete originator or beneficiary identifying information that should have been transmitted under the Travel Rule.",
+      "trigger": "Cross-border transfer with missing or incomplete originator/beneficiary info.",
+      "trigger_schema": {
+        "all": [
+          {
+            "any": [
+              {
+                "field": "travel_rule_missing",
+                "op": "truthy"
+              },
+              {
+                "field": "missing_orig_benef",
+                "op": "truthy"
+              }
+            ]
+          },
+          {
+            "field": "cross_border",
+            "op": "truthy"
+          }
+        ]
+      },
+      "source": "FIC (2024) Directive 9",
+      "source_ref": "Directive 9, paras 4.2, 4.4, 4.8",
+      "keywords": [
+        "travel rule",
+        "missing information",
+        "cross-border",
+        "originator"
       ],
       "mitre_atlas": [],
       "capability_primitives": []
+    },
+    {
+      "id": "DS-35",
+      "name": "Suspicious-beneficiary VA wallet with little history",
+      "category": "counterparty_wallet",
+      "rule_type": "indicator",
+      "risk_severity": "medium",
+      "ai_relevant": true,
+      "text": "A beneficiary VA wallet has limited transaction history yet receives transfers that are inconsistent with its apparent profile.",
+      "trigger": "Beneficiary wallet has little history but receives material transfers.",
+      "trigger_schema": {
+        "all": [
+          {
+            "field": "low_history_wallet",
+            "op": "truthy"
+          },
+          {
+            "field": "amount",
+            "op": "gte",
+            "value": 1000,
+            "default": 0
+          }
+        ]
+      },
+      "source": "FATF (2020) Virtual Assets Red Flags",
+      "source_ref": "FATF 2020, p.8-10",
+      "keywords": [
+        "low history",
+        "beneficiary",
+        "material transfer",
+        "profile"
+      ],
+      "mitre_atlas": [
+        "AML.T1586 Compromise Accounts"
+      ],
+      "capability_primitives": [
+        "CP-08: Low-history beneficiary wallet"
+      ]
+    },
+    {
+      "id": "DS-36",
+      "name": "Effective beneficial ownership not established",
+      "category": "identity_and_cdd",
+      "rule_type": "obligation",
+      "risk_severity": "high",
+      "ai_relevant": false,
+      "text": "A CASP must identify and verify the beneficial owner of any legal person or arrangement customer before establishing a business relationship, and must not proceed where ownership cannot be established.",
+      "trigger": "Beneficial ownership of the customer cannot be identified or verified.",
+      "trigger_schema": {
+        "any": [
+          {
+            "field": "unverified_ubo",
+            "op": "truthy"
+          },
+          {
+            "field": "ubo_not_established",
+            "op": "truthy"
+          }
+        ]
+      },
+      "source": "FATF Recommendation 10; FIC Act s21",
+      "source_ref": "FATF Rec 10; FIC Act s21",
+      "keywords": [
+        "beneficial ownership",
+        "ubo",
+        "cdd",
+        "legal person"
+      ],
+      "mitre_atlas": [],
+      "capability_primitives": []
+    },
+    {
+      "id": "DS-37",
+      "name": "High-risk jurisdiction exposure with weak monitoring",
+      "category": "geographic",
+      "rule_type": "indicator",
+      "risk_severity": "high",
+      "ai_relevant": false,
+      "text": "A customer or counterparty has material exposure to a jurisdiction identified as high-risk or with weak AML/CFT controls, without commensurate enhanced due diligence.",
+      "trigger": "Counterparty or fund flows to/from a high-risk or weakly regulated jurisdiction.",
+      "trigger_schema": {
+        "field": "counterparty_jurisdiction",
+        "op": "in",
+        "value": [
+          "high_risk",
+          "grey_list",
+          "sanctioned"
+        ]
+      },
+      "source": "FATF Grey/Black list; FATF Rec 19",
+      "source_ref": "FATF Rec 19; FATF high-risk list",
+      "keywords": [
+        "high-risk jurisdiction",
+        "grey list",
+        "enhanced dd",
+        "geographic"
+      ],
+      "mitre_atlas": [],
+      "capability_primitives": []
+    },
+    {
+      "id": "DS-38",
+      "name": "Round or structured amounts with no rationale",
+      "category": "structuring",
+      "rule_type": "indicator",
+      "risk_severity": "medium",
+      "ai_relevant": false,
+      "text": "Transactions are conducted in round or structured amounts, or are split to avoid thresholds, with no apparent legitimate commercial rationale.",
+      "trigger": "Round-number or threshold-splitting transfers without economic rationale.",
+      "trigger_schema": {
+        "all": [
+          {
+            "any": [
+              {
+                "field": "round_amount",
+                "op": "truthy"
+              },
+              {
+                "field": "below_threshold",
+                "op": "truthy"
+              }
+            ]
+          },
+          {
+            "not": {
+              "field": "economic_rationale",
+              "op": "truthy"
+            }
+          }
+        ]
+      },
+      "source": "FATF (2020) Virtual Assets Red Flags",
+      "source_ref": "FATF 2020, p.5",
+      "keywords": [
+        "round amount",
+        "structured",
+        "threshold",
+        "no rationale"
+      ],
+      "mitre_atlas": [],
+      "capability_primitives": []
+    },
+    {
+      "id": "DS-39",
+      "name": "AI-orchestrated synthetic-identity impersonation at onboarding",
+      "category": "onboarding",
+      "rule_type": "mixed",
+      "risk_severity": "critical",
+      "ai_relevant": true,
+      "text": "Deepfake liveness-bypass, synthetic identity documents, and impersonation techniques are combined to pass KYC at onboarding and establish fraudulent accounts.",
+      "trigger": "AI-generated identity/persona signals detected at onboarding (deepfake, synthetic doc, impersonation).",
+      "trigger_schema": {
+        "any": [
+          {
+            "field": "ai_orchestrated_onboarding",
+            "op": "truthy"
+          },
+          {
+            "all": [
+              {
+                "field": "fresh_onboarding",
+                "op": "truthy"
+              },
+              {
+                "field": "identity_markers",
+                "op": "in",
+                "value": [
+                  "synthetic",
+                  "deepfake_media"
+                ],
+                "ci": true
+              }
+            ]
+          }
+        ]
+      },
+      "source": "FATF (2020); ATLAS AML case studies AML.CS0033-34",
+      "source_ref": "ATLAS AML.CS0033-34; FATF 2020 p.12",
+      "keywords": [
+        "deepfake",
+        "synthetic identity",
+        "liveness",
+        "impersonation",
+        "onboarding"
+      ],
+      "mitre_atlas": [
+        "AML.T0087",
+        "AML.T0016.002 Generative AI",
+        "AML.T0015 Evade AI Model",
+        "AML.T0073 Impersonation"
+      ],
+      "capability_primitives": [
+        "CP-01: Deepfake/video face-swap",
+        "CP-03: AI synthetic identity documents"
+      ]
+    },
+    {
+      "id": "DS-40",
+      "name": "Coached mule / scam-victim behaviour pattern",
+      "category": "profile_mule",
+      "rule_type": "indicator",
+      "risk_severity": "medium",
+      "ai_relevant": true,
+      "text": "A customer exhibits behaviour consistent with a coached money mule or scam victim: limited crypto literacy, repeated transactions with a small set of wallets, and external communication with the counterparty.",
+      "trigger": "Crypto-naive customer repeatedly transacts with a small set of wallets consistent with mule ops.",
+      "trigger_schema": {
+        "field": "coached_mule",
+        "op": "truthy"
+      },
+      "source": "FATF (2020) Virtual Assets Red Flags",
+      "source_ref": "FATF 2020, p.14 (mule/scam-victim indicators)",
+      "keywords": [
+        "mule",
+        "coached",
+        "victim",
+        "limited literacy",
+        "small set"
+      ],
+      "mitre_atlas": [
+        "AML.T1566 Social Engineering",
+        "AML.T1071 Layer"
+      ],
+      "capability_primitives": [
+        "CP-05: Coached mule/victim",
+        "CP-09: AI-assisted victim targeting"
+      ]
     }
   ]
 }

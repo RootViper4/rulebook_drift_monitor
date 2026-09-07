@@ -173,6 +173,13 @@ button{font-family:inherit}
 .rtab.active .rtab-count{background:rgba(255,255,255,.22)}
 .tab-desc{font-size:12px;color:var(--dim);margin-bottom:10px}
 .badge-unverified{display:inline-block;background:var(--warn-soft);color:var(--warn);border:1px solid #f0dcae;font-weight:700;font-size:10.5px;padding:2px 8px;border-radius:6px;margin-left:6px}
+/* Generation-arm provenance badges - honest labelling of whether a finding
+   was actually produced by the local model, or by the deterministic
+   fallback/fixed probe. Never let these three read as interchangeable. */
+.badge-source{display:inline-block;font-weight:700;font-size:10.5px;padding:2px 8px;border-radius:6px;margin-left:6px;border:1px solid transparent}
+.badge-source-llm{background:var(--accent-soft);color:var(--accent);border-color:#c9d9fb}
+.badge-source-fallback{background:var(--panel-3);color:var(--muted);border-color:var(--border-2)}
+.badge-source-probe{background:var(--warn-soft);color:var(--warn);border-color:#f0dcae}
 
 /* ---------- Collapsible triage rows + decided log ---------- */
 .list-rows{display:flex;flex-direction:column;gap:8px}

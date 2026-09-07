@@ -193,6 +193,8 @@ class Orchestrator:
                 drafted_candidate_red_flag=cand.get("drafted_candidate_red_flag", ""),
                 verified=True,
                 mode=cand.get("mode", "reconciliation"),
+                generation_source=cand.get("generation_source", ""),
+                capability_primitives=cand.get("capability_primitives", []),
             )
             state.results.append(funding)
 

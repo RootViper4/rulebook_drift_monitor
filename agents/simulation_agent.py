@@ -32,13 +32,24 @@ GENERATION_ARM_TARGET_COUNT = 3  # how many novel scenarios per run
 GENERATION_ARM_ATTEMPTS_PER_SLOT = 2  # LLM attempts before falling back for THAT slot only
 _ALLOWED_FIXTURE_VALUE_TYPES = (bool, int, float, str)
 
-# The exact placeholder shown in the prompt's JSON template. A model that
-# copies the template instead of generating a real fixture returns keys that
-# match this set exactly - this is not a real evasion pattern in any
-# rulebook, so it's a reliable tell that the model didn't actually do the
-# task (confirmed happening in practice on a local 1B model on 2026-09-07:
-# it returned {"field_name": true, "other_field": false} verbatim).
+# The exact placeholder(s) shown in the prompt's JSON template, across both
+# prompt versions used so far. A model that copies the template instead of
+# generating a real fixture returns keys that match one of these sets
+# exactly - not a real evasion pattern in any rulebook, so a reliable tell
+# the model didn't do the task. Confirmed happening in practice TWICE on a
+# local 1B model: {"field_name": true, "other_field": false} on 2026-09-07
+# (first prompt version), then {"field_a": true, "field_b": true} again on
+# 2026-09-07 after the prompt's example placeholder names were changed but
+# this constant wasn't updated to match - the exact-match check is fragile
+# to future prompt wording changes, which is why _PLACEHOLDER_FIELD_PATTERN
+# below adds a general pattern check as a second line of defence.
 _PLACEHOLDER_FIXTURE_KEYS = {"field_name", "other_field"}
+_PLACEHOLDER_FIXTURE_KEYS_ALT = {"field_a", "field_b"}
+# General fallback: reject a fixture whose keys are ALL of the generic
+# "field_<single letter>" shape (field_a, field_b, field_c...), regardless
+# of the exact prompt wording at the time - catches the same failure mode
+# even if the prompt's example placeholders are edited again later.
+_PLACEHOLDER_FIELD_PATTERN = re.compile(r"^field_[a-z]$")
 
 # The exact placeholder ATLAS entry from the prompt's JSON template.
 _PLACEHOLDER_ATLAS_VALUE = "resource development"
@@ -287,7 +298,7 @@ class SimulationAgent:
             cleaned = None
             for _attempt in range(GENERATION_ARM_ATTEMPTS_PER_SLOT):
                 prompt = self._build_single_scenario_prompt(rulebook, known_fields, proposed_names)
-                raw = self.llm.complete(prompt, temperature=0.55, max_tokens=500)
+                raw = self.llm.complete(prompt, temperature=0.55, max_tokens=650)
                 if not raw:
                     continue
                 parsed = self._parse_json_scenarios(raw)
@@ -362,10 +373,23 @@ class SimulationAgent:
         prompt against the full trigger text was observed exhausting a 1B
         model's effective context before it could produce clean output;
         this prompt is roughly a third the size and asks for a third of the
-        work per call."""
+        work per call.
+
+        FIXTURE SIZE CAP: confirmed in practice (2026-09-07) that showing
+        the model the full field vocabulary invited it to enumerate nearly
+        every field as false, one per line, burning the entire output token
+        budget before it could reach the closing braces - every one of 3
+        test slots was truncated mid-JSON this way. Two changes address it:
+        only a sample of the vocabulary is shown (not the full list, so
+        there is less to imitate), and the instruction below is explicit
+        and repeated about keeping the fixture to a handful of fields."""
         rule_lines = "\n".join(f"- {r.id} [{r.category}]: {r.name}" for r in rulebook)
         cp_lines = "\n".join(f"- {cp_id}: {desc}" for cp_id, desc in CP_LIBRARY_SUMMARY)
-        fields_line = ", ".join(known_fields)
+        # Show at most 24 fields as illustrative examples, not the whole
+        # vocabulary - showing everything measurably caused the model to
+        # try to enumerate everything.
+        sample_fields = known_fields[:24]
+        fields_line = ", ".join(sample_fields)
         avoid = "; ".join(avoid_names) if avoid_names else "(nothing yet - you're first)"
 
         return f"""You are assisting a financial regulator's horizon-scanning system.
@@ -384,10 +408,15 @@ ALREADY PROPOSED THIS RUN (avoid - do not repeat or rephrase):
 AI CAPABILITY PRIMITIVES (CP-01 to CP-10 ONLY - never invent another number):
 {cp_lines}
 
-FIXTURE FIELD VOCABULARY already in use (reuse these where the scenario
-genuinely involves the same condition; introduce a new field name only if
-nothing existing captures the gap):
+SOME field names already used in the rulebook, as examples only - NOT a
+checklist to complete (reuse one of these if it genuinely fits; otherwise
+invent a short new field name of your own):
 {fields_line}
+
+CRITICAL - keep the fixture SHORT: include ONLY the 2 to 5 fields that are
+actually true or relevant to YOUR scenario, using real field names that
+describe YOUR specific idea. Do NOT list every field you know about set to
+false - that wastes space and will be rejected.
 
 Respond with ONLY one JSON object (no array, no markdown fences, no
 commentary). Replace EVERY placeholder value below with your own real
@@ -397,10 +426,13 @@ content - copying this example's literal field names/values is wrong:
   "techniques": ["3-6 short keyword phrases"],
   "capability_primitives": ["CP-01"],
   "mitre_atlas": ["Defense Evasion"],
-  "fixture": {{"some_real_field_from_the_vocabulary_above": true}},
+  "fixture": {{"<a real field name>": true, "<another real field name>": false}},
   "speculative": false,
-  "rationale": "one or two sentences on the regulatory gap this exposes"
-}}"""
+  "rationale": "one short sentence on the regulatory gap this exposes"
+}}
+
+Reminder: <a real field name> is a placeholder showing you the SHAPE only -
+your answer must use an actual field name, never that literal text."""
 
     @staticmethod
     def _parse_json_scenarios(raw: str) -> list[dict]:
@@ -412,21 +444,69 @@ content - copying this example's literal field names/values is wrong:
         try:
             data = json.loads(text)
         except (json.JSONDecodeError, ValueError):
-            # Last resort: the model may have prefixed/suffixed the JSON
+            # Second attempt: the model may have prefixed/suffixed the JSON
             # with commentary despite instructions - try extracting the
             # first {...} or [...] block.
             match = re.search(r"(\{.*\}|\[.*\])", text, re.S)
-            if not match:
-                return []
+            candidate_text = match.group(1) if match else text
             try:
-                data = json.loads(match.group(1))
+                data = json.loads(candidate_text)
             except (json.JSONDecodeError, ValueError):
-                return []
+                # Third attempt: the response was cut off mid-generation by
+                # the token budget (confirmed happening in practice - see
+                # _build_single_scenario_prompt docstring). Try to recover a
+                # usable object from the truncated text rather than
+                # discarding a response that was 90% of the way there.
+                repaired = SimulationAgent._attempt_repair_truncated_json(candidate_text)
+                if repaired is None:
+                    return []
+                data = repaired
         if isinstance(data, dict):
             data = [data]
         if not isinstance(data, list):
             return []
         return [item for item in data if isinstance(item, dict)]
+
+    @staticmethod
+    def _attempt_repair_truncated_json(text: str) -> Optional[dict]:
+        """Best-effort recovery for a JSON object cut off mid-stream by the
+        model's token budget. Trims back to the last complete field (the
+        last top-level comma), then closes whatever brackets/braces are
+        still open, and retries parsing. Returns None if recovery isn't
+        possible - callers must still handle that as a genuine failure."""
+        text = text.strip()
+        if not text.startswith("{"):
+            return None
+        cut = text.rfind(",")
+        if cut == -1:
+            return None
+        candidate = text[:cut]
+        stack: list[str] = []
+        in_string = False
+        escape = False
+        for ch in candidate:
+            if escape:
+                escape = False
+                continue
+            if ch == "\\":
+                escape = True
+                continue
+            if ch == '"':
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if ch in "{[":
+                stack.append(ch)
+            elif ch in "}]":
+                if stack:
+                    stack.pop()
+        closers = {"{": "}", "[": "]"}
+        candidate += "".join(closers[c] for c in reversed(stack))
+        try:
+            return json.loads(candidate)
+        except (json.JSONDecodeError, ValueError):
+            return None
 
     @staticmethod
     def _sanitize_scenario(item: dict, existing_rule_names: list[str]) -> Optional[dict]:
@@ -458,8 +538,12 @@ content - copying this example's literal field names/values is wrong:
         if not isinstance(raw_fixture, dict) or not raw_fixture:
             return None
 
-        # Reject: fixture is exactly the unfilled prompt template.
-        if set(k.strip() for k in raw_fixture.keys() if isinstance(k, str)) == _PLACEHOLDER_FIXTURE_KEYS:
+        # Reject: fixture is exactly the unfilled prompt template (either
+        # known placeholder set, or the general field_<letter> pattern).
+        fixture_key_set = set(k.strip() for k in raw_fixture.keys() if isinstance(k, str))
+        if fixture_key_set in (_PLACEHOLDER_FIXTURE_KEYS, _PLACEHOLDER_FIXTURE_KEYS_ALT):
+            return None
+        if fixture_key_set and all(_PLACEHOLDER_FIELD_PATTERN.match(k) for k in fixture_key_set):
             return None
 
         fixture: dict[str, Any] = {}

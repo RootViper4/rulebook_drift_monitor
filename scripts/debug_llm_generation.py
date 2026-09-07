@@ -1,6 +1,7 @@
-"""Diagnostic only - prints the raw LLM response for the generation-arm
-prompt, so we can see why it failed to parse (if it did). Does not modify
-any application state. Run from rulebook_drift_monitor/:
+"""Diagnostic only - prints the raw LLM response for ONE generation-arm
+slot (matching the current per-scenario design), so we can see why it
+failed to parse/validate (if it did). Does not modify any application
+state. Run from rulebook_drift_monitor/:
     python -m scripts.debug_llm_generation
 """
 from __future__ import annotations
@@ -9,11 +10,9 @@ from agents.loader import load_rulebook
 from agents.llm_client import LocalLLMClient
 from agents.simulation_agent import SimulationAgent
 
-RULEBOOK_PATH = "data/rulebook.json"
-
 
 def main() -> None:
-    rulebook = load_rulebook(RULEBOOK_PATH)
+    rulebook = load_rulebook()
     llm = LocalLLMClient()
 
     print(f"Ollama available(): {llm.available()}")
@@ -22,21 +21,37 @@ def main() -> None:
         return
 
     known_fields = sorted(SimulationAgent._collect_known_fields(rulebook))
-    prompt = SimulationAgent._build_prompt(rulebook, known_fields)
+    existing_rule_names = [r.name for r in rulebook]
 
-    print("\n----- PROMPT SENT -----")
-    print(prompt)
+    # Simulate 3 slots, exactly like a real run: each prompt sees the names
+    # already accepted in earlier slots.
+    proposed_names = []
+    for slot in range(3):
+        print(f"\n===== SLOT {slot + 1} =====")
+        prompt = SimulationAgent._build_single_scenario_prompt(rulebook, known_fields, proposed_names)
+        print(f"(prompt length: {len(prompt)} chars)")
 
-    raw = llm.complete(prompt, temperature=0.4, max_tokens=900)
-    print("\n----- RAW MODEL RESPONSE -----")
-    print(raw if raw is not None else "(None - request failed or timed out)")
+        raw = llm.complete(prompt, temperature=0.55, max_tokens=500)
+        print("----- RAW MODEL RESPONSE -----")
+        print(raw if raw is not None else "(None - request failed or timed out)")
 
-    if raw:
+        if not raw:
+            continue
         parsed = SimulationAgent._parse_json_scenarios(raw)
-        print(f"\n----- PARSE RESULT: {len(parsed)} scenario(s) parsed -----")
-        for item in parsed:
-            cleaned = SimulationAgent._sanitize_scenario(item)
-            print(f" - {item.get('name', '?')!r}: {'OK' if cleaned else 'REJECTED by sanitize_scenario'}")
+        print(f"----- PARSED: {len(parsed)} object(s) -----")
+        if not parsed:
+            print("Could not parse any JSON object from this response.")
+            continue
+        cleaned = SimulationAgent._sanitize_scenario(parsed[0], existing_rule_names)
+        if not cleaned:
+            print("REJECTED by _sanitize_scenario (see reasons in that function: bad name, "
+                  "restated rule name, empty/placeholder fixture, etc.)")
+            continue
+        if SimulationAgent._name_too_similar(cleaned["name"], proposed_names):
+            print(f"REJECTED: too similar to an earlier slot's name ({proposed_names})")
+            continue
+        print(f"ACCEPTED: {cleaned['name']!r}")
+        proposed_names.append(cleaned["name"])
 
 
 if __name__ == "__main__":

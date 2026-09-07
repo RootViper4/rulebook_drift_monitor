@@ -338,5 +338,27 @@
     "findings": 13,
     "discarded": 1,
     "rulebook_version": "DS-01..DS-40 · 40 rules"
+  },
+  {
+    "run_id": "run-e56726ad",
+    "ts": "2026-09-07T09:37:14",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-40 · 40 rules"
+  },
+  {
+    "run_id": "run-bead25d6",
+    "ts": "2026-09-07T10:08:20",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-40 · 40 rules"
   }
 ]

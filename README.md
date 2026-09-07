@@ -112,6 +112,14 @@ Locally (Ollama) requires no env vars — it uses `http://localhost:11434` / `ll
 by default. The hosted endpoint is only used when `LLM_BASE_URL` **and** `LLM_API_KEY`
 are both set.
 
+**Speed note:** on CPU-only machines (e.g. Intel Macs) the local `llama3.2:1b`
+generates at ~1 token/sec, so a full run can take several minutes and often
+times out against the default 45s local ceiling. For fast, genuinely
+AI-generated threats use the hosted path instead — copy `.env.example` to
+`.env`, fill in `LLM_API_KEY` (and `LLM_BASE_URL` / `LLM_MODEL` if needed), and
+the app picks it up automatically on import. The local path fails fast and
+falls back to the varied scenario pool when the model can't keep up.
+
 ---
 
 ## Run

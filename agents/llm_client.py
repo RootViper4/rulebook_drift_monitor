@@ -5,9 +5,28 @@ from typing import Optional
 
 import requests
 
+# Load a project-local .env (if present) BEFORE reading the env vars below,
+# so a developer can drop an LLM_API_KEY in .env and immediately get the fast
+# hosted path without exporting anything. os.environ already set by the shell
+# takes precedence (python-dotenv does not override existing values).
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except Exception:
+    pass
+
 # --- Local Ollama (default) ------------------------------------------------
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2:1b")
+# CPU-only machines (e.g. Intel Macs) run this 1B model at ~1 token/sec, so a
+# full 300+ token scenario answer can outlive any sane timeout. Cap the local
+# generation size and give it a bounded timeout so a slow/stuck generation
+# fails fast and the slot falls back instead of stalling the whole run for
+# minutes. On Apple-silicon or GPU machines a real answer fits comfortably
+# inside these bounds and still succeeds.
+OLLAMA_MAX_TOKENS = 320
+OLLAMA_TIMEOUT = 45
 
 # --- Hosted OpenAI-compatible endpoint (Vercel / production) ----------------
 # When LLM_BASE_URL + LLM_API_KEY are set the client routes requests to
@@ -43,6 +62,10 @@ class LocalLLMClient:
         # Backwards-compatible public attributes used by other modules
         self.url = self._hosted_url if self._use_hosted else self._ollama_url
         self.model = self._hosted_model if self._use_hosted else self._ollama_model
+        # Whether this client talks to a remote hosted endpoint (so the caller
+        # can e.g. spend more attempts on fast hosted calls than on a slow
+        # local model).
+        self.is_hosted = self._use_hosted
 
     # ------------------------------------------------------------------
     def available(self) -> bool:
@@ -144,11 +167,16 @@ class LocalLLMClient:
             "model": self._ollama_model,
             "prompt": prompt,
             "stream": False,
-            "options": {"temperature": temperature, "num_predict": max_tokens},
+            "options": {
+                "temperature": temperature,
+                # Cap local generations: a CPU-only box must not grind out a
+                # full 650-token answer at 1 token/sec.
+                "num_predict": min(max_tokens, OLLAMA_MAX_TOKENS),
+            },
         }
         try:
             r = requests.post(f"{self._ollama_url}/api/generate",
-                              json=payload, timeout=120)
+                              json=payload, timeout=OLLAMA_TIMEOUT)
             r.raise_for_status()
             return r.json().get("response") or None
         except Exception:

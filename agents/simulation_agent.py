@@ -32,6 +32,15 @@ _KNOWN_CP_IDS = {cp_id for cp_id, _ in CP_LIBRARY_SUMMARY}
 
 GENERATION_ARM_TARGET_COUNT = 5  # how many novel scenarios per run
 GENERATION_ARM_ATTEMPTS_PER_SLOT = 3  # LLM attempts before falling back for THAT slot only
+# Local Ollama on CPU-only hardware is ~1 token/sec, so an extra attempt costs
+# a full generation's worth of wall-clock. One attempt only on the local path
+# (the hosted path is fast enough to justify the full attempt budget). If the
+# local model answers in time it still contributes; a slow/stuck answer fails
+# fast and falls back to the varied canned pool instead of stalling the run.
+LOCAL_OLLAMA_ATTEMPTS_PER_SLOT = 1
+# Cap the answer size on the local path to a bit less than the client's own
+# cap so the prompt asks the model for a snippet the CPU can actually finish.
+LOCAL_OLLAMA_MAX_TOKENS = 300
 _ALLOWED_FIXTURE_VALUE_TYPES = (bool, int, float, str)
 
 # The exact placeholder(s) shown in the prompt's JSON template, across both
@@ -342,12 +351,19 @@ class SimulationAgent:
         scenarios: list[dict] = []
         proposed_names: list[str] = []
         proposed_scenarios: list[dict] = []
+        # Local CPU inference is orders of magnitude slower than a hosted API,
+        # so don't spend the full attempt budget (or ask for a huge answer) on
+        # the local path - it's the difference between "stalls for 30 min" and
+        # "finishes in a couple of minutes".
+        is_hosted = bool(getattr(self.llm, "is_hosted", False))
+        attempts_per_slot = GENERATION_ARM_ATTEMPTS_PER_SLOT if is_hosted else LOCAL_OLLAMA_ATTEMPTS_PER_SLOT
+        max_tokens = 650 if is_hosted else LOCAL_OLLAMA_MAX_TOKENS
 
         for i in range(GENERATION_ARM_TARGET_COUNT):
             cleaned = None
-            for _attempt in range(GENERATION_ARM_ATTEMPTS_PER_SLOT):
+            for _attempt in range(attempts_per_slot):
                 prompt = self._build_single_scenario_prompt(rulebook, known_fields, proposed_names)
-                raw = self.llm.complete(prompt, temperature=0.55, max_tokens=650)
+                raw = self.llm.complete(prompt, temperature=0.55, max_tokens=max_tokens)
                 if not raw:
                     continue
                 parsed = self._parse_json_scenarios(raw)

@@ -101,7 +101,13 @@ class LocalLLMClient:
                 timeout=120,
             )
             r.raise_for_status()
-            return r.json()["choices"][0]["message"]["content"]
+            choice = r.json()["choices"][0]["message"]
+            out = choice.get("content")
+            # Some reasoning models (e.g. Groq's gpt-oss / qwen) put the answer
+            # in a `reasoning` field and leave `content` empty on long prompts.
+            if not out:
+                out = choice.get("reasoning")
+            return out or None
         except Exception:
             return None
 

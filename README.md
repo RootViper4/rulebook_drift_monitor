@@ -45,7 +45,7 @@ rulebook_drift_monitor/
 │   └── drafted_flags.json    # pre-seeded red-flag cache (LLM-produced, makes replay instant)
 ├── agents/
 │   ├── models.py             # shared state store + data models (Rule/Typology/RunState)
-│   ├── llm_client.py         # local Ollama (OpenAI-compatible) wrapper
+│   ├── llm_client.py         # local Ollama OR hosted OpenAI-compatible endpoint
 │   ├── rule_engine.py        # deterministic predicate-based rule-evaluation engine (per-rule triggers)
 │   ├── retrieval_agent.py    # retrieval + red-flag drafting
 │   ├── simulation_agent.py   # reconciliation + generation arms
@@ -94,6 +94,23 @@ pip install langgraph langchain langchain-openai langchain-community flask
 ```
 
 The system degrades gracefully: if no model is available it uses deterministic drafting templates, so the demo never breaks.
+
+### Hosted LLM for serverless deployments (Vercel)
+
+On Vercel there is no local Ollama, so the generation arm would silently fall back to
+hardcoded scenarios. To give the deployed site a real LLM, set these environment
+variables in **Vercel → Project → Settings → Environment Variables** (using a hosted
+OpenAI-compatible endpoint; a free Groq key works):
+
+```
+LLM_BASE_URL=https://api.groq.com/openai/v1
+LLM_MODEL=groq/compound-mini
+LLM_API_KEY=<your key>
+```
+
+Locally (Ollama) requires no env vars — it uses `http://localhost:11434` / `llama3.2:1b`
+by default. The hosted endpoint is only used when `LLM_BASE_URL` **and** `LLM_API_KEY`
+are both set.
 
 ---
 

@@ -325,5 +325,26 @@
       "findings": 13,
       "discarded": 1
     }
+  },
+  {
+    "id": "ae-d59553c9",
+    "ts": "2026-09-07T16:27:17",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-f009388e",
+    "ts": "2026-09-07T16:31:57",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "findings": 13,
+      "discarded": 1
+    }
   }
 ]

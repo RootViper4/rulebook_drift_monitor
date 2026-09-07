@@ -173,5 +173,27 @@
     "findings": 35,
     "discarded": 1,
     "rulebook_version": "DS-01..DS-43 · 43 rules"
+  },
+  {
+    "run_id": "run-a94d747b",
+    "ts": "2026-09-07T02:00:45",
+    "kind": "run",
+    "drift_index": 68.9,
+    "coverage": 0.179,
+    "ai_pressure": 0.391,
+    "findings": 28,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-20 · 20 rules"
+  },
+  {
+    "run_id": "run-b57312a9",
+    "ts": "2026-09-07T02:17:28",
+    "kind": "run",
+    "drift_index": 68.9,
+    "coverage": 0.179,
+    "ai_pressure": 0.391,
+    "findings": 28,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-20 · 20 rules"
   }
 ]

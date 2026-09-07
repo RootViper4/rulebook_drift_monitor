@@ -195,5 +195,16 @@
     "findings": 28,
     "discarded": 1,
     "rulebook_version": "DS-01..DS-20 · 20 rules"
+  },
+  {
+    "run_id": "run-cb8e6968",
+    "ts": "2026-09-07T02:46:14",
+    "kind": "run",
+    "drift_index": 68.9,
+    "coverage": 0.179,
+    "ai_pressure": 0.391,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-20 · 20 rules"
   }
 ]

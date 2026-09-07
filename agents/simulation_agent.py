@@ -25,6 +25,8 @@ CP_LIBRARY_SUMMARY = [
     ("CP-08", "Synthetic-identity reuse to reopen/unfreeze a previously flagged account"),
     ("CP-09", "AI-assisted reconnaissance and victim targeting (not a control surface itself)"),
     ("CP-10", "Commoditised dark-LLM tooling (FraudGPT/WormGPT-class) lowering skill barriers"),
+    ("CP-11", "AI-orchestrated structuring - transfer amounts computed to sit just under the reporting threshold"),
+    ("CP-12", "AI-automated mule-network / bulk account generation fanning funds in from many bulk-created accounts sharing device/IP fingerprints, then consolidating"),
 ]
 _KNOWN_CP_IDS = {cp_id for cp_id, _ in CP_LIBRARY_SUMMARY}
 
@@ -50,6 +52,13 @@ _PLACEHOLDER_FIXTURE_KEYS_ALT = {"field_a", "field_b"}
 # of the exact prompt wording at the time - catches the same failure mode
 # even if the prompt's example placeholders are edited again later.
 _PLACEHOLDER_FIELD_PATTERN = re.compile(r"^field_[a-z]$")
+# The prompt's live template shows its fixture example as {"<a real field
+# name>": true, "<another real field name>": false} - a model that copies
+# the template instead of substituting real field names returns keys that
+# STILL contain angle-bracket placeholders. Neither exact-match set above
+# nor the field_<letter> pattern catches that shape, so reject any fixture
+# whose keys look like template placeholders, whatever the prompt words.
+_PLACEHOLDER_KEY_PATTERN = re.compile(r"[<>]")
 
 # The exact placeholder ATLAS entry from the prompt's JSON template.
 _PLACEHOLDER_ATLAS_VALUE = "resource development"
@@ -60,6 +69,15 @@ _PLACEHOLDER_ATLAS_VALUE = "resource development"
 # run restated DS-39 and DS-40 nearly verbatim as if they were undetected
 # gaps, despite the prompt explicitly saying not to.
 _NAME_SIMILARITY_REJECT_THRESHOLD = 0.82
+
+# A candidate which shares this fraction of its technique vocabulary with an
+# already-accepted scenario is treated as the same idea under a different
+# name, and rejected (0.0-1.0 containment ratio). Set at majority-overlap
+# >0.5: a real variation keeps most of its content novel, while a rehash
+# largely reuses an earlier slot's vocabulary. Measured against the concrete
+# near-duplicate it exists to catch, this is the cleanest separating line
+# (that pair scored 0.56 on shared tokens).
+_TECHNIQUE_OVERLAP_REJECT_THRESHOLD = 0.5
 
 
 class SimulationAgent:
@@ -173,8 +191,17 @@ class SimulationAgent:
 
     def run_capability_primitive_reconciliation(self, rulebook: list[Rule], fixtures_path: str) -> list[dict]:
         """Reconciliation arm, capability-primitive edition - the 'Known Attacks'
-        tab's data source. (Unchanged.)
-        """
+        tab's data source.
+
+        Rewritten in the generation-arm rework: instead of iterating the old
+        hardcoded typology corpus, every finding here is derived per AI
+        capability primitive (CP-01..CP-12) from the curated fixture set at
+        data/fixtures.capability_primitives.json - each primitive's fixture
+        scenarios are run through the same deterministic rule engine, the
+        union of fired rules is counted, and the gap profile is the relevant
+        rules that stay silent. CP-09/CP-10 (recon/tooling) are upstream
+        aggravators, not control surfaces, and are deliberately excluded from
+        findings."""
         from agents.loader import load_fixture_set
 
         not_a_control_surface = {"CP-09", "CP-10"}
@@ -293,14 +320,19 @@ class SimulationAgent:
 
         Each candidate is checked against BOTH the rulebook's existing rule
         names (via _sanitize_scenario) AND every name already accepted in an
-        earlier slot THIS run (via _name_too_similar below). The prompt asks
+        earlier slot THIS run (via _name_too_similar below) AND every
+        technique profile already accepted in an earlier slot (via
+        _techniques_too_similar - catches the "same idea, different wording"
+        that name similarity alone misses). The prompt asks
         the model not to repeat a previous slot's idea, but that is only an
         instruction - a small model can and did ignore it in practice
         (confirmed 2026-09-07: two slots returned the identical scenario
-        name verbatim). This is the enforced check that instruction was
-        missing; a duplicate is treated as a failed attempt for that slot,
-        exactly like an unparseable or template-copy response, and retried
-        or -ultimately- filled by the deterministic fallback."""
+        name verbatim, and a later pair returned the same evasion profile
+        under names only 0.681-similar). This is the enforced check that
+        instruction was missing; a duplicate is treated as a failed attempt
+        for that slot, exactly like an unparseable or template-copy
+        response, and retried or -ultimately- filled by the deterministic
+        fallback."""
         fallback = self._fallback_scenarios()
         if not self.llm or not self.llm.available():
             return [dict(fb, _source="deterministic_fallback") for fb in fallback]
@@ -309,6 +341,7 @@ class SimulationAgent:
         existing_rule_names = [r.name for r in rulebook]
         scenarios: list[dict] = []
         proposed_names: list[str] = []
+        proposed_scenarios: list[dict] = []
 
         for i in range(GENERATION_ARM_TARGET_COUNT):
             cleaned = None
@@ -325,25 +358,38 @@ class SimulationAgent:
                     continue
                 if self._name_too_similar(candidate["name"], proposed_names):
                     continue
+                # Same idea under a different name: overlapping technique
+                # vocabulary with an earlier slot is also a duplicate, even if
+                # the name check passed (name-only similarity is too weak).
+                if self._techniques_too_similar(candidate.get("techniques") or [],
+                                                proposed_scenarios):
+                    continue
                 cleaned = candidate
                 break
             if cleaned:
                 cleaned["_source"] = "llm"
                 scenarios.append(cleaned)
                 proposed_names.append(cleaned["name"])
+                proposed_scenarios.append(cleaned)
             else:
                 # Per-slot fallback also needs to avoid duplicating a name
-                # already used this run (fallback[i % len(fallback)] could
-                # collide with an earlier LLM-accepted name in principle).
+                # or technique profile already used this run (fallback[i %
+                # len(fallback)] could collide with an earlier LLM-accepted
+                # scenario in principle).
                 fb = None
                 for candidate_fb in fallback[i:] + fallback[:i]:
-                    if not self._name_too_similar(candidate_fb["name"], proposed_names):
-                        fb = dict(candidate_fb)
-                        break
+                    if self._name_too_similar(candidate_fb["name"], proposed_names):
+                        continue
+                    if self._techniques_too_similar(candidate_fb.get("techniques") or [],
+                                                    proposed_scenarios):
+                        continue
+                    fb = dict(candidate_fb)
+                    break
                 fb = fb or dict(fallback[i % len(fallback)])
                 fb["_source"] = "deterministic_fallback"
                 scenarios.append(fb)
                 proposed_names.append(fb["name"])
+                proposed_scenarios.append(fb)
         return scenarios
 
     @staticmethod
@@ -357,6 +403,61 @@ class SimulationAgent:
         for other in other_names:
             if difflib.SequenceMatcher(None, name_norm, other.lower()).ratio() >= _NAME_SIMILARITY_REJECT_THRESHOLD:
                 return True
+        return False
+
+    @staticmethod
+    def _stem(token: str) -> str:
+        """Light suffix normalisation so plural/tense variants of the same
+        concept count as the same technique token ("amount"/"amounts",
+        "mixer"/"mixers", "flagged"/"flagging"). Deliberately simple - just
+        the most common English suffixes, no dictionary, applied greedily."""
+        t = token
+        for suffix in ("ing", "tion", "ness", "s", "es", "ed", "ying"):
+            if len(t) > 5 and t.endswith(suffix):
+                return t[:-len(suffix)]
+        return t
+
+    @staticmethod
+    def _technique_tokens(techniques: list[str]) -> set[str]:
+        """Lower-cased, lightly-stemmed word set from a scenario's technique
+        phrases, minus stopword-y short tokens. Two scenarios describing the
+        same attack with different prose share most of these tokens, even when
+        their displayed names read quite differently (name-only similarity can
+        miss that)."""
+        stop = {"the", "and", "with", "using", "from", "into", "over",
+                "under", "via", "for", "that", "this", "are", "to"}
+        tokens: set[str] = set()
+        for t in techniques:
+            for _t in re.split(r"[^a-z0-9]+", str(t).lower()):
+                if _t and len(_t) >= 4 and _t not in stop:
+                    tokens.add(SimulationAgent._stem(_t))
+        return tokens
+
+    @staticmethod
+    def _techniques_too_similar(candidate_techniques: list[str], accepted_scenarios: list[dict]) -> bool:
+        """True if `candidate_techniques` overlap an already-accepted
+        scenario's technique vocabulary so heavily that the two are the same
+        idea (a near-duplicate of an earlier slot in this run), not a distinct
+        novel gap. Name similarity alone is deliberately NOT relied on here -
+        two different-looking names can share an identical technique set, and
+        an identical-looking name can be paired with a genuinely different
+        attack profile (confirmed 2026-09-07: SequenceMatcher 0.681 slipped
+        past the 0.82 name threshold while the evasion profiles overlapped).
+        Uses containment - the docstrings describe the same moves - so a
+        short candidate is judged by how much of ITS vocabulary is already
+        claimed, keeping high-recall against the small technique sets the
+        model is asked to produce."""
+        c = SimulationAgent._technique_tokens(candidate_techniques)
+        if not c:
+            return False
+        for acc in accepted_scenarios:
+            a = SimulationAgent._technique_tokens(acc.get("techniques") or [])
+            if not a:
+                continue
+            overlap = len(c & a) / len(c)
+            if overlap >= _TECHNIQUE_OVERLAP_REJECT_THRESHOLD:
+                return True
+        return False
         return False
 
     @staticmethod
@@ -555,11 +656,14 @@ your answer must use an actual field name, never that literal text."""
             return None
 
         # Reject: fixture is exactly the unfilled prompt template (either
-        # known placeholder set, or the general field_<letter> pattern).
+        # known placeholder set, the general field_<letter> pattern, or the
+        # <a real field name>-style template copy).
         fixture_key_set = set(k.strip() for k in raw_fixture.keys() if isinstance(k, str))
         if fixture_key_set in (_PLACEHOLDER_FIXTURE_KEYS, _PLACEHOLDER_FIXTURE_KEYS_ALT):
             return None
         if fixture_key_set and all(_PLACEHOLDER_FIELD_PATTERN.match(k) for k in fixture_key_set):
+            return None
+        if fixture_key_set and any(_PLACEHOLDER_KEY_PATTERN.search(k) for k in fixture_key_set):
             return None
 
         fixture: dict[str, Any] = {}

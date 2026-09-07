@@ -30,8 +30,8 @@ CP_LIBRARY_SUMMARY = [
 ]
 _KNOWN_CP_IDS = {cp_id for cp_id, _ in CP_LIBRARY_SUMMARY}
 
-GENERATION_ARM_TARGET_COUNT = 3  # how many novel scenarios per run
-GENERATION_ARM_ATTEMPTS_PER_SLOT = 2  # LLM attempts before falling back for THAT slot only
+GENERATION_ARM_TARGET_COUNT = 5  # how many novel scenarios per run
+GENERATION_ARM_ATTEMPTS_PER_SLOT = 3  # LLM attempts before falling back for THAT slot only
 _ALLOWED_FIXTURE_VALUE_TYPES = (bool, int, float, str)
 
 # The exact placeholder(s) shown in the prompt's JSON template, across both
@@ -761,6 +761,35 @@ your answer must use an actual field name, never that literal text."""
                     "qualifying_transfer": True,
                     "travel_rule_info_transmitted": True,
                     "travel_rule_info_ai_fabricated": True,
+                },
+            },
+            {
+                "name": "AI-nudged micro-deposit smurfing via dormant accounts",
+                "techniques": [
+                    "dormant accounts", "micro-deposits", "ai nudging",
+                    "sub-threshold", "long accumulation", "pattern avoidance",
+                ],
+                "capability_primitives": ["CP-09", "CP-11"],
+                "mitre_atlas": ["TA0007 Evasion", "T1071 Layer"],
+                "fixture": {
+                    "small_consistent_deposits": True,
+                    "ai_computed_rhythm": True,
+                    "dormant_then_active": True,
+                    "rapid_succession": False,
+                },
+            },
+            {
+                "name": "AI-tailored PEP-adjacent corporate veil",
+                "techniques": [
+                    "pep connections", "corporate veil", "ai-tailored structure",
+                    "beneficial ownership", "sanctions evasion", "opaque nominee",
+                ],
+                "capability_primitives": ["CP-04", "CP-10"],
+                "mitre_atlas": ["TA0006 Evasion", "T1592 Gather Victim Org Info"],
+                "fixture": {
+                    "related_to_pep": True,
+                    "beneficial_ownership_concealed": True,
+                    "newly_formed_entity": True,
                 },
             },
         ]

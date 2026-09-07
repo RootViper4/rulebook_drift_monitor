@@ -85,31 +85,55 @@ class LocalLLMClient:
     # --- Hosted (OpenAI /chat/completions) --------------------------------
     def _complete_hosted(self, prompt: str, temperature: float,
                          max_tokens: int) -> Optional[str]:
-        try:
-            r = requests.post(
-                f"{self._hosted_url}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self._hosted_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": self._hosted_model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": temperature,
-                    "max_tokens": max_tokens,
-                },
-                timeout=120,
-            )
-            r.raise_for_status()
-            choice = r.json()["choices"][0]["message"]
-            out = choice.get("content")
-            # Some reasoning models (e.g. Groq's gpt-oss / qwen) put the answer
-            # in a `reasoning` field and leave `content` empty on long prompts.
-            if not out:
-                out = choice.get("reasoning")
-            return out or None
-        except Exception:
-            return None
+        import time
+        last_error: Optional[str] = None
+        # Hosted providers (esp. free tiers like Groq) rate-limit with bursts;
+        # retries + backoff dramatically cut spurious fallback fills in the
+        # generation arm. 429/5xx retry after backoff (honouring Retry-After
+        # when the server sends it - a per-minute burst cap needs seconds, not
+        # the sub-second sleeps a small model needs for its own limits).
+        for attempt in range(3):
+            try:
+                r = requests.post(
+                    f"{self._hosted_url}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self._hosted_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": self._hosted_model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": temperature,
+                        "max_tokens": max_tokens,
+                    },
+                    timeout=120,
+                )
+                if r.status_code == 429 or r.status_code >= 500:
+                    # Rate-limited or transient server error. Some providers
+                    # (Groq free tier) say explicitly NOT to retry when the
+                    # daily/minute quota is gone - retrying then just stalls
+                    # the run and burns the whole budget for nothing. Fail
+                    # fast in that case so the composer falls back quickly.
+                    if r.headers.get("x-should-retry", "").lower() == "false":
+                        return None
+                    retry_after = r.headers.get("Retry-After")
+                    sleep_s = float(retry_after) if retry_after else (1.5 * (attempt + 1))
+                    time.sleep(max(1.0, min(sleep_s, 15.0)))
+                    continue
+                r.raise_for_status()
+                choice = r.json()["choices"][0]["message"]
+                out = choice.get("content")
+                # Some reasoning models (e.g. Groq's gpt-oss / qwen) put the answer
+                # in a `reasoning` field and leave `content` empty on long prompts.
+                if not out:
+                    out = choice.get("reasoning")
+                if out:
+                    return out
+                last_error = "empty response"
+            except Exception as exc:
+                last_error = str(exc)
+                time.sleep(1.5 * (attempt + 1))
+        return None
 
     # --- Local Ollama (/api/generate) --------------------------------------
     def _complete_ollama(self, prompt: str, temperature: float,

@@ -273,5 +273,57 @@
       "findings": 13,
       "discarded": 1
     }
+  },
+  {
+    "id": "ae-3d81111a",
+    "ts": "2026-09-07T15:14:25",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-f1f12fe6",
+    "ts": "2026-09-07T15:17:09",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-d868f788",
+    "ts": "2026-09-07T15:17:56",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-dba3bc3d",
+    "ts": "2026-09-07T15:17:56",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "findings": 13,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-54186218",
+    "ts": "2026-09-07T15:22:02",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "findings": 13,
+      "discarded": 1
+    }
   }
 ]

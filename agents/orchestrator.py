@@ -75,12 +75,12 @@ class Orchestrator:
         # the review UI's reconciliation data source).
         _progress("reconcile", "Reconciliation arm · stepping the 12 capability-primitive attacks through the rulebook")
         rec_findings = self.simulation.run_capability_primitive_reconciliation(
-            self.rulebook, CAPABILITY_PRIMITIVES_FIXTURES_PATH
+            self.rulebook, CAPABILITY_PRIMITIVES_FIXTURES_PATH, abort_check=_aborted
         )
         if _aborted():
             return self._abort(state)
         _progress("generate", "Generation arm · spawning novel AI evasion paths")
-        gen_findings = self.simulation.run_generation(self.rulebook)
+        gen_findings = self.simulation.run_generation(self.rulebook, abort_check=_aborted)
         if _aborted():
             return self._abort(state)
         state.append_log("simulation",

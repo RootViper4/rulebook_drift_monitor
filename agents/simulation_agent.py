@@ -3,7 +3,7 @@ from __future__ import annotations
 import difflib
 import json
 import re
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from agents.models import Rule, RuleResult, Typology
 from agents.rule_engine import RuleEvaluationEngine
@@ -198,7 +198,8 @@ class SimulationAgent:
                 return True
         return False
 
-    def run_capability_primitive_reconciliation(self, rulebook: list[Rule], fixtures_path: str) -> list[dict]:
+    def run_capability_primitive_reconciliation(self, rulebook: list[Rule], fixtures_path: str,
+                                                abort_check: Optional[Callable[[], bool]] = None) -> list[dict]:
         """Reconciliation arm, capability-primitive edition - the 'Known Attacks'
         tab's data source.
 
@@ -224,6 +225,8 @@ class SimulationAgent:
 
         findings = []
         for cp in sorted(by_primitive):
+            if abort_check and abort_check():
+                break
             fxs = by_primitive[cp]
             fired: set[str] = set()
             vocab_parts = [cp]
@@ -261,7 +264,8 @@ class SimulationAgent:
     # Mode B: generation (per-slot LLM prompting, with per-slot fallback)
     # ------------------------------------------------------------------
 
-    def run_generation(self, rulebook: list[Rule]) -> list[dict]:
+    def run_generation(self, rulebook: list[Rule],
+                       abort_check: Optional[Callable[[], bool]] = None) -> list[dict]:
         """Generation arm: propose novel evasion-candidate scenarios and test
         each against the rulebook deterministically.
 
@@ -280,11 +284,13 @@ class SimulationAgent:
           3. Evaluate every scenario's fixture through the real engine and
              only report it if something relevant genuinely stays silent.
         """
-        scenarios = self._llm_compose_scenarios(rulebook)
+        scenarios = self._llm_compose_scenarios(rulebook, abort_check=abort_check)
         scenarios = scenarios + [self._speculative_probe_scenario()]
 
         findings = []
         for idx, prim in enumerate(scenarios, 1):
+            if abort_check and abort_check():
+                break
             fixture = prim["fixture"]
             results = self.engine.evaluate(rulebook, fixture)
             fired = {r.rule_id for r in results if r.fired}
@@ -321,7 +327,8 @@ class SimulationAgent:
 
     # -- LLM path: one scenario per call, per-slot fallback --------------
 
-    def _llm_compose_scenarios(self, rulebook: list[Rule]) -> list[dict]:
+    def _llm_compose_scenarios(self, rulebook: list[Rule],
+                               abort_check: Optional[Callable[[], bool]] = None) -> list[dict]:
         """Return GENERATION_ARM_TARGET_COUNT scenario dicts, each tagged
         with "_source": "llm" or "deterministic_fallback". If no model is
         available at all, every slot uses the fallback immediately (no
@@ -359,9 +366,19 @@ class SimulationAgent:
         attempts_per_slot = GENERATION_ARM_ATTEMPTS_PER_SLOT if is_hosted else LOCAL_OLLAMA_ATTEMPTS_PER_SLOT
         max_tokens = 650 if is_hosted else LOCAL_OLLAMA_MAX_TOKENS
 
+        def _aborted() -> bool:
+            return bool(abort_check and abort_check())
+
         for i in range(GENERATION_ARM_TARGET_COUNT):
+            # Abort must cut in INSIDE the long generation arm, not only at
+            # orchestrator phase boundaries - otherwise a slow local model
+            # keeps grinding through every slot before the abort is honoured.
+            if _aborted():
+                break
             cleaned = None
             for _attempt in range(attempts_per_slot):
+                if _aborted():
+                    break
                 prompt = self._build_single_scenario_prompt(rulebook, known_fields, proposed_names)
                 raw = self.llm.complete(prompt, temperature=0.55, max_tokens=max_tokens)
                 if not raw:

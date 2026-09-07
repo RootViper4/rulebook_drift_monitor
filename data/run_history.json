@@ -148,5 +148,49 @@
     "findings": 13,
     "discarded": 1,
     "rulebook_version": "DS-01..DS-40 · 40 rules"
+  },
+  {
+    "run_id": "run-242e7d2b",
+    "ts": "2026-09-07T18:39:04",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-40 · 40 rules"
+  },
+  {
+    "run_id": "run-9a0c45b7",
+    "ts": "2026-09-07T18:50:36",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 15,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-40 · 40 rules"
+  },
+  {
+    "run_id": "run-0ccd50d4",
+    "ts": "2026-09-07T19:05:36",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 15,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-40 · 40 rules"
+  },
+  {
+    "run_id": "run-b72e50ac",
+    "ts": "2026-09-07T19:20:04",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 15,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-40 · 40 rules"
   }
 ]

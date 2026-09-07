@@ -346,5 +346,89 @@
       "findings": 13,
       "discarded": 1
     }
+  },
+  {
+    "id": "ae-d06d1b0b",
+    "ts": "2026-09-07T18:38:54",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-47355886",
+    "ts": "2026-09-07T18:39:04",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "findings": 13,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-3abcaf39",
+    "ts": "2026-09-07T18:47:44",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-2e200606",
+    "ts": "2026-09-07T18:50:36",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 15 findings to review",
+    "meta": {
+      "findings": 15,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-3689540d",
+    "ts": "2026-09-07T19:05:36",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-200737c4",
+    "ts": "2026-09-07T19:05:36",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 15 findings to review",
+    "meta": {
+      "findings": 15,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-c5d8008e",
+    "ts": "2026-09-07T19:09:04",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-3fa30a56",
+    "ts": "2026-09-07T19:20:04",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 15 findings to review",
+    "meta": {
+      "findings": 15,
+      "discarded": 1
+    }
   }
 ]

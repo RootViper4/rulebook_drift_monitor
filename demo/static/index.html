@@ -43,18 +43,15 @@
       </div>
 
       <div class="runbar">
-        <button class="btn btn-primary" id="runBtn1"><span class="icon">▶</span>Run 1 · known fraud</button>
-        <button class="btn btn-primary-2" id="runBtn2"><span class="icon">▶</span>Run 2 · invented fraud</button>
+        <button class="btn btn-primary" id="runBtn"><span class="icon" id="runBtnIcon">▶</span>New run</button>
         <button class="btn btn-ghost" id="resetBtn">Reset</button>
         <button class="btn btn-ghost-2" onclick="exportDossier('json')">Export dossier JSON</button>
         <button class="btn btn-ghost-2" onclick="exportDossier('pdf')">Export dossier PDF</button>
         <div class="run-meta">
           <span>Run <b class="mono" id="runId">none</b></span>
-          <span>Arm <b id="runMode">known</b></span>
           <span>Rulebook <b id="rulebookVersion">—</b></span>
           <span>Status <b id="runStatus">ready</b></span>
           <span>Findings <b id="findingCount">0</b></span>
-          <span>Already reviewed <b id="exclCount">0</b></span>
         </div>
       </div>
 
@@ -70,8 +67,18 @@
       <div class="pipe" id="pipe"></div>
 
       <div class="live-pane">
-        <div class="pane-title"><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good)"></span> What the agents are doing right now</div>
-        <div id="logPane"></div>
+        <div class="pane-title-row">
+          <div class="pane-title"><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good)"></span> What's happening right now</div>
+          <button class="btn-tiny" id="logToggle" onclick="toggleTechLog()">Show technical detail</button>
+        </div>
+        <div id="friendlyLog" class="friendly-log"></div>
+        <div id="logPane" class="tech-log" style="display:none"></div>
+      </div>
+
+      <div class="caveat-banner" id="caveatBanner" style="display:none">
+        <span>⚠</span>
+        <span>Reminder: rule wording shown below is a <b>provisional paraphrase</b> prepared by the domain team, not verified exact regulatory text. The linked source document is authoritative — check it before relying on the wording shown here.</span>
+        <button onclick="dismissCaveat()">Got it</button>
       </div>
 
       <div class="section-row">
@@ -79,19 +86,21 @@
         <div class="legend-line" style="width:100%">
           <span><b class="lg-caught">Caught by a rule</b> = the rule fired and flagged this attack</span>
           <span><b class="lg-miss">Slipped past a rule</b> = the rule did not trigger — the attack got through</span>
-          <span style="opacity:.75">Click any finding to see on-screen what that means rule by rule</span>
+          <span style="opacity:.75">Click a row to expand it</span>
         </div>
         <div class="diff-summary" id="diffSummary" style="display:none"></div>
-        <div class="filterbar" id="reviewTabs">
-          <button class="tab" data-f="all" onclick="setFilter('all')">All <span id="cAll"></span></button>
-          <button class="tab" data-f="accepted" onclick="setFilter('accepted')">Accepted <span id="cAccepted"></span></button>
-          <button class="tab" data-f="amended" onclick="setFilter('amended')">Amended <span id="cAmended"></span></button>
-          <button class="tab" data-f="rejected" onclick="setFilter('rejected')">Rejected <span id="cRejected"></span></button>
-          <button class="tab" data-f="undecided" onclick="setFilter('undecided')">Undecided <span id="cUndecided"></span></button>
-        </div>
       </div>
-      <div id="findings" class="grid cards"></div>
-      <div id="emptyFilter" class="empty blocked" style="display:none">No findings match this filter.</div>
+
+      <div class="review-type-tabs" id="reviewTypeTabs">
+        <button class="rtab active" data-tab="reconciliation" onclick="setReviewTab('reconciliation')">Known Attacks <span class="rtab-count" id="cReconRev"></span></button>
+        <button class="rtab" data-tab="generation" onclick="setReviewTab('generation')">Emerging Threats <span class="rtab-count" id="cGenRev"></span></button>
+      </div>
+      <div class="tab-desc" id="tabDesc"></div>
+      <div id="findings" class="list-rows"></div>
+      <div id="emptyFilter" class="empty blocked" style="display:none">No undecided findings in this tab.</div>
+
+      <div class="section-title" id="decidedTitle">Decided</div>
+      <div id="decidedLog" class="list-rows"></div>
 
       <div class="section-title">Throw a fraud at it</div>
       <div class="fx-card">
@@ -150,13 +159,12 @@
 <script src="static/js/app.js"></script>
 <script>
 const MILESTONES = {ingest:0, reconcile:1, generate_meta:2, critic_meta:3, draft:4, report:5};
-const STEP_NAMES = ['Ingest corpora', 'Reconciliation arm', 'Generation arm', 'Critic verification', 'Draft candidate red flags', 'Human approval gate'];
-const STEP_DESC  = ['load 40 rules · 35 typologies', 'step documented typologies through the rulebook', 'spawn novel AI evasion paths', 'reproduce every claim · discard unsupported', 'draft candidate indicators (LLM assist)', 'analyst accepts, amends or rejects'];
+const STEP_NAMES = ['Load the rulebook', 'Test known scam tricks', 'Invent new scam tricks', 'Double-check every result', 'Write plain-English fixes', 'Wait for your decision'];
+const STEP_DESC  = ['getting today\u2019s rules ready to test', 'running 12 real, reported scams through every rule', 'having the system dream up scams nobody has reported yet', 'independently re-checking every claim before trusting it', 'drafting a plain-English fix for each real gap', 'nothing changes until you accept, amend or reject it'];
 
 let stepIndex = -1;
 let logCache = null;
 let decisions = {};
-let filterTab = 'all';
 let runFinishedShown = false;
 
 function buildPipe(){
@@ -202,98 +210,168 @@ function renderLog(log, running){
   pane.innerHTML=(log||[]).map(l=>`<div class="logline"><span class="ln">[${l.ts||''}]</span> <b>${esc(NODE_LABEL[l.node]||l.node)}</b>: ${esc(l.message)}</div>`).join('');
   if(!log.length) pane.innerHTML='<div class="logline"><span class="ln">[—]</span> idle · click New run to start a scan of the rules</div>';
   if(running && pane.lastElementChild) pane.lastElementChild.scrollIntoView({block:'nearest'});
+  renderFriendlyLog(log, running);
 }
 
-function findingCard(f){
-  const dec = decisions[f.typology_id];
-  const decided = !!(dec && dec.label);
-  const reason = dec ? (dec.reason||'') : '';
-  const modeLabel = MODE_LABEL[f.mode] || 'Known fraud';
+// Plain-English version of the same log, for anyone who doesn't need (or
+// want) the raw technical trail. Never invents information the log entry
+// doesn't already carry - just re-words it and pulls out the numbers that
+// matter (counts of gaps found, confirmed, discarded), so a non-coder gets
+// the same facts a developer gets from the technical log below it.
+function friendlyLine(l){
+  const n = l.node;
+  if(n==='orchestrator') return '🚀 Starting a new scan of the rulebook…';
+  if(n==='ingest') return '📖 Getting the rulebook and scam catalogue ready…';
+  if(n==='simulation'){
+    const rec = l.reconciliation, gen = l.generation;
+    if(rec!=null && gen!=null) return `🔍 Tested the rules — found ${rec} weak spot${rec===1?'':'s'} in known scams, plus ${gen} brand-new idea${gen===1?'':'s'} to check.`;
+    return '🔍 Testing the rulebook against real and invented scams…';
+  }
+  if(n==='critic'){
+    const c = l.confirmed, d = l.discarded;
+    if(c!=null && d!=null) return `🔬 Double-checked every result — ${c} held up, ${d} ${d===1?'didn\u2019t':'didn\u2019t'} and ${d===1?'was':'were'} thrown out.`;
+    return '🔬 Double-checking every claim before trusting it…';
+  }
+  if(n==='draft') return '✍️ Writing a plain-English suggested fix for each real gap…';
+  if(n==='report') return `📋 Done — ${esc(l.analyst||'the analyst')} now has a list to review. Nothing changes until a decision is made.`;
+  if(n==='human-gate') return '🧑\u200d⚖️ '+(l.message||'A decision was recorded.');
+  if(n==='probe') return '🧪 Ran a red-team test to make sure the checker itself can\u2019t be fooled.';
+  if(n==='error') return '⚠️ Something went wrong — see the technical detail for what happened.';
+  return l.message||'';
+}
+
+function renderFriendlyLog(log, running){
+  const pane = $('friendlyLog'); if(!pane) return;
+  pane.innerHTML = (log||[]).map(l=>`<div class="friendly-line">${friendlyLine(l)}</div>`).join('');
+  if(!log || !log.length) pane.innerHTML = '<div class="friendly-line dim">Nothing running yet — click New run to start a scan.</div>';
+  if(running && pane.lastElementChild) pane.lastElementChild.scrollIntoView({block:'nearest'});
+}
+
+let showingTechLog = false;
+function toggleTechLog(){
+  showingTechLog = !showingTechLog;
+  $('friendlyLog').style.display = showingTechLog ? 'none' : 'block';
+  $('logPane').style.display = showingTechLog ? 'block' : 'none';
+  $('logToggle').textContent = showingTechLog ? 'Show plain-English summary' : 'Show technical detail';
+}
+
+let rationaleDrafts = {};
+let openRows = new Set();
+
+function toggleRow(fid){
+  if(openRows.has(fid)) openRows.delete(fid); else openRows.add(fid);
+  renderFindings();
+}
+
+// Honest provenance for a generation-arm finding: did the local model
+// actually propose this, or did the platform fall back to a hand-authored
+// scenario (because no model was available, or the model's output failed
+// validation)? Never claim "AI-generated" for a fallback finding - that
+// would overstate what actually happened. See agents/simulation_agent.py.
+function sourceBadgeHtml(source){
+  if(source==='llm') return '<span class="badge-source badge-source-llm">🤖 Written by the AI model, then checked</span>';
+  if(source==='fixed_probe') return '<span class="badge-source badge-source-probe">🧪 Test case, not a real scam</span>';
+  if(source==='deterministic_fallback') return '<span class="badge-source badge-source-fallback">🧩 Built by the system (AI model wasn\u2019t used this time)</span>';
+  return '';
+}
+
+// Collapsed: headline + one-line result summary only - a scannable triage
+// queue. Expanded (click): full plain-language rule-by-rule detail, source
+// links, the editable proposed fix, and the accept/amend/reject controls.
+function findingRow(f, tabMode){
+  const fid = f.typology_id;
+  const fired = f.fired_rules||[], evaded = f.evaded_rules||[];
+  const open = openRows.has(fid);
+  const headline = f.attack_description || f.typology_name;
+  const isGap = fired.length===0;
+  const summary = isGap
+    ? `⚠ Nothing in the rulebook catches this${evaded.length?` (${evaded.length} rule${evaded.length===1?'':'s'} stayed quiet)`:''}`
+    : `✅ Caught by ${fired.length} rule${fired.length===1?'':'s'}${evaded.length?`, but missed by ${evaded.length} rule${evaded.length===1?'':'s'}`:''}`;
+  const genBadge = tabMode==='generation'
+    ? '<span class="badge-unverified">💡 New idea — not a reported attack yet</span>' : '';
+  const sourceBadge = tabMode==='generation' ? sourceBadgeHtml(f.generation_source) : '';
   const delta = f.delta==='new'?'<span class="diff-badge diff-new">NEW</span>'
               : f.delta==='repeat'?'<span class="diff-badge diff-repeat">REPEAT</span>':'';
-  const instituted = amendments.covered.includes(f.typology_id);
-  const isCustom = customIds.has(f.typology_id);
+
+  return `<div class="row ${open?'open':''} ${isGap?'gap':''}" id="f-${esc(fid)}" data-fid="${esc(fid)}">
+    <div class="row-head" onclick="toggleRow('${esc(fid)}')">
+      <span class="row-chevron">${open?'▾':'▸'}</span>
+      <div class="row-main">
+        <div class="row-headline">${delta} ${esc(headline)}</div>
+        <div class="row-sub">${summary} ${genBadge} ${sourceBadge}</div>
+      </div>
+      <span class="fid">ref: ${esc(fid)}</span>
+    </div>
+    ${open ? findingDetail(f, tabMode) : ''}
+  </div>`;
+}
+
+function findingDetail(f, tabMode){
+  const fid = f.typology_id;
+  const fired = f.fired_rules||[], evaded = f.evaded_rules||[];
+  const instituted = amendments.covered.includes(fid);
+  const isCustom = customIds.has(fid);
   const instBtn = instituted
     ? '<span class="chip good" style="font-size:11px">✦ instituted · gap closed</span>'
     : isCustom
       ? '<span class="chip dim" style="font-size:11px">your test attack · review above</span>'
-      : `<button class="btn-sm btn-institute" onclick="institute('${f.typology_id}')" ${decided?'':'disabled title="decide first (with a reason)" style="opacity:.45"'} >Institute rule</button>`;
-  const fired = f.fired_rules||[], evaded = f.evaded_rules||[];
-  return `<div class="finding find-clickable openable" id="f-${f.typology_id}" data-fid="${esc(f.typology_id)}" onclick="toggleDetail('${f.typology_id}')">
-    <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
-      <h3><span class="fid">${esc(f.typology_id)}</span> ${delta}
-        <span class="chip mode-chip mode-${esc(f.mode)}">${esc(modeLabel)}</span>
-        ${esc(f.typology_name)} ${decided?`<span class="decided">${esc(dec.label)}</span>`:''}</h3>
-      <span class="hint-open">click for plain English ▾</span>
+      : `<button class="btn-sm btn-institute" onclick="event.stopPropagation();institute('${esc(fid)}')">Institute rule</button>`;
+  const draft = rationaleDrafts[fid]||'';
+  return `<div class="row-detail" onclick="event.stopPropagation()">
+    <div class="ref-line">${esc(f.typology_name)}</div>
+
+    <div class="section-kd">What the rulebook did</div>
+    <div class="chip-row mt" style="margin-top:4px">
+      <span class="chip good">✅ Caught by ${fired.length} rule${fired.length===1?'':'s'}</span>
+      <span class="chip bad">⚠ Missed by ${evaded.length} rule${evaded.length===1?'':'s'}</span>
     </div>
-    <div class="basis">${esc(f.evidential_basis)}</div>
-    <div class="f-trace" id="trace-${esc(f.typology_id)}">
-      <div class="f-trace-title">How the system got here — who did what</div>
-      ${(f.trace||[]).map((st,i)=>`<div class="f-trace-step"><span class="nnum">${i+1}</span><div>
-        <b style="color:#4f46e5">${esc(AGENT_LABEL[st.agent]||st.agent)}</b>
-        <span style="color:#374151"> — ${st.msg}</span></div></div>`).join('')}
-    </div>
-    <div class="chip-row mt" style="margin-top:10px">
-      <span class="chip good">🛡 caught by ${fired.length} rule${fired.length===1?'':'s'}</span>
-      <span class="chip bad">⚠ slipped past ${evaded.length} rule${evaded.length===1?'':'s'}</span>
-    </div>
-    <div class="chip-row mt" style="margin-top:5px">
-      ${fired.slice(0,6).map(rid=>ruleChip(rid,false)).join('')}${fired.length>6?'<span class="dim" style="font-size:10.5px"> +'+(fired.length-6)+' more</span>':''}
-      ${evaded.slice(0,6).map(rid=>ruleChip(rid,true)).join('')}${evaded.length>6?'<span class="dim" style="font-size:10.5px"> +'+(evaded.length-6)+' more</span>':''}
-    </div>
-    ${f.drafted_candidate_red_flag?`<div class="flag">${esc(f.drafted_candidate_red_flag)}</div>`:''}
-    <div class="find-detail" id="det-${esc(f.typology_id)}">
-      <div class="kd g">Caught by these rules (they fired — they flagged this attack)</div>
-      ${rulesDetail(fired)}
-      <div class="kd r">Slipped past these rules (they did not fire — the attack got through them)</div>
-      ${rulesDetail(evaded)}
-    </div>
-    <div class="actions">
-      <input class="reason-input" id="rz-${esc(f.typology_id)}" placeholder="Add a reason — required before you accept, amend or reject" value="${decided?esc(reason):''}" ${decided?'readonly':''}/>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;width:100%">
-        <button class="btn-sm btn-accept" onclick="event.stopPropagation();decide('${f.typology_id}','accept')" ${decided?'disabled':''}>Accept</button>
-        <button class="btn-sm btn-amend"  onclick="event.stopPropagation();decide('${f.typology_id}','amend')" ${decided?'disabled':''}>Amend</button>
-        <button class="btn-sm btn-reject" onclick="event.stopPropagation();decide('${f.typology_id}','reject')" ${decided?'disabled':''}>Reject</button>
+    ${rulesDetail(fired, true)}
+    ${rulesDetail(evaded, false)}
+
+    <div class="fix-label">Suggested fix ${tabMode==='generation'?'(not yet checked by a human)':''}</div>
+    <textarea class="fix-box" id="fix-${esc(fid)}" placeholder="No candidate fix drafted.">${esc(f.drafted_candidate_red_flag||'')}</textarea>
+    <div class="rationale-req" style="margin-top:2px">Editing this box before choosing Amend records your edited wording as the final rule text.</div>
+
+    <div class="actions" style="flex-direction:column;align-items:stretch;gap:4px">
+      <textarea class="rationale-box" id="rat-${esc(fid)}" placeholder="Required: explain your decision in plain language (what the rulebook got right or missed, and why)." oninput="rationaleDrafts['${esc(fid)}']=this.value; this.classList.remove('err')">${esc(draft)}</textarea>
+      <div class="rationale-req">A rationale is required before Accept, Amend or Reject will be recorded.</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
+        <button class="btn-sm btn-accept" onclick="decide('${esc(fid)}','accept')">Accept</button>
+        <button class="btn-sm btn-amend"  onclick="decide('${esc(fid)}','amend')">Amend</button>
+        <button class="btn-sm btn-reject" onclick="decide('${esc(fid)}','reject')">Reject</button>
         ${instBtn}
       </div>
-      ${decided?`<div class="dec-reason">↳ ${esc(reason)}</div>`:''}
     </div>
   </div>`;
 }
 
-function findReason(fid){
-  const el = $('rz-'+fid);
-  return el ? el.value.trim() : '';
-}
-
-function toggleDetail(fid){
-  const el = $('f-'+fid);
-  if(el) el.classList.toggle('open');
-}
-
 async function decide(fid, decision){
-  const reason = findReason(fid);
-  if(reason.length < 3){
-    const el = $('rz-'+fid);
-    if(el){ el.classList.add('err'); el.focus(); setTimeout(()=>el.classList.remove('err'), 1600); }
-    toast('Add a short reason before committing your decision');
+  const box = $('rat-'+fid);
+  const rationale = (box ? box.value : (rationaleDrafts[fid]||'')).trim();
+  if(!rationale){
+    if(box){ box.classList.add('err'); box.focus(); }
+    toast('A rationale is required before you can decide this finding.');
     return;
   }
+  const fixBox = $('fix-'+fid);
+  const rule_text = fixBox ? fixBox.value.trim() : '';
   try{
-    await api('/api/decide', {method:'POST', body:JSON.stringify({fid, decision, reason})});
-    toast('Finding '+fid+' → '+decision+' (reason logged)');
+    await api('/api/decide', {method:'POST', body:JSON.stringify({fid, decision, rationale, rule_text})});
+    delete rationaleDrafts[fid];
+    openRows.delete(fid);
+    toast('Finding '+fid+' → '+decision+' · moved to the Decided log');
     refresh();
   }catch(e){ toast('Decide failed: '+e.message); }
 }
 
+function dismissCaveat(){
+  try{ localStorage.setItem('rd_caveat_seen','1'); }catch(e){}
+  const b=$('caveatBanner'); if(b) b.style.display='none';
+}
+
 async function institute(fid){
-  const reason = findReason(fid) || 'Close the gap: institutionalise an indicator for this typology.';
-  if(reason.length < 3){
-    toast('Add a reason before instituting the rule');
-    return;
-  }
   try{
-    const r = await api('/api/institute', {method:'POST', body:JSON.stringify({fid, reason})});
+    const r = await api('/api/institute', {method:'POST', body:JSON.stringify({fid})});
     toast(r.ok ? '✦ '+r.rule+' instituted for '+fid+' · drift → '+r.drift_index.toFixed(1)
                : 'Institute failed: '+(r.error||'?'));
     refresh();
@@ -318,41 +396,52 @@ async function exportDossier(kind){
   }catch(e){ toast('Dossier export failed: '+e.message); }
 }
 
-function setFilter(tab){
-  filterTab = tab;
-  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.f===tab));
-  renderFindings();
-}
+const TAB_DESC = {
+  reconciliation: 'Known Attacks — 12 scams that have actually happened, tested against every single rule. If one is marked as a gap here, that is a real, provable weakness, not a guess.',
+  generation: 'Emerging Threats — new scams nobody has reported yet. The system dreams these up itself, so treat each one as a "what if?" worth a second look, not a confirmed attack.',
+};
 
-function matchesFilter(f){
-  const d = decisions[f.typology_id];
-  if(filterTab==='all') return true;
-  if(filterTab==='undecided') return !(d && d.label);
-  const kind = (d && d.label.includes('✓'))?'accepted'
-             : (d && d.label.includes('✎'))?'amended'
-             : (d && d.label.includes('✗'))?'rejected':null;
-  return kind===filterTab;
+let reviewTab = 'reconciliation';
+function setReviewTab(tab){
+  reviewTab = tab;
+  document.querySelectorAll('.rtab').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  renderFindings();
+  renderDecidedLog();
 }
 
 function renderFindings(){
-  const all = allFindings||[];
-  const counts = {all:all.length, accepted:0, amended:0, rejected:0, undecided:0};
-  all.forEach(f=>{
-    const d = decisions[f.typology_id];
-    if(!d || !d.label){ counts.undecided++; return; }
-    if(d.label.includes('✓')) counts.accepted++;
-    else if(d.label.includes('✎')) counts.amended++;
-    else if(d.label.includes('✗')) counts.rejected++;
-  });
-  ['All','Accepted','Amended','Rejected','Undecided'].forEach(k=>{
-    const el=$('c'+k); if(el) el.textContent = counts[k.toLowerCase()];
-  });
-  const shown = all.filter(matchesFilter);
-  $('findings').innerHTML = shown.map(findingCard).join('');
-  $('emptyFilter').style.display = shown.length?'none':'block';
+  const list = reviewTab==='reconciliation' ? (reconFindings||[]) : (genFindings||[]);
+  $('cReconRev').textContent = (reconFindings||[]).length;
+  $('cGenRev').textContent = (genFindings||[]).length;
+  $('tabDesc').textContent = TAB_DESC[reviewTab];
+  $('findings').innerHTML = list.map(f=>findingRow(f, reviewTab)).join('');
+  $('emptyFilter').style.display = list.length?'none':'block';
 }
 
-let allFindings = [];
+function decidedRow(d){
+  const finalLabel = d.rule_text_amended ? 'amended' : 'original';
+  return `<div class="row decided-row">
+    <div class="row-main" style="padding:11px 12px">
+      <div class="row-headline">${esc(d.headline||d.typology_name)}</div>
+      <div class="row-sub"><span class="decided-tag ${esc(d.decision)}">${esc(d.decision_label)}</span> · ${esc(d.analyst)} · ${esc((d.timestamp||'').replace('T',' '))}</div>
+      ${d.final_rule_text?`<div class="rp-text" style="margin-top:6px">Final rule text (${finalLabel}): ${esc(d.final_rule_text)}</div>`:''}
+      <div class="rp-text" style="margin-top:4px"><i>Rationale:</i> ${esc(d.rationale)}</div>
+      <div class="rp-ref">ref: ${esc(d.fid)}${(d.fired_rules&&d.fired_rules.length)?' · fired '+d.fired_rules.join(', '):''}${(d.evaded_rules&&d.evaded_rules.length)?' · evaded '+d.evaded_rules.join(', '):''}</div>
+    </div>
+  </div>`;
+}
+
+function renderDecidedLog(){
+  const list = (decisionsLog||[]).filter(d=>d.mode===reviewTab);
+  $('decidedTitle').textContent = 'Decided · ' + (reviewTab==='reconciliation'?'Known Attacks':'Emerging Threats') + ' (' + list.length + ')';
+  $('decidedLog').innerHTML = list.length
+    ? list.slice().reverse().map(decidedRow).join('')
+    : '<div class="empty blocked">No decisions recorded yet in this tab.</div>';
+}
+
+let reconFindings = [];
+let genFindings = [];
+let decisionsLog = [];
 let amendments = {rules:[], covered:[], resolved_findings:[]};
 async function refresh(){
   let s;
@@ -362,12 +451,12 @@ async function refresh(){
 function applyState(s){
   decisions = s.decisions||{};
   running = Boolean(s.running);
-  allFindings = s.findings||[];
+  reconFindings = s.reconciliation_findings||[];
+  genFindings = s.generation_findings||[];
+  decisionsLog = s.decisions_log||[];
   amendments = s.amendments||{rules:[], covered:[], resolved_findings:[]};
   $('runId').textContent = s.run_id||'none';
   $('rulebookVersion').textContent = s.rulebook_version||'—';
-  $('runMode').textContent = ARM_LABEL[s.mode]||'known';
-  $('exclCount').textContent = (s.excluded&&s.excluded.count)||0;
   const st = s.status||'ready';
   const statusMap = {
     awaiting_human_approval: (s.total?'Awaiting approval · 0/'+s.total+' decided':'Awaiting approval'),
@@ -382,17 +471,14 @@ function applyState(s){
   $('findingsTitle').textContent = 'Verified findings · ' +
     ((s.reviewed||0)+'/'+(s.total||0)+' reviewed');
 
-  const modo = ARM_LABEL[s.mode]||'known';
-  const b1 = $('runBtn1'), b2 = $('runBtn2');
+  const b1 = $('runBtn'), biome = $('runBtnIcon');
   if(s.running){
-    $('runBtn1').disabled = true; $('runBtn2').disabled = true;
-    if(b1) b1.querySelector('.icon').innerHTML = (modo==='known'||modo==='both')?'<span class="spinner"></span>':'▶';
-    if(b2) b2.querySelector('.icon').innerHTML = (modo==='invented'||modo==='both')?'<span class="spinner"></span>':'▶';
+    $('runBtn').disabled = true;
+    if(biome) biome.innerHTML = '<span class="spinner"></span>';
     runFinishedShown = false;
   }else{
-    $('runBtn1').disabled = false; $('runBtn2').disabled = false;
-    if(b1) b1.querySelector('.icon').textContent = '▶';
-    if(b2) b2.querySelector('.icon').textContent = '▶';
+    $('runBtn').disabled = false;
+    if(biome) biome.textContent = '▶';
     if(!runFinishedShown && (s.total||0)>0){
       runFinishedShown = true;
       markStep(5);
@@ -405,6 +491,7 @@ function applyState(s){
 
   renderLog(s.log, running);
   renderFindings();
+  renderDecidedLog();
   renderAmendments();
   renderDiff(s.diff);
   $('rejTitle').style.display = (s.discarded||[]).length?'block':'none';
@@ -553,18 +640,73 @@ function ruleMeta(id){
   return r ? {name:r.name, text:r.text, category:r.category} : {name:id+' (no description)', text:'', category:''};
 }
 
-function rulesDetail(ids){
-  if(!ids.length) return '<div class="dim">—</div>';
-  return `<div class="detail-scroll">` + ids.map(id=>{
-    const r = ruleMeta(id);
-    return `<div class="rule-row"><span class="rid">${esc(id)}</span><span>
-      <span class="rname">${esc(r.name)}</span><br/><span class="rtext">${esc(r.text||'')}</span></span></div>`;
-  }).join('') + `</div>`;
+// Canonical source PDFs, keyed off the rule's `source` field. `source_ref`
+// carries the page (FATF) or paragraph (Directive 9) - read straight from the
+// rule, never hardcoded per rule.
+const FATF_URL = 'https://www.fatf-gafi.org/content/dam/fatf-gafi/reports/Virtual-Assets-Red-Flag-Indicators.pdf';
+const FIC_URL  = 'https://www.fic.gov.za/wp-content/uploads/2024/11/Directive-9-Travel-rule-relating-to-crypto-asset-transfers.pdf';
+
+function sourceSegments(rule){
+  // A rule can cite more than one source (e.g. DS-04: FATF ; FIC), each
+  // ';'-separated and paired positionally with the matching source_ref segment.
+  const srcs = (rule.source||'').split(';').map(s=>s.trim()).filter(Boolean);
+  const refs = (rule.source_ref||'').split(';').map(s=>s.trim()).filter(Boolean);
+  const n = Math.max(srcs.length, refs.length, 1);
+  const out = [];
+  for(let i=0;i<n;i++){
+    const s = srcs[i] || srcs[0] || '';
+    const label = refs[i] || refs[0] || s || 'source';
+    let url = null;
+    if(/FATF/i.test(s)) url = FATF_URL;
+    else if(/FIC|Directive/i.test(s)) url = FIC_URL;
+    out.push({label, url});
+  }
+  return out;
 }
 
-function toggleDetail(fid){
-  const el = $('f-'+fid);
-  if(el) el.classList.toggle('open');
+function sourceLinksHtml(rule){
+  return sourceSegments(rule).map(seg=>
+    seg.url
+      ? `<a href="${seg.url}" target="_blank" rel="noopener">${esc(seg.label)} ↗</a>`
+      : `<span>${esc(seg.label)}</span>`
+  ).join(' · ');
+}
+
+function cpRefSuffix(rule){
+  const cps = rule.capability_primitives||[];
+  if(!cps.length) return '';
+  return ' · relates to ' + cps.map(c=>esc(String(c).split(':')[0].trim())).join(', ');
+}
+
+function lowerFirst(s){ return s ? s.charAt(0).toLowerCase()+s.slice(1) : s; }
+
+function ruleSentence(id, fired){
+  const r = RULES_MAP[id];
+  if(!r){
+    return `<div class="rule-plain ${fired?'ok':'miss'}">
+      <div class="rp-verdict">${fired?'✅ Caught it':'🚫 Missed it'}</div>
+      <div class="rp-name">Rule ${esc(id)} (details still loading)</div>
+    </div>`;
+  }
+  const verdict = fired
+    ? '✅ Caught it — this rule spotted the activity and would have flagged it.'
+    : '🚫 Missed it — this rule looked, but didn\u2019t find what it was looking for here.';
+  const why = (!fired && r.trigger)
+    ? `<div class="rp-why">Why it missed: the rule only fires when <i>“${esc(r.trigger)}”</i> — and that specific pattern wasn\u2019t present in this case.</div>`
+    : '';
+  return `<div class="rule-plain ${fired?'ok':'miss'}">
+    <div class="rp-verdict">${verdict}</div>
+    <div class="rp-name">Rule: ${esc(r.name)}</div>
+    ${r.text?`<div class="rp-text">In plain terms: ${esc(r.text)}</div>`:''}
+    ${why}
+    <div class="rp-source">Where this rule comes from: ${sourceLinksHtml(r)}</div>
+    <div class="rp-ref">ref: ${esc(id)}${cpRefSuffix(r)}</div>
+  </div>`;
+}
+
+function rulesDetail(ids, fired){
+  if(!ids.length) return '<div class="dim" style="font-size:12px;margin:4px 0">—</div>';
+  return ids.map(id=>ruleSentence(id, fired)).join('');
 }
 
 async function runProbe(){
@@ -607,16 +749,14 @@ async function tick(){
   setTimeout(tick, running?600:3000);
 }
 
-async function startRun(mode){
-  const btn = mode==='generated' ? $('runBtn2') : $('runBtn1');
-  const btn2 = mode==='generated' ? $('runBtn1') : $('runBtn2');
+async function startRun(){
+  const btn = $('runBtn'), biome = $('runBtnIcon');
   try{
-    btn.disabled = true; btn.querySelector('.icon').innerHTML='<span class="spinner"></span>';
-    btn2.disabled = true;
+    if(biome) biome.innerHTML='<span class="spinner"></span>';
     stepIndex=-1; logCache=null; runFinishedShown=false;
-    decisions={}; allFindings=[];
+    decisions={}; reconFindings=[]; genFindings=[];
     buildPipe();
-    const r = await api('/api/run', {method:'POST', body:JSON.stringify({trigger:'manual', mode})});
+    const r = await api('/api/run', {method:'POST', body:JSON.stringify({trigger:'manual'})});
     if(r && r.sync && r.state){
       // Serverless run completed inside the POST — render it straight away,
       // the poller will continue to refresh from /api/state while the
@@ -624,10 +764,9 @@ async function startRun(mode){
       runFinishedShown = true;
       applyState(r.state);
     }
-  }catch(e){ toast('Could not start run: '+e.message); btn.disabled=false; btn.querySelector('.icon').textContent='▶'; btn2.disabled=false; }
+  }catch(e){ toast('Could not start run: '+e.message); if(biome) biome.textContent='▶'; }
 }
-$('runBtn1').addEventListener('click', ()=>startRun('documented'));
-$('runBtn2').addEventListener('click', ()=>startRun('generated'));
+$('runBtn').addEventListener('click', startRun);
 
 $('resetBtn').addEventListener('click', async ()=>{
   try{
@@ -636,7 +775,7 @@ $('resetBtn').addEventListener('click', async ()=>{
     if(r.aborted){
       toast('Aborting running scan…');
       $('runStatus').textContent = 'aborting…';
-      $('runBtn1').disabled = true; $('runBtn2').disabled = true;
+      $('runBtn').disabled = true;
       const wait = async ()=>{
         const s = await api('/api/state');
         if(!s.running){ doResetUI(); toast('Run aborted · state cleared'); }
@@ -655,6 +794,12 @@ $('resetBtn').addEventListener('click', async ()=>{
 $('probeBtn').addEventListener('click', runProbe);
 $('fxRun').addEventListener('click', runFx);
 
+(function initCaveat(){
+  let seen = false;
+  try{ seen = !!localStorage.getItem('rd_caveat_seen'); }catch(e){ seen = false; }
+  if(!seen){ const b=$('caveatBanner'); if(b) b.style.display='flex'; }
+})();
+
 (async function loadRules(){
   try{
     const r = await api('/api/rules');
@@ -664,7 +809,7 @@ $('fxRun').addEventListener('click', runFx);
 
 function doResetUI(){
   stepIndex=-1; logCache=null; runFinishedShown=false;
-  decisions={}; allFindings=[];
+  decisions={}; reconFindings=[]; genFindings=[];
   buildPipe();
   refresh();
 }

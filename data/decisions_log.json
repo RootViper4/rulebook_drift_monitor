@@ -1,0 +1,18 @@
+[
+  {
+    "fid": "CP-08",
+    "mode": "reconciliation",
+    "headline": "synthetic-identity reuse to reopen/unfreeze a previously flagged account, using clean-looking documents and a fresh (non-shared) device/IP specifically to evade cross-account linkage",
+    "typology_name": "synthetic-identity reuse to reopen/unfreeze a previously flagged account",
+    "decision": "accept",
+    "decision_label": "accepted ✓",
+    "rationale": "khgreihireugheiro",
+    "analyst": "A. Analyst",
+    "timestamp": "2026-09-07T04:44:18",
+    "fired_rules": [],
+    "evaded_rules": [],
+    "original_rule_text": "Documented attack 'synthetic-identity reuse to reopen/unfreeze a previously flagged account' has no rule in the current corpus addressing it, even partially. Draft indicator: this needs a new, dedicated red flag - there is nothing existing to amend.",
+    "final_rule_text": "Documented attack 'synthetic-identity reuse to reopen/unfreeze a previously flagged account' has no rule in the current corpus addressing it, even partially. Draft indicator: this needs a new, dedicated red flag - there is nothing existing to amend.",
+    "rule_text_amended": false
+  }
+]

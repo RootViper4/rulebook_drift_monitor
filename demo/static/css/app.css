@@ -140,6 +140,65 @@ button{font-family:inherit}
 .rejected{background:var(--bad-soft);border:1px solid #f3c6c6;border-radius:var(--radius);padding:16px 18px}
 .rejected h3{color:var(--bad);margin:0 0 8px;font-size:15px}
 
+/* ---------- Plain-language regulator review (per gap) ---------- */
+.caveat-banner{display:flex;align-items:center;gap:10px;background:var(--warn-soft);border:1px solid #f0dcae;color:#8a5a05;border-radius:10px;padding:10px 14px;font-size:12.5px;margin-bottom:14px}
+.caveat-banner button{margin-left:auto;flex:none;background:none;border:1px solid #d8b869;color:#8a5a05;border-radius:6px;padding:4px 11px;font-size:11.5px;font-weight:700;cursor:pointer}
+.attack-desc{font-size:15px;font-weight:700;color:var(--text);line-height:1.4}
+.ref-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 0 2px;font-size:11.5px;color:var(--dim)}
+.section-kd{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--dim);margin-top:12px}
+.rule-plain{border:1px solid var(--border);border-left:3px solid var(--border-2);border-radius:8px;padding:8px 11px;margin:6px 0;font-size:12.5px;line-height:1.5;background:var(--panel-2)}
+.rule-plain.ok{border-left-color:var(--good)}
+.rule-plain.miss{border-left-color:var(--bad)}
+.rp-verdict{font-weight:700;font-size:11.5px;margin-bottom:2px}
+.rule-plain.ok .rp-verdict{color:var(--good)}
+.rule-plain.miss .rp-verdict{color:var(--bad)}
+.rp-name{font-weight:700;color:var(--text)}
+.rp-text{color:var(--muted);margin-top:2px}
+.rp-why{color:var(--bad);margin-top:4px;font-style:italic}
+.rp-source{margin-top:5px}
+.rp-source a{color:var(--accent);font-weight:600;text-decoration:underline}
+.rp-ref{margin-top:4px;font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+.fix-label{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--dim);margin-top:12px}
+.rationale-box{width:100%;min-height:56px;margin-top:10px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:12.5px;resize:vertical;background:#fff;color:var(--text)}
+.rationale-box.err{border-color:var(--bad);background:var(--bad-soft)}
+.rationale-req{font-size:10.5px;color:var(--dim);margin-top:3px}
+.fix-box{width:100%;min-height:60px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;background:var(--panel-2);color:var(--text)}
+
+/* ---------- Known Attacks / Emerging Threats tabs ---------- */
+.review-type-tabs{display:flex;gap:8px;margin:2px 0 8px}
+.rtab{background:var(--panel);border:1px solid var(--border);color:var(--muted);font-weight:700;font-size:13px;padding:8px 14px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:7px}
+.rtab:hover{border-color:var(--border-2);color:var(--text)}
+.rtab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.rtab-count{font-family:var(--mono);font-size:11px;font-weight:800;background:rgba(0,0,0,.08);padding:1px 7px;border-radius:999px}
+.rtab.active .rtab-count{background:rgba(255,255,255,.22)}
+.tab-desc{font-size:12px;color:var(--dim);margin-bottom:10px}
+.badge-unverified{display:inline-block;background:var(--warn-soft);color:var(--warn);border:1px solid #f0dcae;font-weight:700;font-size:10.5px;padding:2px 8px;border-radius:6px;margin-left:6px}
+/* Generation-arm provenance badges - honest labelling of whether a finding
+   was actually produced by the local model, or by the deterministic
+   fallback/fixed probe. Never let these three read as interchangeable. */
+.badge-source{display:inline-block;font-weight:700;font-size:10.5px;padding:2px 8px;border-radius:6px;margin-left:6px;border:1px solid transparent}
+.badge-source-llm{background:var(--accent-soft);color:var(--accent);border-color:#c9d9fb}
+.badge-source-fallback{background:var(--panel-3);color:var(--muted);border-color:var(--border-2)}
+.badge-source-probe{background:var(--warn-soft);color:var(--warn);border-color:#f0dcae}
+
+/* ---------- Collapsible triage rows + decided log ---------- */
+.list-rows{display:flex;flex-direction:column;gap:8px}
+.row{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.row.gap{border-left:3px solid var(--bad)}
+.row-head{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;cursor:pointer}
+.row-head:hover{background:var(--panel-2)}
+.row-chevron{flex:none;color:var(--dim);font-size:12px;margin-top:2px}
+.row-main{flex:1;min-width:0}
+.row-headline{font-weight:700;font-size:14px;color:var(--text);line-height:1.4}
+.row-sub{font-size:12px;color:var(--dim);margin-top:3px}
+.row.gap .row-sub{color:var(--bad);font-weight:600}
+.row-detail{padding:0 14px 14px;border-top:1px dashed var(--border);margin-top:2px;padding-top:10px}
+.decided-row{background:var(--panel-2)}
+.decided-tag{font-weight:800;font-size:11px;padding:2px 8px;border-radius:6px}
+.decided-tag.accept{background:var(--good-soft);color:var(--good)}
+.decided-tag.amend{background:#ece9fe;color:var(--accent-2)}
+.decided-tag.reject{background:var(--bad-soft);color:var(--bad)}
+
 /* ---------- Tables ---------- */
 table{width:100%;border-collapse:collapse;font-size:13px}
 td,th{padding:9px 11px;border-bottom:1px solid var(--border);vertical-align:top;text-align:left}

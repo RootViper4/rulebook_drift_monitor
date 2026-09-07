@@ -21,6 +21,7 @@ class Rule:
     risk_severity: str = "medium"            # low | medium | high | critical
     ai_relevant: bool = False                # whether the rule maps to AI-orchestrated evasion
     signal_signature: dict = field(default_factory=dict)   # (key,value) pairs; institutionalised rules
+    trigger_schema: dict = field(default_factory=dict)     # structured all/any/not trigger tree; see agents/trigger_schema.py
     institutionalised: bool = False          # auto-generated from an approved review finding
     source_finding: str = ""                 # provenance: finding id / typology id
 
@@ -66,7 +67,20 @@ class GapFinding:
     plausible: bool = True
     verified: bool = False
     trace: list = field(default_factory=list)
-    mode: str = "documented"
+    # "reconciliation" (documented capability-primitive attacks stepped through
+    # the rulebook) or "generation" (novel, unverified, self-generated evasion
+    # hypotheses). Drives the two-tab split in the review UI - the two modes
+    # must never be displayed as one merged list.
+    mode: str = "reconciliation"
+    # Provenance for generation-mode findings only: "llm" (the local model
+    # composed this scenario), "deterministic_fallback" (model unavailable or
+    # its output didn't parse), or "fixed_probe" (the always-appended
+    # speculative case used to prove the critic's rejection path runs).
+    # Blank for reconciliation-mode findings, where it doesn't apply.
+    generation_source: str = ""
+    # Which capability primitive(s) (CP-01..10) this finding composes, where
+    # known. Blank list if not applicable/not identified.
+    capability_primitives: list[str] = field(default_factory=list)
 
 
 @dataclass

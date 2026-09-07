@@ -335,11 +335,86 @@ footer{color:var(--dim);font-size:12px;text-align:center;padding:8px 0 10px}
 @media(max-width:860px){
   .app{flex-direction:column}
   .sidebar{width:100%;height:auto;position:static;flex-direction:row;align-items:center;flex-wrap:wrap}
-  .side-nav{flex-direction:row;flex-wrap:wrap;padding:8px}
+  .side-brand{padding:12px 14px;flex:1;min-width:0}
+  .side-nav{flex-direction:row;flex-wrap:wrap;padding:8px;width:100%}
   .side-foot,.nav-sec{display:none}
   .content{padding:18px}
   .detail-grid{grid-template-columns:1fr}
   .run-meta{margin-left:0;width:100%}
+  .topbar{padding:0 18px;height:56px}
+  .cmp-stats{grid-template-columns:repeat(2,1fr)}
+}
+
+/* ---------- Mobile (phones) ---------- */
+@media(max-width:600px){
+  .sidebar{flex-direction:column;align-items:stretch}
+  .side-brand{border-bottom:1px solid rgba(255,255,255,.07)}
+  .side-nav{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:8px 10px;gap:6px}
+  .nav-link{flex:none;padding:8px 11px;font-size:12.5px;white-space:nowrap}
+  .nav-link .ic{font-size:13px}
+
+  .topbar{height:52px;padding:0 14px;gap:8px}
+  .page-title{font-size:14.5px}
+  .analyst-chip .avatar{width:24px;height:24px;font-size:10px}
+  .analyst-chip .analyst-name{display:none}
+
+  .content{padding:14px 14px 32px}
+  .hero h1,.hero-sm h1,.content h1{font-size:21px;letter-spacing:-.2px}
+  .hero .sub,.hero-sm .sub{font-size:13.5px}
+
+  /* Buttons: full-width, touch-friendly */
+  .btn{padding:12px 14px;font-size:14px;width:100%;justify-content:center}
+  .runbar{flex-direction:column;align-items:stretch;padding:14px}
+  .run-meta{flex-direction:column;gap:6px;font-size:12.5px;align-items:flex-start}
+  .btn-sm{padding:9px 13px;font-size:13px}
+
+  /* Layout grids stack */
+  .grid.kpis,.grid.cards,.grid.two,.grid.three{grid-template-columns:1fr}
+  .kpi .k-value{font-size:26px}
+  .cmp-stats{grid-template-columns:repeat(2,1fr);gap:6px}
+
+  /* Findings rows: comfortable tap targets */
+  .row-head{padding:13px 12px;gap:9px}
+  .row-headline{font-size:13.5px}
+  .row-detail{padding:0 12px 13px}
+  .finding{padding:14px}
+  .actions{gap:7px}
+  .actions .btn-sm{flex:1}
+  .decided{margin-left:0}
+
+  /* Tables: horizontal scroll instead of crush */
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{font-size:12.5px;min-width:520px}
+
+  /* Cards/probe/docs spacing */
+  .card-pad{padding:16px}
+  .cmp-grid{gap:12px}
+  .cmp-card{padding:13px}
+  .cmp-title{font-size:17px}
+  .hot-row{flex-wrap:wrap;gap:8px}
+  .hot-name{flex:1 1 auto}
+  .hot-bar{max-width:none;flex:1 1 100%}
+
+  /* Pipeline/live pane */
+  .pipe-step{gap:10px}
+  .pipe-dot{width:22px;height:22px}
+  .live-pane{padding:13px 14px}
+
+  /* Section headers */
+  .section-row{align-items:center}
+  .filterbar{padding:11px}
+  .search{min-width:100%}
+  .review-type-tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
+  .rtab{flex:none;white-space:nowrap}
+
+  /* Details & forms */
+  .rationale-box,.fix-box,.reason-input{font-size:13px}
+  .aud-line{gap:9px}
+  .aud-head{flex-wrap:wrap}
+
+  /* Toasts fit the viewport */
+  .toast{left:14px;right:14px;bottom:14px;transform:none;text-align:center}
+  .toast.show{transform:none}
 }
 /* --- Docs page --- */
 .eyebrow-inline{font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:400;margin-left:12px}

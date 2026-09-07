@@ -109,8 +109,11 @@ LLM_API_KEY=<your key>
 ```
 
 Locally (Ollama) requires no env vars — it uses `http://localhost:11434` / `llama3.2:1b`
-by default. The hosted endpoint is only used when `LLM_BASE_URL` **and** `LLM_API_KEY`
-are both set.
+by default, and if that model isn't installed the client automatically picks the
+smallest available one so local just works. Set `LLM_BACKEND=ollama` to force the
+local backend even when hosted credentials are present in `.env` (fully offline demo).
+The hosted endpoint is only used when `LLM_BASE_URL` **and** `LLM_API_KEY` are both set
+and `LLM_BACKEND` is not `ollama`.
 
 **Speed note:** on CPU-only machines (e.g. Intel Macs) the local `llama3.2:1b`
 generates at ~1 token/sec, so a full run can take several minutes and often

@@ -37,14 +37,21 @@ LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "").rstrip("/")
 LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
 LLM_MODEL = os.environ.get("LLM_MODEL", "")
 
+# Backend selector for local development. "ollama" (or "local") FORCES the
+# local Ollama path even when hosted creds are set (e.g. .env carries a real
+# key but you want to demo fully offline); "hosted" forces the hosted path;
+# unset/"auto" uses hosted only when LLM_BASE_URL + LLM_API_KEY are set.
+LLM_BACKEND = os.environ.get("LLM_BACKEND", "auto").strip().lower()
+
 
 class LocalLLMClient:
     """Thin wrapper around a local Ollama OR a hosted OpenAI-compatible LLM.
 
     Selection logic:
-      1. If LLM_BASE_URL + LLM_API_KEY are set → hosted endpoint
-         (OpenAI /chat/completions wire format).
-      2. Otherwise → local Ollama at OLLAMA_URL.
+      1. LLM_BACKEND=ollama (or "local") → always local Ollama.
+      2. LLM_BACKEND=hosted → always the hosted endpoint.
+      3. Otherwise (auto): if LLM_BASE_URL + LLM_API_KEY are set → hosted
+         endpoint, else local Ollama at OLLAMA_URL.
 
     Returns None on any failure (unreachable, model missing, bad response)
     so downstream agents can tolerate imperfect model output.
@@ -57,7 +64,12 @@ class LocalLLMClient:
         self._hosted_url = LLM_BASE_URL
         self._hosted_key = LLM_API_KEY
         self._hosted_model = LLM_MODEL or "gpt-4o-mini"
-        self._use_hosted = bool(self._hosted_url and self._hosted_key)
+        creds_present = bool(self._hosted_url and self._hosted_key)
+        forced_local = LLM_BACKEND in ("ollama", "local")
+        forced_hosted = LLM_BACKEND == "hosted"
+        self._use_hosted = forced_hosted or (creds_present and not forced_local)
+        # Resolved lazily so __init__ never does network I/O.
+        self._resolved_ollama_model: Optional[str] = None
 
         # Backwards-compatible public attributes used by other modules
         self.url = self._hosted_url if self._use_hosted else self._ollama_url
@@ -71,31 +83,41 @@ class LocalLLMClient:
     def available(self) -> bool:
         if self._use_hosted:
             return self._check_hosted()
-        return self._check_ollama()
+        return self._pick_ollama_model() is not None
 
-    def _check_hosted(self) -> bool:
-        try:
-            r = requests.get(
-                f"{self._hosted_url}/models",
-                headers={"Authorization": f"Bearer {self._hosted_key}"},
-                timeout=5,
-            )
-            if r.status_code == 200:
-                return True
-            # Some providers don't support /models — try a tiny completion
-            return r.status_code in (401, 403)
-        except Exception:
-            # Even if /models fails, the endpoint may still work
-            return True
-
-    def _check_ollama(self) -> bool:
+    def _pick_ollama_model(self) -> Optional[str]:
+        """Return the Ollama model the client should use, choosing an
+        installed one so local just works. If the configured model exists,
+        use it; otherwise fall back to whichever model IS installed (prefer
+        the smallest so CPU boxes don't choke). None if Ollama is unreachable
+        or has no models at all."""
+        if self._resolved_ollama_model is not None:
+            return self._resolved_ollama_model
         try:
             r = requests.get(f"{self._ollama_url}/api/tags", timeout=3)
-            return r.status_code == 200 and self._ollama_model in [
-                m["name"] for m in r.json().get("models", [])
-            ]
+            r.raise_for_status()
+            models = r.json().get("models", [])
         except Exception:
-            return False
+            return None
+        if not models:
+            return None
+
+        def size_of(m: dict) -> float:
+            m_size = m.get("size")
+            try:
+                return float(m_size) if m_size is not None else float("inf")
+            except (TypeError, ValueError):
+                return float("inf")
+
+        names = {m.get("name") for m in models}
+        if self._ollama_model not in names:
+            # Fall back to the smallest installed model so the client still
+            # works even when the requested one was never pulled.
+            models.sort(key=size_of)
+            chosen = models[0].get("name")
+            self._ollama_model = chosen
+        self._resolved_ollama_model = self._ollama_model
+        return self._resolved_ollama_model
 
     # ------------------------------------------------------------------
     def complete(self, prompt: str, temperature: float = 0.2,
@@ -161,7 +183,7 @@ class LocalLLMClient:
     # --- Local Ollama (/api/generate) --------------------------------------
     def _complete_ollama(self, prompt: str, temperature: float,
                          max_tokens: int) -> Optional[str]:
-        if not self.available():
+        if self._pick_ollama_model() is None:
             return None
         payload = {
             "model": self._ollama_model,

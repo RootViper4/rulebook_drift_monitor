@@ -384,6 +384,13 @@ class SimulationAgent:
                 "fixture": fixture,
                 "unmodeled_fields": unmodeled_fields,
                 "dropped_mismatched_fields": prim.get("dropped_mismatched_fields") or [],
+                # Why this slot fell back to a hand-authored scenario instead
+                # of a model-written one - None for "llm" and "fixed_probe"
+                # sources, where the question doesn't apply. Read by the
+                # orchestrator's summary log line so a run with an available
+                # backend and zero LLM-sourced findings is explainable instead
+                # of just surprising.
+                "fallback_reason": prim.get("_fallback_reason"),
             })
         return findings
 
@@ -453,30 +460,45 @@ class SimulationAgent:
             if is_hosted and i > 0:
                 time.sleep(GENERATION_ARM_SLOT_PACING_SECONDS)
             cleaned = None
+            # What stopped THIS slot from producing a usable scenario, so a
+            # slot that falls back is explainable rather than a bare "used the
+            # fallback" - see the log line built after the loop below.
+            slot_reason = None
             for _attempt in range(attempts_per_slot):
                 if _aborted():
                     break
                 prompt = self._build_single_scenario_prompt(rulebook, known_fields, proposed_scenarios)
                 raw = self.llm.complete(prompt, temperature=0.55, max_tokens=max_tokens)
                 if not raw:
+                    # self.last_error is provider-specific (401/404/429/network/
+                    # timeout) and set by LocalLLMClient.complete() on every
+                    # failure - see agents/llm_client.py. Reading it here is
+                    # the only way this slot's failure reason survives past the
+                    # retry loop.
+                    slot_reason = getattr(self.llm, "last_error", None) or "no response from the model"
                     continue
                 parsed = self._parse_json_scenarios(raw)
                 if not parsed:
+                    slot_reason = "the model's response could not be parsed as JSON"
                     continue
                 candidate = self._sanitize_scenario(
                     parsed[0], existing_rule_names, known_fields_set, field_domains
                 )
                 if not candidate:
+                    slot_reason = "the proposed scenario failed field/shape validation"
                     continue
                 if self._name_too_similar(candidate["name"], proposed_names):
+                    slot_reason = f"scenario name too similar to an earlier slot ('{candidate['name']}')"
                     continue
                 # Same idea under a different name: overlapping technique
                 # vocabulary with an earlier slot is also a duplicate, even if
                 # the name check passed (name-only similarity is too weak).
                 if self._techniques_too_similar(candidate.get("techniques") or [],
                                                 proposed_scenarios):
+                    slot_reason = "technique profile too similar to an earlier slot"
                     continue
                 cleaned = candidate
+                slot_reason = None
                 break
             if cleaned:
                 cleaned["_source"] = "llm"
@@ -499,6 +521,7 @@ class SimulationAgent:
                     break
                 fb = fb or dict(fallback[i % len(fallback)])
                 fb["_source"] = "deterministic_fallback"
+                fb["_fallback_reason"] = slot_reason or "unknown reason"
                 scenarios.append(fb)
                 proposed_names.append(fb["name"])
                 proposed_scenarios.append(fb)

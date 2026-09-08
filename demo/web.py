@@ -702,6 +702,11 @@ def _finding_json(f, desc_by_id=None):
         # keeps this safe against any GapFinding built before this field existed
         # (e.g. cached objects from data/drafted_flags.json predating this change).
         "generation_source": getattr(f, "generation_source", ""),
+        # Only meaningful when generation_source is "deterministic_fallback" -
+        # why the model-written attempt for this slot failed, so a hosted
+        # backend reporting "available" and still producing zero LLM-sourced
+        # findings is explainable from the row itself, not just the run log.
+        "fallback_reason": getattr(f, "fallback_reason", ""),
         "capability_primitives": getattr(f, "capability_primitives", []),
         "fully_verified": getattr(f, "fully_verified", True),
         "unmodeled_fields": getattr(f, "unmodeled_fields", []),
@@ -1219,6 +1224,78 @@ def api_decide():
     return jsonify({"ok": True, "decision": label})
 
 
+_SEVERITY_ORDER = ["low", "medium", "high", "critical"]
+
+
+def _severity_from_evaded(rule_ids) -> str:
+    """Highest severity among the rules a finding got past; medium if unknown."""
+    by_id = {r.id: r for r in load_rulebook()}
+    ranks = [_SEVERITY_ORDER.index(by_id[i].risk_severity)
+             for i in (rule_ids or [])
+             if i in by_id and by_id[i].risk_severity in _SEVERITY_ORDER]
+    return _SEVERITY_ORDER[max(ranks)] if ranks else "medium"
+
+
+def _typology_for(fid: str, finding, run):
+    """Resolve the Typology-shaped object institutionalisation needs.
+
+    Only the legacy corpus (TYP-001..TYP-014) has real Typology records. A run's
+    findings never do: the reconciliation arm reports per AI capability
+    primitive (CP-01..CP-12, from data/fixtures.capability_primitives.json) and
+    the generation arm invents its own (GEN-01..). Looking the finding's id up
+    in the corpus therefore missed every time, and "Institute rule" answered
+    404 on every row in the queue.
+
+    So: try the corpus, then the run's own typology list, and otherwise build a
+    stand-in from the finding itself — carrying the fixtures it was verified
+    against, so `amendments.institute` can still run its deterministic
+    gap-closed self-check on real evidence rather than on nothing. Returns None
+    when the finding has no fixture at all, so the caller can say why instead of
+    letting the guardrail pass vacuously.
+    """
+    from agents.models import Typology
+
+    corpus = next((t for t in load_typologies() if t.id == fid), None)
+    if corpus is not None:
+        return corpus
+
+    in_run = next((t for t in (getattr(run, "typologies", None) or []) if t.id == fid), None)
+    if in_run is not None:
+        return in_run
+
+    # An empty fixture dict is not evidence. CP-02, for instance, records its
+    # fields as `missing_fields` because nothing in the corpus can represent
+    # staff impersonation - so there is genuinely nothing to test an amendment
+    # against, and the caller should say that rather than let the self-check
+    # pass on an empty set.
+    fixtures = [fx for fx in (getattr(finding, "test_fixtures", None) or [])
+                if isinstance(fx, dict) and (fx.get("tx") or fx)]
+    if not fixtures:
+        return None
+
+    # Techniques feed the generated rule's name, keywords and trigger text.
+    # Built from the finding's own identifiers rather than the reconciliation
+    # arm's raw match vocabulary, which includes whole representation notes and
+    # would produce an unreadable rule.
+    techniques = [t for t in ([fid] + list(getattr(finding, "capability_primitives", None) or [])
+                              + [finding.typology_name]) if t]
+    return Typology(
+        id=fid,
+        name=finding.typology_name,
+        source="Institutionalised from a reviewed finding (no corpus typology)",
+        description=(finding.evidential_basis or finding.typology_name),
+        techniques=list(dict.fromkeys(techniques)),
+        mitre_atlas=list(getattr(finding, "mitre_atlas", None) or []),
+        test_fixtures=fixtures,
+        # generate_rule() copies this onto the new indicator, and it drives the
+        # severity mix on the dashboard. Inherit the worst severity among the
+        # rules this finding actually defeated rather than defaulting every
+        # institutionalised rule to medium: an indicator written to close a gap
+        # that let a critical rule down should not be filed as a middling one.
+        risk_severity=_severity_from_evaded(getattr(finding, "evaded_rules", None)),
+    )
+
+
 @app.route("/api/institute", methods=["POST"])
 @require_analyst
 def api_institute():
@@ -1232,9 +1309,11 @@ def api_institute():
     finding = next((f for f in (run.results if run else []) if f.typology_id == fid), None)
     if finding is None:
         return jsonify({"error": "finding not found"}), 404
-    typology = next((t for t in load_typologies() if t.id == fid), None)
+    typology = _typology_for(fid, finding, run)
     if typology is None:
-        return jsonify({"error": "typology not found"}), 404
+        return jsonify({"error": ("This finding carries no fixture to test an amendment against, "
+                                  "so the gap-closed self-check cannot run. Accept or amend it "
+                                  "instead, and raise the missing field with the domain team.")}), 400
 
     res = amendments.institute(typology, finding, run.run_id if run else "review")
     if not res.get("ok"):
@@ -1362,6 +1441,11 @@ def api_fraudtest():
             ),
             plausible=True,
             verified=True,
+            # Keep the submitted scenario on the finding. It is the only
+            # evidence a later "Institute rule" has to run its gap-closed
+            # self-check against; without it the analyst's own test attack
+            # would be the one row in the queue that could never be adopted.
+            test_fixtures=[raw],
         )
         run.results.append(finding)
         STORE["decisions"].setdefault(fid, "")

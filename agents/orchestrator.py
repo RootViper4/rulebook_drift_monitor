@@ -96,6 +96,23 @@ class Orchestrator:
                          f"({gen_source_summary}).",
                          reconciliation=len(rec_findings), generation=len(gen_findings),
                          generation_sources=gen_source_counts)
+
+        # If every slot fell back, "available: True" at the top of the log
+        # reads as a contradiction unless the reason is stated here too - it
+        # is otherwise only visible per-row on the review page. De-duplicated
+        # because the same cause (e.g. one bad model name) typically hits
+        # every slot identically, and repeating it per-slot would just be
+        # noise.
+        fallback_reasons = sorted({
+            f.get("fallback_reason") for f in gen_findings
+            if f.get("generation_source") == "deterministic_fallback" and f.get("fallback_reason")
+        })
+        if fallback_reasons:
+            state.append_log(
+                "simulation",
+                "Generation slot(s) fell back to hand-authored scenarios because: "
+                + "; ".join(fallback_reasons),
+            )
         _progress("generate_meta",
                   f"Reconciliation → {len(rec_findings)} candidates · generation → {len(gen_findings)} novel")
 
@@ -233,10 +250,18 @@ class Orchestrator:
                 verified=True,
                 mode=cand.get("mode", "reconciliation"),
                 generation_source=cand.get("generation_source", ""),
+                fallback_reason=cand.get("fallback_reason") or "",
                 capability_primitives=cand.get("capability_primitives", []),
                 fully_verified=cand.get("fully_verified", True),
                 unmodeled_fields=cand.get("unmodeled_fields", []),
                 unverified_atlas=cand.get("unverified_atlas", []),
+                # Reconciliation candidates carry "fixtures" (one per
+                # capability-primitive scenario); generation candidates carry a
+                # single "fixture". Normalise to a list so the finding keeps the
+                # evidence it was verified against.
+                test_fixtures=[fx for fx in (cand.get("fixtures")
+                                             or ([cand["fixture"]] if cand.get("fixture") else []))
+                               if isinstance(fx, dict)],
             )
             state.results.append(funding)
 

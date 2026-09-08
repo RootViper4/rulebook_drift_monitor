@@ -1,0 +1,387 @@
+{
+  "note": "Synthetic, illustrative-only transaction batch for broad rulebook coverage testing. Not real customers or transactions. Generated and verified against the live rulebook by scripts/gen_synthetic_batch.py.",
+  "fixtures": [
+    {
+      "label": "Clean, unremarkable retail customer",
+      "notes": "True negative — nothing suspicious. Should fire nothing.",
+      "tx": {
+        "new_account": false,
+        "customer_profile_consistent": true,
+        "kyc_complete": true,
+        "amount": 250
+      },
+      "expect_fired": []
+    },
+    {
+      "label": "New account, inconsistent deposit, same-day withdrawal",
+      "notes": "Classic onboarding red flag (DS-01).",
+      "tx": {
+        "new_account": true,
+        "customer_profile_consistent": false,
+        "rapid_withdrawal": true
+      },
+      "expect_fired": [
+        "DS-01",
+        "DS-28"
+      ]
+    },
+    {
+      "label": "Series of sub-threshold transfers, round amounts",
+      "notes": "Structuring (DS-02); economic_rationale is explicitly set, which is why this deliberately does NOT also trip DS-38 — see the separate DS-38 case below for the 'no rationale offered at all' variant.",
+      "tx": {
+        "below_threshold": true,
+        "round_amount": true,
+        "economic_rationale": "structuring"
+      },
+      "expect_fired": [
+        "DS-02"
+      ]
+    },
+    {
+      "label": "Crypto transfer with no originator/beneficiary info",
+      "notes": "Travel Rule gap (DS-03, DS-34 if also cross-border).",
+      "tx": {
+        "travel_rule_missing": true,
+        "missing_orig_benef": true,
+        "cross_border": true
+      },
+      "expect_fired": [
+        "DS-03",
+        "DS-34"
+      ]
+    },
+    {
+      "label": "Counterparty VASP has no real KYC + unhosted wallet",
+      "notes": "Weak counterparty control (DS-04).",
+      "tx": {
+        "weak_counterparty": true,
+        "unhosted_wallet": true
+      },
+      "expect_fired": [
+        "DS-04",
+        "DS-26"
+      ]
+    },
+    {
+      "label": "Fan-in from many senders into one account, then consolidated",
+      "notes": "Layering / mule collection pattern (DS-05, DS-15).",
+      "tx": {
+        "fan_in": true,
+        "multiple_accounts": true,
+        "consolidated": true
+      },
+      "expect_fired": [
+        "DS-05"
+      ]
+    },
+    {
+      "label": "Shared login credentials across two customer accounts",
+      "notes": "Identity/CDD flag (DS-06).",
+      "tx": {
+        "shared_credentials": true,
+        "changed_credentials": true
+      },
+      "expect_fired": [
+        "DS-06",
+        "DS-13"
+      ]
+    },
+    {
+      "label": "KYC file incomplete at onboarding",
+      "notes": "Incomplete KYC (DS-07).",
+      "tx": {
+        "kyc_complete": false
+      },
+      "expect_fired": [
+        "DS-07"
+      ]
+    },
+    {
+      "label": "Customer can't explain the transaction they're sending",
+      "notes": "Mule indicator (DS-08, composes with DS-12).",
+      "tx": {
+        "lacks_transaction_knowledge": true,
+        "crypto_naive": true
+      },
+      "expect_fired": [
+        "DS-08",
+        "DS-12"
+      ]
+    },
+    {
+      "label": "Forged ID document at onboarding",
+      "notes": "Critical-severity document fraud (DS-09).",
+      "tx": {
+        "identity_markers": [
+          "forged"
+        ],
+        "new_account": true
+      },
+      "expect_fired": [
+        "DS-09"
+      ]
+    },
+    {
+      "label": "Wallet address linked to a public illegal-activity forum",
+      "notes": "OSINT flag (DS-10).",
+      "tx": {
+        "osint_illegal": true,
+        "threat_list_hit": true
+      },
+      "expect_fired": [
+        "DS-10",
+        "DS-31"
+      ]
+    },
+    {
+      "label": "Customer known to law enforcement for a criminal association",
+      "notes": "Profile risk, high severity (DS-11).",
+      "tx": {
+        "criminal_association": true
+      },
+      "expect_fired": [
+        "DS-11"
+      ]
+    },
+    {
+      "label": "Frequent identity-detail changes shortly after onboarding",
+      "notes": "Mule-recruitment pattern (DS-13).",
+      "tx": {
+        "frequent_identity_change": true,
+        "frequent_funding_change": true
+      },
+      "expect_fired": [
+        "DS-13",
+        "DS-29"
+      ]
+    },
+    {
+      "label": "Repeated transactions with the same narrow subset of counterparties",
+      "notes": "Layering / trading-clustering pattern (DS-15).",
+      "tx": {
+        "clustering": true,
+        "small_wallet_set": true,
+        "quick_succession": true
+      },
+      "expect_fired": [
+        "DS-15"
+      ]
+    },
+    {
+      "label": "Funds traced to a known criminal scheme's wallet cluster",
+      "notes": "Critical source-of-funds flag (DS-16).",
+      "tx": {
+        "criminal_source": true,
+        "sanctioned_source": true
+      },
+      "expect_fired": [
+        "DS-16",
+        "DS-31"
+      ]
+    },
+    {
+      "label": "Crypto converted to a prepaid card via a cash-funded route",
+      "notes": "Crypto-to-plastic structuring (DS-17).",
+      "tx": {
+        "crypto_to_plastic": true,
+        "cash_deposit_cards": true
+      },
+      "expect_fired": [
+        "DS-17"
+      ]
+    },
+    {
+      "label": "Funds passed through a mixing service before arrival",
+      "notes": "Mixer/tumbler use (DS-18, composes with DS-24 if VPN too).",
+      "tx": {
+        "uses_mixer": true,
+        "tools": [
+          "mixer"
+        ],
+        "privacy_coin": true
+      },
+      "expect_fired": [
+        "DS-18",
+        "DS-32"
+      ]
+    },
+    {
+      "label": "Transfer to an exchange unregistered in its jurisdiction",
+      "notes": "Geographic/registration gap (DS-19).",
+      "tx": {
+        "unregistered_exchange": true,
+        "unregulated_jurisdiction": true
+      },
+      "expect_fired": [
+        "DS-19",
+        "DS-20"
+      ]
+    },
+    {
+      "label": "Direct sanctions list match on the counterparty",
+      "notes": "Critical sanctions screening (DS-21) — should be the sharpest flag in the batch.",
+      "tx": {
+        "sanctions_match": true,
+        "counterparty_jurisdiction": "sanctioned"
+      },
+      "expect_fired": [
+        "DS-21",
+        "DS-37"
+      ]
+    },
+    {
+      "label": "PEP with an unusual, unexplained spike in activity",
+      "notes": "PEP monitoring (DS-22).",
+      "tx": {
+        "is_pep": true,
+        "pep_activity_unusual": true
+      },
+      "expect_fired": [
+        "DS-22"
+      ]
+    },
+    {
+      "label": "Value moved through many hops in rapid succession",
+      "notes": "Layering / pass-through (DS-23).",
+      "tx": {
+        "multi_hop": true,
+        "pass_through": true,
+        "quick_succession": true
+      },
+      "expect_fired": [
+        "DS-23"
+      ]
+    },
+    {
+      "label": "Brand-new wallet used within days of first activity, over VPN/Tor",
+      "notes": "Technology-evasion cluster (DS-24, DS-25).",
+      "tx": {
+        "fresh_wallet": true,
+        "wallet_age_days": 1,
+        "uses_vpn_tor": true
+      },
+      "expect_fired": [
+        "DS-24",
+        "DS-25"
+      ]
+    },
+    {
+      "label": "Source of funds inconsistent with declared customer wealth",
+      "notes": "Wealth-mismatch flag (DS-27).",
+      "tx": {
+        "wealth_mismatch": true,
+        "source_inconsistent": true
+      },
+      "expect_fired": [
+        "DS-27"
+      ]
+    },
+    {
+      "label": "Rapid deposit accumulation followed by immediate off-boarding",
+      "notes": "Onboarding-to-exit pattern (DS-28), one field short of DS-01's full trigger.",
+      "tx": {
+        "rapid_accumulation": true,
+        "new_account": true
+      },
+      "expect_fired": [
+        "DS-28"
+      ]
+    },
+    {
+      "label": "Chat memo references buying illicit goods with the proceeds",
+      "notes": "Message-field language flag (DS-14).",
+      "tx": {
+        "memo_illicit": true
+      },
+      "expect_fired": [
+        "DS-14"
+      ]
+    },
+    {
+      "label": "Customer stalls and won't provide requested CDD documents",
+      "notes": "Evasive/unwilling CDD (DS-33).",
+      "tx": {
+        "evasive_cdd": true,
+        "unwilling_identity": true
+      },
+      "expect_fired": [
+        "DS-07",
+        "DS-33"
+      ]
+    },
+    {
+      "label": "Large transfer to a beneficiary wallet with almost no history",
+      "notes": "Thin-history beneficiary receiving material value (DS-35).",
+      "tx": {
+        "low_history_wallet": true,
+        "amount": 5000
+      },
+      "expect_fired": [
+        "DS-35"
+      ]
+    },
+    {
+      "label": "Corporate customer whose true beneficial owner can't be established",
+      "notes": "UBO not established (DS-36).",
+      "tx": {
+        "ubo_not_established": true,
+        "unverified_ubo": true
+      },
+      "expect_fired": [
+        "DS-36"
+      ]
+    },
+    {
+      "label": "Round-number transfer with no rationale offered at all",
+      "notes": "DS-38's actual trigger — round/below-threshold AND economic_rationale absent entirely (contrast with the DS-02 case above, where a rationale string, even a suspicious one, is present and blocks this rule).",
+      "tx": {
+        "round_amount": true,
+        "below_threshold": true
+      },
+      "expect_fired": [
+        "DS-02",
+        "DS-38"
+      ]
+    },
+    {
+      "label": "Deepfake-generated ID media presented during a fresh onboarding flow",
+      "notes": "AI-orchestrated synthetic-identity onboarding (DS-39) — the counterpart to CP-01 in the capability-primitives library, expressed the way the static rulebook models it.",
+      "tx": {
+        "fresh_onboarding": true,
+        "identity_markers": [
+          "synthetic",
+          "deepfake_media"
+        ]
+      },
+      "expect_fired": [
+        "DS-09",
+        "DS-39"
+      ]
+    },
+    {
+      "label": "Crypto-naive customer moving funds through a tiny fixed set of wallets",
+      "notes": "Coached-mule behaviour (DS-40).",
+      "tx": {
+        "coached_mule": true,
+        "crypto_naive": true,
+        "small_wallet_set": true
+      },
+      "expect_fired": [
+        "DS-12",
+        "DS-15",
+        "DS-40"
+      ]
+    },
+    {
+      "label": "Transaction volume spikes far above the customer's normal baseline",
+      "notes": "Velocity anomaly (DS-30) — the plain volume-spike variant, separate from the clustering/small-wallet-set pattern DS-15 covers above.",
+      "tx": {
+        "velocity": true,
+        "high_value": true
+      },
+      "expect_fired": [
+        "DS-30"
+      ]
+    }
+  ]
+}

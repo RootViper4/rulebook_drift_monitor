@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Drift Sentinel · Sign in</title>
+<link rel="icon" href="static/img/logo.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="static/css/app.css"/>
+</head>
+<body data-page="login.html">
+<div class="login-shell">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-logo"><img src="static/img/logo.svg" alt=""/></div>
+      <div>
+        <div class="login-name">Drift Sentinel</div>
+        <div class="login-sub">Rulebook Drift Monitor · FIC / FSCA console</div>
+      </div>
+    </div>
+
+    <p class="login-lede">Findings are access-restricted. Sign in so that every check you run and
+    every decision you record carries your name.</p>
+
+    <div class="login-error" id="loginError" style="display:none"></div>
+
+    <label class="login-label" for="username">Username</label>
+    <input class="login-input" id="username" name="username" type="text"
+           autocomplete="username" autocapitalize="none" spellcheck="false" autofocus/>
+
+    <label class="login-label" for="password">Password</label>
+    <input class="login-input" id="password" name="password" type="password"
+           autocomplete="current-password"/>
+
+    <button class="btn btn-primary login-btn" id="loginBtn" type="button">Sign in</button>
+
+    <div class="login-demo" id="demoBox" style="display:none">
+      <div class="login-demo-title">Demo accounts</div>
+      <div class="login-demo-sub">Seeded credentials for the hackathon build. A production
+      deployment would federate to the authority's own identity provider instead.</div>
+      <div id="demoList"></div>
+    </div>
+
+    <div class="login-foot">
+      <a href="home.html">← Back to the overview</a>
+      <span>Prototype · synthetic data only</span>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="static/js/app.js"></script>
+<script>
+/* Where to land after a successful sign-in. Only a bare page name from this app
+   is accepted, so ?next= cannot be used to bounce a signed-in analyst offsite. */
+function nextPage(){
+  const raw = new URLSearchParams(location.search).get('next') || 'index.html';
+  return /^[a-z0-9_-]+\.html$/i.test(raw) ? raw : 'index.html';
+}
+
+function showError(msg){
+  const el = $('loginError');
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+async function submitLogin(){
+  const btn = $('loginBtn');
+  const username = $('username').value.trim();
+  const password = $('password').value;
+  if(!username || !password){ showError('Enter both a username and a password.'); return; }
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try{
+    await api('/api/login', {method:'POST', body:JSON.stringify({username, password})});
+    location.href = nextPage();
+  }catch(e){
+    showError(e.message || 'Sign-in failed.');
+    $('password').value = '';
+    $('password').focus();
+    btn.disabled = false; btn.textContent = 'Sign in';
+  }
+}
+
+function renderDemoAccounts(){
+  const accounts = SESSION.demoAccounts || [];
+  if(!accounts.length || !SESSION.demoPassword) return;
+  $('demoBox').style.display = 'block';
+  $('demoList').innerHTML = accounts.map(a => `
+    <button class="login-demo-row" type="button" data-user="${esc(a.username)}">
+      <span class="ld-user">${esc(a.username)}</span>
+      <span class="ld-who">${esc(a.display_name)} · ${esc(a.organisation)}</span>
+      <span class="ld-role ${a.can_decide ? 'can' : ''}">${a.can_decide ? 'analyst' : 'read-only'}</span>
+    </button>`).join('') +
+    `<div class="login-demo-pw">Password for all three: <code>${esc(SESSION.demoPassword)}</code></div>`;
+  document.querySelectorAll('.login-demo-row').forEach(row => {
+    row.onclick = () => {
+      $('username').value = row.dataset.user;
+      $('password').value = SESSION.demoPassword;
+      $('password').focus();
+    };
+  });
+}
+
+$('loginBtn').onclick = submitLogin;
+['username','password'].forEach(id => {
+  $(id).addEventListener('keydown', e => { if(e.key === 'Enter') submitLogin(); });
+});
+
+loadSession().then(() => {
+  if(SESSION.authenticated){ location.href = nextPage(); return; }
+  renderDemoAccounts();
+});
+</script>
+</body>
+</html>

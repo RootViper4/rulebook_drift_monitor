@@ -35,11 +35,15 @@ flowchart LR
     CRIT -->|discard implausible| X[discarded]
     CRIT -->|verified gaps| DRAFT[Drafted candidate red flags]
 
-    DRAFT --> GATE{Human approval gate}
+    DRAFT --> AUTH[/Sign-in gate: role + session/]
+    AUTH --> GATE{Human approval gate}
     GATE -->|accept / amend / reject| ANALYST[Named FIC / FSCA analyst]
+    ANALYST --> TRAIL[(Append-only audit trail:<br/>who, role, session, timestamp, rationale)]
     ANALYST --> GUIDANCE[(Policy & guidance)]
 
     style GATE fill:#b3124a,color:#fff
+    style AUTH fill:#fdf4e1
+    style TRAIL fill:#eef2ff
     style CRIT fill:#eef2ff
     style E fill:#e9f7f0
 ```
@@ -84,4 +88,21 @@ flowchart LR
     critic --> draft
     draft --> report
     report --> END
+```
+
+## Access control
+
+The findings surface is an attack map, so it sits behind a sign-in. Only the landing page and the
+sign-in page are public; every other page redirects and every API route returns 401 without a
+session.
+
+```mermaid
+flowchart LR
+    V[Visitor] --> HOME[home.html - public]
+    HOME --> LOGIN[login.html]
+    LOGIN -->|PBKDF2 verify + lockout| SESS[(Session: user, role, session id, CSRF token)]
+    SESS -->|role = analyst| ACT[Run / accept / amend / reject / institute]
+    SESS -->|role = observer| READ[Read findings and paper trail]
+    ACT --> LOG[(decisions_log.json + audit.json:<br/>name, username, role, org, session, timestamps)]
+    READ -.->|blocked action| DENY[access_denied written to the trail]
 ```

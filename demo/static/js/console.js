@@ -94,6 +94,8 @@ function friendlyLine(l){
 
 function renderFriendlyLog(log, running){
   const pane = $('friendlyLog'); if(!pane) return;
+  // Same story as the review list: only repaint when a line actually arrives.
+  if(!shouldRender('friendlyLog', String((log||[]).length) + '|' + running)) return;
   pane.innerHTML = (log||[]).map(l=>`<div class="friendly-line">${friendlyLine(l)}</div>`).join('');
   if(!log || !log.length) pane.innerHTML = '<div class="friendly-line dim">Nothing running yet — click New run to start a scan.</div>';
   if(running && pane.lastElementChild) pane.lastElementChild.scrollIntoView({block:'nearest'});
@@ -105,6 +107,31 @@ function toggleTechLog(){
   uiEl('friendlyLog').style.display = showingTechLog ? 'none' : 'block';
   uiEl('logPane').style.display = showingTechLog ? 'block' : 'none';
   uiEl('logToggle').textContent = showingTechLog ? 'Show plain-English summary' : 'Show technical detail';
+}
+
+/* ---------- Render guards ------------------------------------------------
+   tick() re-polls /api/state every 3 seconds (every 600ms during a run) and
+   applyState() used to rewrite each list's innerHTML on every poll, even when
+   nothing had changed. Rebuilding that DOM under the user is what makes the
+   review queue flicker, collapses an expanded row, and can drop a half-typed
+   rationale. Each list now renders only when its own content signature
+   changes, and never while the user is typing inside it. */
+const _renderSig = {};
+function shouldRender(key, signature){
+  if(_renderSig[key] === signature) return false;
+  _renderSig[key] = signature;
+  return true;
+}
+/* Drop a cached signature so the next render is forced (used after a decision
+   or a reset, where the list must repaint even if it looks unchanged). */
+function invalidateRender(key){
+  if(key) delete _renderSig[key];
+  else Object.keys(_renderSig).forEach(k => delete _renderSig[k]);
+}
+function isTypingIn(hostId){
+  const host = $(hostId), el = document.activeElement;
+  return !!(host && el && host.contains(el) &&
+            /^(TEXTAREA|INPUT|SELECT)$/.test(el.tagName));
 }
 
 let rationaleDrafts = {};
@@ -163,6 +190,10 @@ function findingDetail(f, tabMode){
   const fired = f.fired_rules||[], evaded = f.evaded_rules||[];
   const instituted = amendments.covered.includes(fid);
   const isCustom = customIds.has(fid);
+  /* Deciding is role-gated server-side; mirroring it here keeps a read-only
+     account from clicking a button that can only ever return 403. */
+  const canDecide = !(typeof SESSION !== 'undefined' && SESSION.authenticated) || !!(SESSION.user && SESSION.user.can_decide);
+  const decideAttr = canDecide ? '' : 'disabled title="Read-only account"';
   const instBtn = instituted
     ? '<span class="chip good" style="font-size:11px">✦ instituted · gap closed</span>'
     : isCustom
@@ -188,10 +219,11 @@ function findingDetail(f, tabMode){
       <textarea class="rationale-box" id="rat-${esc(fid)}" placeholder="Required: explain your decision in plain language (what the rulebook got right or missed, and why)." oninput="rationaleDrafts['${esc(fid)}']=this.value; this.classList.remove('err')">${esc(draft)}</textarea>
       <div class="rationale-req">A rationale is required before Accept, Amend or Reject will be recorded.</div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
-        <button class="btn-sm btn-accept" onclick="decide('${esc(fid)}','accept')">Accept</button>
-        <button class="btn-sm btn-amend"  onclick="decide('${esc(fid)}','amend')">Amend</button>
-        <button class="btn-sm btn-reject" onclick="decide('${esc(fid)}','reject')">Reject</button>
+        <button class="btn-sm btn-accept" ${decideAttr} onclick="decide('${esc(fid)}','accept')">Accept</button>
+        <button class="btn-sm btn-amend"  ${decideAttr} onclick="decide('${esc(fid)}','amend')">Amend</button>
+        <button class="btn-sm btn-reject" ${decideAttr} onclick="decide('${esc(fid)}','reject')">Reject</button>
         ${instBtn}
+        ${canDecide ? '' : '<span class="dim" style="font-size:12px">Your account is read-only — sign in as an analyst to decide.</span>'}
       </div>
     </div>
   </div>`;
@@ -211,6 +243,7 @@ async function decide(fid, decision){
     await api('/api/decide', {method:'POST', body:JSON.stringify({fid, decision, rationale, rule_text})});
     delete rationaleDrafts[fid];
     openRows.delete(fid);
+    invalidateRender();          // the queue has genuinely changed - repaint it
     toast('Finding '+fid+' → '+decision+' · moved to the Decided log');
     refresh();
   }catch(e){ toast('Decide failed: '+e.message); }
@@ -224,6 +257,7 @@ function dismissCaveat(){
 async function institute(fid){
   try{
     const r = await api('/api/institute', {method:'POST', body:JSON.stringify({fid})});
+    invalidateRender();          // the rulebook changed - repaint the queue
     toast(r.ok ? '✦ '+r.rule+' instituted for '+fid+' · drift → '+r.drift_index.toFixed(1)
                : 'Institute failed: '+(r.error||'?'));
     refresh();
@@ -263,9 +297,22 @@ function setReviewTab(tab){
 
 function renderFindings(){
   const list = reviewTab==='reconciliation' ? (reconFindings||[]) : (genFindings||[]);
+  // Counts and the tab blurb are plain text, so they can be written every time.
   uiEl('cReconRev').textContent = (reconFindings||[]).length;
   uiEl('cGenRev').textContent = (genFindings||[]).length;
   uiEl('tabDesc').textContent = TAB_DESC[reviewTab];
+
+  // Never repaint while someone is writing a rationale in this list.
+  if(isTypingIn('findings')) return;
+
+  const signature = JSON.stringify([
+    reviewTab,
+    Array.from(openRows).sort(),
+    list.map(f => [f.typology_id, f.delta, f.mode, f.drafted_candidate_red_flag,
+                   f.fully_verified, (f.fired_rules||[]).length, (f.evaded_rules||[]).length]),
+  ]);
+  if(!shouldRender('findings', signature)) return;
+
   uiEl('findings').innerHTML = list.map(f=>findingRow(f, reviewTab)).join('');
   uiEl('emptyFilter').style.display = list.length?'none':'block';
 }
@@ -286,6 +333,11 @@ function decidedRow(d){
 function renderDecidedLog(){
   const list = (decisionsLog||[]).filter(d=>d.mode===reviewTab);
   uiEl('decidedTitle').textContent = 'Decided · ' + (reviewTab==='reconciliation'?'Known Attacks':'Emerging Threats') + ' (' + list.length + ')';
+
+  const signature = JSON.stringify([reviewTab,
+    list.map(d => [d.fid, d.decision, d.timestamp, d.rule_text_amended])]);
+  if(!shouldRender('decided', signature)) return;
+
   uiEl('decidedLog').innerHTML = list.length
     ? list.slice().reverse().map(decidedRow).join('')
     : '<div class="empty blocked">No decisions recorded yet in this tab.</div>';
@@ -350,12 +402,9 @@ function applyState(s){
   }
 
   // Pending-decision count in the sidebar, visible from every page.
-  const pending = Math.max(0, (s.total||0) - (s.reviewed||0));
-  const navCount = document.getElementById('navReviewCount');
-  if(navCount){
-    navCount.textContent = pending ? String(pending) : '';
-    navCount.style.display = pending ? 'inline-block' : 'none';
-  }
+  // Shared writer in app.js - one implementation, so the badge cannot end up
+  // in a different state depending on which page you happen to be on.
+  setPendingBadge((s.total||0) - (s.reviewed||0));
 
   renderLog(s.log, running);
   renderFindings();
@@ -363,7 +412,10 @@ function applyState(s){
   renderAmendments();
   renderDiff(s.diff);
   uiEl('rejTitle').style.display = (s.discarded||[]).length?'block':'none';
-  uiEl('rejected').innerHTML = (s.discarded||[]).map(d=>`<div class="rejected"><h3>✗ ${esc(d.typology_name||d.typology_id)}</h3><div class="basis">${esc(d.evidential_basis||'rejected by critic')}</div></div>`).join('');
+  const discardedSig = JSON.stringify((s.discarded||[]).map(d=>d.typology_id||d.typology_name));
+  if(shouldRender('discarded', discardedSig)){
+    uiEl('rejected').innerHTML = (s.discarded||[]).map(d=>`<div class="rejected"><h3>✗ ${esc(d.typology_name||d.typology_id)}</h3><div class="basis">${esc(d.evidential_basis||'rejected by critic')}</div></div>`).join('');
+  }
 }
 
 function renderAmendments(){
@@ -386,6 +438,7 @@ function renderDiff(diff){
     return;
   }
   box.style.display = 'flex';
+  if(!shouldRender('diff', JSON.stringify(diff))) return;
   box.innerHTML = `<span><b>${diff.new.length}</b> new finding(s)</span>
     <span><b>${diff.repeat.length}</b> repeat finding(s)</span>
     <span><b>${diff.regressed.length}</b> regressed</span>
@@ -622,6 +675,7 @@ async function startRun(){
   try{
     if(biome) biome.innerHTML='<span class="spinner"></span>';
     stepIndex=-1; logCache=null; runFinishedShown=false;
+    invalidateRender();          // a new run repaints everything
     decisions={}; reconFindings=[]; genFindings=[];
     buildPipe();
     const r = await api('/api/run', {method:'POST', body:JSON.stringify({trigger:'manual'})});
@@ -642,6 +696,7 @@ on('resetBtn', 'click', async ()=>{
   try{
     uiEl('resetBtn').disabled = true;
     const r = await api('/api/reset', {method:'POST', body:'{}'});
+    invalidateRender();          // cleared state - repaint everything
     if(r.aborted){
       toast('Aborting running scan…');
       uiEl('runStatus').textContent = 'aborting…';

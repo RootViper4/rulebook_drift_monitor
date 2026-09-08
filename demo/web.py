@@ -6,8 +6,10 @@ Run:
 """
 from __future__ import annotations
 
+import hmac
 import json
 import os
+import secrets
 import sys
 import threading
 import time
@@ -15,17 +17,36 @@ import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from datetime import timedelta
+from functools import wraps
 from typing import Optional
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import (Flask, has_request_context, jsonify, redirect, request,
+                   send_from_directory, session)
 
 from agents.loader import load_rulebook, load_typologies
 from agents.orchestrator import Orchestrator
 from agents.forecaster import Forecaster
 from agents.llm_client import LocalLLMClient
 import agents.rule_amendment as amendments
+from demo import auth
 
 app = Flask(__name__, static_folder=None)
+
+# ---------------------------------------------------------------------------
+# Session security
+#
+# SECRET_KEY must be set in any deployment that runs more than one instance
+# (Vercel), otherwise each cold start invents a new key and signs users out.
+# Locally an ephemeral key is fine and keeps first-run friction at zero.
+# ---------------------------------------------------------------------------
+app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,      # not reachable from JavaScript
+    SESSION_COOKIE_SAMESITE="Lax",     # blocks cross-site POSTs carrying the cookie
+    SESSION_COOKIE_SECURE=bool(os.environ.get("VERCEL") or os.environ.get("HTTPS_ONLY")),
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
+)
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(BASE, "static")
@@ -59,6 +80,110 @@ PIPELINE_STEPS = [
     ("draft", "Draft candidate red flags"),
     ("report", "Human approval gate"),
 ]
+
+# Pages reachable without signing in. Everything else is part of the gap report
+# surface, which the concept note restricts to named FIC / FSCA analysts.
+PUBLIC_PAGES = {"home.html", "login.html"}
+LOGIN_PAGE = "login.html"
+
+
+# ---------------------------------------------------------------------------
+# Identity, session and access control
+# ---------------------------------------------------------------------------
+def current_user() -> Optional[dict]:
+    """The signed-in user for this request, or None.
+
+    Safe to call from the background run worker, where there is no request
+    context and therefore no session.
+    """
+    if not has_request_context():
+        return None
+    user = session.get("user")
+    return user if isinstance(user, dict) and user.get("username") else None
+
+
+def _actor() -> str:
+    """Display label recorded against an action, e.g. 'N. Hlophe (FSCA)'."""
+    user = current_user()
+    if not user:
+        return STORE["analyst"]
+    org = user.get("organisation")
+    return f"{user['display_name']} ({org})" if org else user["display_name"]
+
+
+def _actor_meta() -> dict:
+    """Identity fields stamped onto every decision and audit entry."""
+    user = current_user()
+    if not user:
+        return {"actor_username": "", "actor_role": "", "actor_org": "", "session_id": ""}
+    return {
+        "actor_username": user.get("username", ""),
+        "actor_role": user.get("role", ""),
+        "actor_org": user.get("organisation", ""),
+        "session_id": session.get("session_id", ""),
+    }
+
+
+def _csrf_token() -> str:
+    """Per-session token, minted lazily and returned to the client by /api/me."""
+    token = session.get("csrf")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["csrf"] = token
+    return token
+
+
+def _wants_json() -> bool:
+    return request.path.startswith("/api/")
+
+
+def require_login(view):
+    """Any signed-in user. API calls get 401 JSON; pages get a redirect."""
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        if current_user() is None:
+            if _wants_json():
+                return jsonify({"error": "Sign in to continue.", "auth": "required"}), 401
+            return redirect(f"/{LOGIN_PAGE}?next={request.path.lstrip('/')}")
+        return view(*args, **kwargs)
+    return wrapper
+
+
+def require_analyst(view):
+    """Actions that change state need the analyst role, not just a session."""
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        user = current_user()
+        if user is None:
+            return jsonify({"error": "Sign in to continue.", "auth": "required"}), 401
+        if user.get("role") != auth.ROLE_ANALYST:
+            _audit("access_denied",
+                   detail=f"{_actor()} attempted {request.path} without decision rights",
+                   meta={"path": request.path, **_actor_meta()})
+            return jsonify({"error": "Your account is read-only. Only an analyst can do this.",
+                            "auth": "forbidden"}), 403
+        return view(*args, **kwargs)
+    return wrapper
+
+
+@app.before_request
+def _csrf_guard():
+    """Reject state-changing calls that do not carry the session's CSRF token.
+
+    The cookie is already SameSite=Lax, so this is defence in depth: it also
+    catches a stale tab posting after a sign-out/sign-in cycle, which is the
+    case that would otherwise attribute an action to the wrong analyst.
+    """
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return None
+    if request.path == "/api/login":
+        return None
+    sent = request.headers.get("X-CSRF-Token", "")
+    known = session.get("csrf", "")
+    if not known or not sent or not hmac.compare_digest(sent, known):
+        return jsonify({"error": "Your session token is stale — reload the page and retry.",
+                        "auth": "csrf"}), 403
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -120,10 +245,13 @@ def _audit(event: str, actor: str = "", detail: str = "", meta: dict = None) -> 
     entry = {
         "id": f"ae-{uuid.uuid4().hex[:8]}",
         "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        # Local wall-clock is what the analyst recognises; the UTC stamp is what
+        # survives a server in another timezone, so the trail carries both.
+        "ts_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "event": event,
-        "actor": actor or STORE["analyst"],
+        "actor": actor or _actor(),
         "detail": detail,
-        "meta": meta or {},
+        "meta": {**_actor_meta(), **(meta or {})},
     }
     try:
         with open(AUDIT_PATH, "r", encoding="utf-8") as f:
@@ -215,7 +343,11 @@ def _record_history(run=None, kind: str = "run", note: str = "", findings: int =
 # ---------------------------------------------------------------------------
 # Background run worker
 # ---------------------------------------------------------------------------
-def _run_worker(trigger: str):
+def _run_worker(trigger: str, actor: str = ""):
+    # The worker runs outside the request context, so the analyst who pressed
+    # the button is captured here and used for every entry the run writes.
+    if actor:
+        STORE["analyst"] = actor
     STORE["running"] = True
     STORE["abort"] = False
     STORE["started_at"] = time.time()
@@ -268,14 +400,14 @@ def _run_worker(trigger: str):
         STORE["running"] = False
 
 
-def _start_background_run(trigger: str) -> None:
+def _start_background_run(trigger: str, actor: str = "") -> None:
     """Start a background thread doing a real run; returns immediately.
     In SERVERLESS mode the function cannot keep a thread alive after the
     request, so the run is executed inline (synchronously) instead."""
     if SERVERLESS:
-        _run_worker(trigger)
+        _run_worker(trigger, actor)
         return
-    t = threading.Thread(target=_run_worker, args=(trigger,), daemon=True)
+    t = threading.Thread(target=_run_worker, args=(trigger, actor), daemon=True)
     t.start()
 
 
@@ -368,7 +500,9 @@ def _state_json():
         "started_at": STORE["started_at"],
         "serverless": SERVERLESS,
         "storage": STORE.get("storage", "writable"),
-        "analyst": STORE["analyst"],
+        "analyst": _actor(),
+        "user": current_user(),
+        "can_decide": bool(current_user() and current_user().get("role") == auth.ROLE_ANALYST),
         "has_run": run is not None,
         "run_id": run.run_id if run else None,
         "rulebook_version": getattr(run, "rulebook_version", None) if run else None,
@@ -414,44 +548,117 @@ def _state_json():
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+def _serve_page(name: str):
+    """Serve a static page, redirecting to the login page when it is gated.
+
+    Gating the HTML as well as the API matters: the findings surface is an
+    attack map, so an anonymous visitor should never receive the console shell
+    at all, not merely fail its first API call.
+    """
+    if name not in PUBLIC_PAGES and current_user() is None:
+        return redirect(f"/{LOGIN_PAGE}?next={name}")
+    return send_from_directory(STATIC, name)
+
+
 @app.route("/")
 def index():
-    return send_from_directory(STATIC, "index.html")
+    return _serve_page("home.html")
+
+
+@app.route("/home.html")
+def home_page():
+    return _serve_page("home.html")
+
+
+@app.route("/login.html")
+def login_page():
+    return send_from_directory(STATIC, "login.html")
 
 
 @app.route("/index.html")
 def run_console():
-    return send_from_directory(STATIC, "index.html")
+    return _serve_page("index.html")
 
 
 @app.route("/dashboard.html")
 def dashboard():
-    return send_from_directory(STATIC, "dashboard.html")
+    return _serve_page("dashboard.html")
 
 
 @app.route("/rules.html")
 def rules_page():
-    return send_from_directory(STATIC, "rules.html")
+    return _serve_page("rules.html")
 
 
 @app.route("/forecast.html")
 def forecast_page():
-    return send_from_directory(STATIC, "forecast.html")
+    return _serve_page("forecast.html")
 
 
 @app.route("/compare.html")
 def compare_page():
-    return send_from_directory(STATIC, "compare.html")
+    return _serve_page("compare.html")
 
 
 @app.route("/review.html")
 def review_page():
-    return send_from_directory(STATIC, "review.html")
+    return _serve_page("review.html")
 
 
 @app.route("/sandbox.html")
 def sandbox_page():
-    return send_from_directory(STATIC, "sandbox.html")
+    return _serve_page("sandbox.html")
+
+
+# ---------------------------------------------------------------------------
+# Authentication API
+# ---------------------------------------------------------------------------
+@app.route("/api/me")
+def api_me():
+    """Who am I? Also mints the CSRF token the client sends back on writes."""
+    user = current_user()
+    payload = {"authenticated": user is not None, "csrf": _csrf_token()}
+    if user:
+        payload["user"] = user
+        payload["signed_in_at"] = session.get("signed_in_at", "")
+    else:
+        # Shown on the login page only while the seeded demo accounts are live.
+        payload["demo_accounts"] = auth.demo_accounts()
+        payload["demo_password"] = auth.DEFAULT_PASSWORD if auth.demo_credentials_active() else ""
+    return jsonify(payload)
+
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    data = request.json or {}
+    username = (data.get("username") or "").strip()
+    record, error = auth.authenticate(username, data.get("password") or "")
+    if record is None:
+        _audit("login_failed", actor=username or "unknown",
+               detail=f"Failed sign-in for '{username or 'unknown'}'",
+               meta={"username": username})
+        return jsonify({"error": error}), 401
+
+    # Rotate the session on privilege change: a fresh id and CSRF token means a
+    # token captured before sign-in cannot be replayed against the new session.
+    session.clear()
+    session.permanent = True
+    session["user"] = auth.public_user(record)
+    session["session_id"] = f"sess-{uuid.uuid4().hex[:10]}"
+    session["signed_in_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+    token = _csrf_token()
+    STORE["analyst"] = _actor()
+    _audit("login_success", detail=f"{_actor()} signed in",
+           meta={"role": record.get("role", "")})
+    return jsonify({"ok": True, "user": session["user"], "csrf": token})
+
+
+@app.route("/api/logout", methods=["POST"])
+def api_logout():
+    if current_user() is not None:
+        _audit("logout", detail=f"{_actor()} signed out")
+    session.clear()
+    return jsonify({"ok": True})
 
 
 @app.route("/<page>.html")
@@ -475,17 +682,32 @@ def any_page(page: str):
             f"missing. Check the file was extracted to the right folder.</p>",
             404,
         )
-    return send_from_directory(STATIC, f"{page}.html")
+    return _serve_page(f"{page}.html")
 
 
 @app.route("/audit.html")
 def audit_page():
-    return send_from_directory(STATIC, "audit.html")
+    return _serve_page("audit.html")
 
 
 @app.route("/static/<path:path>")
 def static_files(path: str):
     return send_from_directory(STATIC, path)
+
+
+@app.after_request
+def _no_store(response):
+    """Serve pages, scripts and stylesheets fresh every time.
+
+    A browser holding a cached copy of app.js from before the sign-in gate
+    existed keeps polling gated endpoints and getting 401s, which looks like a
+    server fault and is really a stale asset. Images are left cacheable.
+    """
+    content_type = response.headers.get("Content-Type", "")
+    if content_type.startswith(("text/html", "text/css", "application/javascript",
+                               "text/javascript", "application/json")):
+        response.headers["Cache-Control"] = "no-store, must-revalidate"
+    return response
 
 
 # ---------------------------------------------------------------------------
@@ -528,6 +750,7 @@ def _run_summary(state, exp_mode: str) -> Optional[dict]:
 
 
 @app.route("/api/compare")
+@require_login
 def api_compare():
     run = STORE["run"]
     return jsonify({
@@ -543,28 +766,33 @@ def api_compare():
 
 
 @app.route("/api/audit")
+@require_login
 def api_audit():
     audits = sorted(_load_audit(), key=lambda e: e.get("ts", ""), reverse=True)
     return jsonify({"entries": audits})
 
 
 @app.route("/api/state")
+@require_login
 def api_state():
     return jsonify(_state_json())
 
 
 @app.route("/api/run", methods=["POST"])
+@require_analyst
 def api_run():
     if STORE["running"]:
         return jsonify({"error": "A run is already in progress."}), 409
     trigger = (request.json or {}).get("trigger", "manual")
-    _start_background_run(trigger)
+    STORE["analyst"] = _actor()
+    _start_background_run(trigger, _actor())
     if SERVERLESS:
         return jsonify({"started": True, "sync": True, "state": _state_json()})
     return jsonify({"started": True})
 
 
 @app.route("/api/decide", methods=["POST"])
+@require_analyst
 def api_decide():
     data = request.json or {}
     fid = data.get("fid")
@@ -594,7 +822,7 @@ def api_decide():
 
     STORE["log"].append({
         "node": "human-gate",
-        "message": (f"Analyst {STORE['analyst']} → {label} finding "
+        "message": (f"Analyst {_actor()} → {label} finding "
                     f"'{finding.typology_name if finding else fid}' "
                     f"[{'Known Attacks' if mode == 'reconciliation' else 'Emerging Threats'}]. "
                     f"{verb} Rationale: {rationale}"),
@@ -620,8 +848,10 @@ def api_decide():
         "decision": decision,
         "decision_label": label,
         "rationale": rationale,
-        "analyst": STORE["analyst"],
+        "analyst": _actor(),
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "timestamp_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        **_actor_meta(),
         "fired_rules": finding.fired_rules if finding else [],
         "evaded_rules": finding.evaded_rules if finding else [],
         "original_rule_text": original_text,
@@ -634,6 +864,7 @@ def api_decide():
 
 
 @app.route("/api/institute", methods=["POST"])
+@require_analyst
 def api_institute():
     """Approve + institutionalise a finding: generates a dedicated DS indicator,
     covers the typology's gap set, records a post-amendment checkpoint."""
@@ -656,7 +887,7 @@ def api_institute():
     STORE["decisions"][fid] = "instituted ✓"
     STORE["log"].append({
         "node": "human-gate",
-        "message": f"Analyst {STORE['analyst']} → instituted {res['rule']} for '{fid}' · gap closed, drift re-scanned.",
+        "message": f"Analyst {_actor()} → instituted {res['rule']} for '{fid}' · gap closed, drift re-scanned.",
     })
     _append_decision_log({
         "fid": fid,
@@ -666,8 +897,10 @@ def api_institute():
         "decision": "institute",
         "decision_label": "instituted ✓",
         "rationale": "Institutionalised as a standing DS indicator (gap closed by amendment).",
-        "analyst": STORE["analyst"],
+        "analyst": _actor(),
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "timestamp_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        **_actor_meta(),
         "fired_rules": finding.fired_rules,
         "evaded_rules": finding.evaded_rules,
         "original_rule_text": (finding.drafted_candidate_red_flag or "").strip(),
@@ -690,6 +923,7 @@ def api_institute():
 
 
 @app.route("/api/reset", methods=["POST"])
+@require_analyst
 def api_reset():
     if STORE["running"]:
         STORE["abort"] = True
@@ -706,6 +940,7 @@ def api_reset():
 
 
 @app.route("/api/record", methods=["POST"])
+@require_analyst
 def api_record():
     """Manually record a forecast checkpoint from the current corpus scan."""
     entry = _record_history(kind="checkpoint")
@@ -716,6 +951,7 @@ def api_record():
 
 
 @app.route("/api/fraudtest", methods=["POST"])
+@require_analyst
 def api_fraudtest():
     """Throw a fraud at the rulebook, live.
 
@@ -774,7 +1010,7 @@ def api_fraudtest():
         STORE["decisions"].setdefault(fid, "")
         STORE["log"].append({
             "node": "human-gate",
-            "message": f"Analyst {STORE['analyst']} submitted attack test '{label}' ({fid}) · "
+            "message": f"Analyst {_actor()} submitted attack test '{label}' ({fid}) · "
                        f"caught {len(fired)} rule(s), slipped past {len(evaded)} · sent to human gate.",
         })
         STORE["prev_ids"] = STORE.get("prev_ids") or [f.typology_id for f in run.results[:-1]] or []
@@ -808,6 +1044,7 @@ def api_fraudtest():
 
 
 @app.route("/api/probe")
+@require_analyst
 def api_probe():
     """Adversarial red-team probe: inject a poisoned typology, show critic verdict."""
     from agents.probe import probe as run_probe
@@ -828,12 +1065,17 @@ def api_probe():
 
 
 @app.route("/api/dossier")
+@require_login
 def api_dossier():
     """Compliance dossier: approved + amended findings as JSON."""
-    return jsonify(_build_dossier())
+    dossier = _build_dossier()
+    _audit("dossier_exported", detail=f"{_actor()} exported the findings dossier (JSON)",
+           meta={"format": "json", "findings": len(dossier.get("approved_findings", []))})
+    return jsonify(dossier)
 
 
 @app.route("/api/dossier.pdf")
+@require_login
 def api_dossier_pdf():
     """Compliance dossier as a printable PDF attachment."""
     from reportlab.lib.pagesizes import A4
@@ -843,6 +1085,8 @@ def api_dossier_pdf():
     from io import BytesIO
 
     d = _build_dossier()
+    _audit("dossier_exported", detail=f"{_actor()} exported the findings dossier (PDF)",
+           meta={"format": "pdf", "findings": len(d.get("approved_findings", []))})
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, rightMargin=46, leftMargin=46,
                             topMargin=46, bottomMargin=46)
@@ -922,7 +1166,8 @@ def _build_dossier() -> dict:
     ]
     return {
         "run_id": run.run_id if run else None,
-        "analyst": STORE["analyst"],
+        "analyst": _actor(),
+        "exported_by": _actor_meta(),
         "rulebook_version": fc["rulebook_version"],
         "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "drift_index": fc["drift_index"],
@@ -981,16 +1226,19 @@ def _dashboard_json():
 
 
 @app.route("/api/rules")
+@require_login
 def api_rules():
     return jsonify({"rules": [_rule_json(r) for r in load_rulebook()]})
 
 
 @app.route("/api/dashboard")
+@require_login
 def api_dashboard():
     return jsonify(_dashboard_json())
 
 
 @app.route("/api/forecast")
+@require_login
 def api_forecast():
     return jsonify(Forecaster(load_rulebook(), load_typologies()).forecast())
 

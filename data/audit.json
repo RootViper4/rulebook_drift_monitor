@@ -343,5 +343,125 @@
       "findings": 13,
       "discarded": 1
     }
+  },
+  {
+    "id": "ae-d6e2d7ee",
+    "ts": "2026-09-08T13:36:39",
+    "ts_utc": "2026-09-08T11:36:39Z",
+    "event": "login_success",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "N. Hlophe (FSCA) signed in",
+    "meta": {
+      "actor_username": "n.hlophe",
+      "actor_role": "analyst",
+      "actor_org": "FSCA",
+      "session_id": "sess-355eeb26ae",
+      "role": "analyst"
+    }
+  },
+  {
+    "id": "ae-4c1e2a2d",
+    "ts": "2026-09-08T13:46:15",
+    "ts_utc": "2026-09-08T11:46:15Z",
+    "event": "login_success",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "N. Hlophe (FSCA) signed in",
+    "meta": {
+      "actor_username": "n.hlophe",
+      "actor_role": "analyst",
+      "actor_org": "FSCA",
+      "session_id": "sess-59be09fc99",
+      "role": "analyst"
+    }
+  },
+  {
+    "id": "ae-0782d072",
+    "ts": "2026-09-08T13:52:00",
+    "ts_utc": "2026-09-08T11:52:00Z",
+    "event": "login_success",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "N. Hlophe (FSCA) signed in",
+    "meta": {
+      "actor_username": "n.hlophe",
+      "actor_role": "analyst",
+      "actor_org": "FSCA",
+      "session_id": "sess-d146b3654b",
+      "role": "analyst"
+    }
+  },
+  {
+    "id": "ae-8e33c482",
+    "ts": "2026-09-08T13:58:07",
+    "ts_utc": "2026-09-08T11:58:07Z",
+    "event": "login_success",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "N. Hlophe (FSCA) signed in",
+    "meta": {
+      "actor_username": "n.hlophe",
+      "actor_role": "analyst",
+      "actor_org": "FSCA",
+      "session_id": "sess-92580bd21b",
+      "role": "analyst"
+    }
+  },
+  {
+    "id": "ae-e5532e25",
+    "ts": "2026-09-08T14:07:22",
+    "ts_utc": "2026-09-08T12:07:22Z",
+    "event": "login_success",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "N. Hlophe (FSCA) signed in",
+    "meta": {
+      "actor_username": "n.hlophe",
+      "actor_role": "analyst",
+      "actor_org": "FSCA",
+      "session_id": "sess-5a44fcf5f9",
+      "role": "analyst"
+    }
+  },
+  {
+    "id": "ae-1b28995c",
+    "ts": "2026-09-08T14:07:42",
+    "ts_utc": "2026-09-08T12:07:42Z",
+    "event": "run_started",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "actor_username": "",
+      "actor_role": "",
+      "actor_org": "",
+      "session_id": "",
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-0696129d",
+    "ts": "2026-09-08T14:09:25",
+    "ts_utc": "2026-09-08T12:09:25Z",
+    "event": "run_finished",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "actor_username": "",
+      "actor_role": "",
+      "actor_org": "",
+      "session_id": "",
+      "findings": 13,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-c6ab3b64",
+    "ts": "2026-09-08T14:11:33",
+    "ts_utc": "2026-09-08T12:11:33Z",
+    "event": "console_reset",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "Console state cleared ; baseline restored",
+    "meta": {
+      "actor_username": "n.hlophe",
+      "actor_role": "analyst",
+      "actor_org": "FSCA",
+      "session_id": "sess-5a44fcf5f9"
+    }
   }
 ]

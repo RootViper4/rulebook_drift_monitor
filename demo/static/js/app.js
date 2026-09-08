@@ -7,12 +7,97 @@ function toast(msg){
   clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('show'), 2600);
 }
 
+/* ---------- Session ----------------------------------------------------
+   Every action in this console is attributed to a named analyst, so a page
+   needs to know who is signed in before it renders anything. SESSION is
+   filled by loadSession() at boot and read by the topbar identity chip, by
+   the decision buttons (read-only accounts get them disabled) and by api(). */
+const SESSION = { authenticated:false, checked:false, user:null, csrf:'',
+                 demoAccounts:[], demoPassword:'' };
+const PUBLIC_PAGES = ['home.html', 'login.html'];
+/* Endpoints that work without a session. Everything else is gated. */
+const OPEN_ENDPOINTS = ['/api/me', '/api/login', '/api/logout'];
+
+/* One in-flight identity check per page load. Several page scripts call
+   refresh() the moment they load, so without this they would each fire a
+   request at a gated endpoint before anyone knows whether we are signed in -
+   which is what fills the server log with 401s on a fresh start. */
+let sessionCheck = null;
+function ensureSession(){
+  if(!sessionCheck) sessionCheck = loadSession();
+  return sessionCheck;
+}
+
+function currentPageName(){ return location.pathname.split('/').pop() || 'home.html'; }
+function isPublicPage(){ return PUBLIC_PAGES.includes(currentPageName()); }
+function goToLogin(){ location.href = 'login.html?next=' + encodeURIComponent(currentPageName()); }
+
 async function api(path, opts = {}){
-  const headers = opts.body ? {'Content-Type':'application/json'} : (opts.headers||{});
-  const r = await fetch(path, {...opts, headers});
+  /* Wait for the identity check before touching a gated endpoint, and skip the
+     call entirely when we already know nobody is signed in. */
+  if(!OPEN_ENDPOINTS.includes(path)){
+    await ensureSession();
+    if(!SESSION.authenticated){
+      if(!isPublicPage()) goToLogin();
+      throw new Error('Sign in to continue.');
+    }
+  }
+  const headers = opts.body ? {'Content-Type':'application/json'} : {...(opts.headers||{})};
+  /* The server rejects any state-changing call that does not echo this
+     session's CSRF token, so attach it to every non-GET automatically. */
+  const method = (opts.method || 'GET').toUpperCase();
+  if(method !== 'GET' && method !== 'HEAD' && SESSION.csrf) headers['X-CSRF-Token'] = SESSION.csrf;
+  const r = await fetch(path, {...opts, headers, credentials:'same-origin'});
   const json = await r.json().catch(()=>({}));
+  if(r.status === 401 && !isPublicPage()){ goToLogin(); throw new Error('Sign in to continue.'); }
+  if(r.status === 403 && json.auth === 'csrf'){ location.reload(); throw new Error(json.error); }
   if(!r.ok) throw new Error(json.error || ('HTTP ' + r.status));
   return json;
+}
+
+async function loadSession(){
+  try{
+    const me = await fetch('/api/me', {credentials:'same-origin'}).then(r=>r.json());
+    SESSION.authenticated = !!me.authenticated;
+    SESSION.user          = me.user || null;
+    SESSION.csrf          = me.csrf || '';
+    SESSION.demoAccounts  = me.demo_accounts || [];
+    SESSION.demoPassword  = me.demo_password || '';
+    SESSION.signedInAt    = me.signed_in_at || '';
+  }catch(e){ SESSION.authenticated = false; }
+  SESSION.checked = true;
+  return SESSION;
+}
+
+function initials(name){
+  return (name||'?').split(/[\s.]+/).filter(Boolean).slice(0,2)
+                    .map(w=>w[0].toUpperCase()).join('') || '?';
+}
+
+/* Topbar identity chip. #analystName stays inside it because the page scripts
+   (console.js, rules.js, dashboard) write the analyst's name into that id. */
+function renderUserChip(){
+  const chip = document.querySelector('.analyst-chip');
+  if(!chip) return;
+  if(!SESSION.authenticated){
+    chip.innerHTML = '<a class="btn-tiny" href="login.html">Sign in</a>' +
+                     '<span id="analystName" hidden></span>';
+    return;
+  }
+  const u = SESSION.user || {};
+  const role = u.can_decide ? 'can decide' : 'read-only';
+  chip.innerHTML =
+    `<span class="avatar" title="${esc(u.title||'')}">${esc(initials(u.display_name))}</span>` +
+    `<span class="who"><span id="analystName">${esc(u.display_name||'')}</span>` +
+    `<span class="who-sub">${esc(u.organisation||'')} · ${esc(role)}</span></span>` +
+    `<button class="btn-tiny" id="signOutBtn" type="button" title="End this session">Sign out</button>`;
+  const btn = document.getElementById('signOutBtn');
+  if(btn) btn.onclick = signOut;
+}
+
+async function signOut(){
+  try{ await api('/api/logout', {method:'POST', body:'{}'}); }catch(e){}
+  location.href = 'login.html';
 }
 
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -24,10 +109,28 @@ function setActiveNav(){
   });
 }
 
+/* Pending-decision badge in the sidebar. One writer, used by every page, so the
+   badge is either a real number or absent - never an empty orange dot. */
+function setPendingBadge(count){
+  const badge = document.getElementById('navReviewCount');
+  if(!badge) return;
+  const pending = Math.max(0, Number(count) || 0);
+  badge.textContent = pending ? String(pending) : '';
+  badge.classList.toggle('on', pending > 0);
+}
+
 async function refreshStatusPill(){
   const pill = $('statusPill'); if(!pill) return;
+  if(SESSION.checked && !SESSION.authenticated){
+    pill.textContent = '\u25CF Signed out'; pill.className = 'badge-status offline';
+    setPendingBadge(0);
+    return;
+  }
   try{
     const s = await api('/api/state');
+    // Every page polls state for the status pill, so the badge is kept in
+    // step here rather than only on the pages that load console.js.
+    setPendingBadge((s.total||0) - (s.reviewed||0));
     if(s.running){
       pill.textContent='● Running'; pill.className='badge-status busy';
     }else if(s.status){
@@ -213,6 +316,18 @@ function renderForecast(el, trend, h=150){
   </div>`;
 }
 
+/* Boot: establish identity first, then start anything that calls the gated API. */
+async function bootSession(){
+  await ensureSession();
+  renderUserChip();
+  if(!SESSION.authenticated){
+    if(!isPublicPage()) goToLogin();   // the server redirects too; this covers a cached page
+    return;                            // public page: no polling of gated endpoints
+  }
+  setPendingBadge(0);                 // start hidden until a real count arrives
+  refreshStatusPill();
+  setInterval(()=>{ if(!location.pathname.endsWith('index.html')) refreshStatusPill(); }, 4000);
+}
+
 setActiveNav();
-refreshStatusPill();
-setInterval(()=>{ if(!location.pathname.endsWith('index.html')) refreshStatusPill(); }, 4000);
+bootSession();

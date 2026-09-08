@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Drift Sentinel · Keeping the crypto rulebook current</title>
+<link rel="icon" href="/static/img/logo.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="/static/css/app.css"/>
+</head>
+<body data-page="home.html">
+<div class="app">
+  <aside class="sidebar"></aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title" id="pageTitle">Drift Sentinel</div>
+      <div class="top-right">
+        <span class="badge-status online" id="statusPill">● Prototype</span>
+        <span class="analyst-chip"><a class="btn-tiny" href="login.html">Sign in</a></span>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ---------- Hero ---------- -->
+      <section class="home-hero">
+        <div class="home-hero-text">
+          <div class="eyebrow">Horizon scanning for the crypto AML rulebook</div>
+          <h1>Fraud moves in weeks. Rulebooks move in years.<br/>Drift Sentinel measures the gap.</h1>
+          <p class="sub">Drift Sentinel is an agentic system that continuously tests a crypto
+          AML/CFT rulebook against the fraud that exists today — both the typologies already
+          documented and ones the system invents itself. Every gap it finds is independently
+          re-tested, drafted as a candidate red flag, and put in front of a named analyst who
+          accepts, amends or rejects it. Nothing reaches guidance on its own.</p>
+          <div class="home-cta">
+            <a class="btn btn-primary" id="consoleCta" href="login.html">Sign in to the console</a>
+            <a class="btn btn-ghost" href="#how">How it works</a>
+            <a class="btn btn-ghost" href="#team">The team</a>
+          </div>
+        </div>
+        <div class="home-hero-mark">
+          <img src="/static/img/logo.svg" alt="Drift Sentinel"/>
+        </div>
+      </section>
+
+      <!-- ---------- The problem ---------- -->
+      <div class="section-title">Why this exists</div>
+      <section class="grid two">
+        <div class="card card-pad">
+          <div class="card-title">A rulebook written before the fraud existed</div>
+          <p>The red-flag indicators that still anchor crypto detection were published by the FATF
+          in <b>September 2020</b>, in
+          <a href="https://www.fatf-gafi.org/content/dam/fatf-gafi/reports/Virtual-Assets-Red-Flag-Indicators.pdf"
+             target="_blank" rel="noopener">Virtual Assets – Red Flag Indicators of Money Laundering
+          and Terrorist Financing</a>. They were drawn from case studies collected between 2017 and
+          2020 — before generative AI put real-time deepfake liveness bypass, cloned voices,
+          synthetic identity documents and replica exchange apps within reach of an ordinary
+          fraudster.</p>
+          <p>South Africa layered its travel-rule obligations on top of that base with
+          <a href="https://www.fic.gov.za/wp-content/uploads/2024/11/Directive-9-Travel-rule-relating-to-crypto-asset-transfers.pdf"
+             target="_blank" rel="noopener">FIC Directive 9</a>, gazetted 15 November 2024 and in
+          force from 30 April 2025. Directive 9 tells a crypto asset service provider what
+          information must travel with a transfer. It does not tell anyone what an AI-assisted
+          attack on that control looks like.</p>
+        </div>
+        <div class="card card-pad">
+          <div class="card-title">The lag is the bottleneck</div>
+          <p>Updating guidance is slow and manual. A scam appears, victims lose money, authorities
+          investigate, the FATF or INTERPOL publish, regulators update expectations, and only then
+          do controls change. Typologies mutate in weeks; the rulebook updates in years.</p>
+          <p>The stakes are concrete. South Africa left the FATF grey list on
+          <a href="https://www.fic.gov.za/wp-content/uploads/2025/10/2025.10-MR-South-Africa-exits-the-grey-list-.pdf"
+             target="_blank" rel="noopener">24 October 2025</a> after 32 months under increased
+          monitoring, and the next mutual evaluation is already on the horizon. Detection that
+          quietly falls behind the fraud is how that ground gets lost.</p>
+          <p class="dim" style="font-size:13px;margin-bottom:0">Drift Sentinel sits in the
+          market-monitoring and horizon-scanning stage of the regulatory life cycle, and hands into
+          the policy stage.</p>
+        </div>
+      </section>
+
+      <!-- ---------- Who it is for ---------- -->
+      <div class="section-title">Who it is for, and why</div>
+      <section class="grid two">
+        <div class="card card-pad">
+          <div class="card-title">
+            <a href="https://www.fic.gov.za/" target="_blank" rel="noopener">Financial Intelligence Centre</a>
+            <span class="pill-soft">Typologies analyst</span>
+          </div>
+          <p>The FIC receives suspicious transaction reports, issues directives to accountable
+          institutions, and publishes the red-flag guidance that CASPs are measured against. It
+          owns the artefact this system tests: the indicator set itself.</p>
+          <p>The end-user is a typologies analyst. Instead of reading hundreds of pages of threat
+          reporting each quarter, they open a short queue of verified, cited gap candidates, each
+          mapped to an attack technique and paired with a drafted indicator.</p>
+        </div>
+        <div class="card card-pad">
+          <div class="card-title">
+            <a href="https://www.fsca.co.za/" target="_blank" rel="noopener">Financial Sector Conduct Authority</a>
+            <span class="pill-soft">Supervision specialist</span>
+          </div>
+          <p>The FSCA licenses and supervises crypto asset service providers as financial services
+          providers, so it carries the conduct and market-integrity consequences when a control
+          stops catching what it was written to catch.</p>
+          <p>The end-user is a supervision specialist. A gap report tells them which obligations
+          an AI-assisted attack walks past, before it shows up in a supervisory finding or a
+          consumer-loss statistic.</p>
+        </div>
+      </section>
+
+      <!-- ---------- How it works ---------- -->
+      <div class="section-title" id="how">How a check works</div>
+      <section class="card card-pad">
+        <ol class="home-steps">
+          <li><b>Retrieval</b> grounds the run in the current rulebook and the documented typology
+          corpus, so every finding can be traced back to a source document.</li>
+          <li><b>Reconciliation</b> instantiates each documented typology as a synthetic scenario
+          and steps it through the rulebook rule by rule, recording which indicators fire and which
+          are evaded.</li>
+          <li><b>Generation</b> reasons from a library of AI capability primitives to invent
+          evasion paths no published report has yet named.</li>
+          <li><b>The critic</b> independently re-tests every claimed gap with the deterministic
+          engine and discards whatever it cannot reproduce. No agent marks its own work.</li>
+          <li><b>The human gate</b> hands the survivors to a named analyst as drafted candidate red
+          flags. Accepting one records the analyst, the timestamp and their written reason; only
+          then can the indicator enter the rulebook.</li>
+        </ol>
+        <p class="dim" style="font-size:13px;margin-bottom:0">Whether a rule fired is decided by a
+        deterministic rule engine, not by the language model. The model proposes scenarios; the
+        engine decides what they hit. Generation is held at the level of regulatory indicators, so
+        the system never produces a usable exploit.</p>
+      </section>
+
+      <!-- ---------- What is in the prototype ---------- -->
+      <div class="section-title">What is in this prototype today</div>
+      <section class="grid kpis">
+        <div class="card card-pad kpi">
+          <div class="k-label">Rulebook under test</div>
+          <div class="k-value k-accent">40</div>
+          <div class="k-sub">DS-01 to DS-40, drawn from FATF (2020), Directive 9 and the FATF Recommendations</div>
+        </div>
+        <div class="card card-pad kpi">
+          <div class="k-label">Documented typologies</div>
+          <div class="k-value k-accent">35</div>
+          <div class="k-sub">Each with synthetic transaction fixtures and a cited source</div>
+        </div>
+        <div class="card card-pad kpi">
+          <div class="k-label">AI capability primitives</div>
+          <div class="k-value k-accent">12</div>
+          <div class="k-sub">CP-01 to CP-12, the techniques the generation arm reasons from</div>
+        </div>
+        <div class="card card-pad kpi">
+          <div class="k-label">Drift Index at baseline</div>
+          <div class="k-value k-bad">57.0</div>
+          <div class="k-sub">High band · 45.2% indicator coverage · 68.3% AI-evasion pressure</div>
+        </div>
+      </section>
+      <p class="dim" style="font-size:13px;max-width:80ch">Drift is a number you can move, not just
+      describe: instituting six verified gaps as new indicators takes the Drift Index from 57.0 to
+      52.7 and coverage from 45.2% to 47.8%, measured in the app. All data in this prototype is
+      public or synthetic — no personal data and no live systems.</p>
+
+      <!-- ---------- Access ---------- -->
+      <div class="section-title">Access and accountability</div>
+      <section class="card card-pad">
+        <p>A gap report is an attack map, so the console is not open. Every page beyond this one
+        requires a sign-in, and each account carries a role: an <b>analyst</b> can run checks and
+        accept, amend, reject or institute findings; an <b>observer</b> can read the findings and
+        the paper trail but cannot act on them.</p>
+        <p style="margin-bottom:0">Every action is written to an append-only trail with the
+        person's name, organisation, role, session and timestamp, alongside the evidence, the rule
+        defeated and the written rationale — so any promotion into guidance stays defensible on
+        review.</p>
+      </section>
+
+      <!-- ---------- Team ---------- -->
+      <div class="section-title" id="team">The team</div>
+      <section class="team-grid">
+
+        <div class="team-card">
+          <div class="team-photo-wrap">
+            <img class="team-photo" src="/static/img/nolwazi-hlophe.jpg" alt="Nolwazi Hlophe"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"/>
+            <div class="team-photo team-photo-fallback">NH</div>
+          </div>
+          <div class="team-name">Nolwazi Hlophe</div>
+          <div class="team-role">Regulator &amp; problem owner</div>
+          <div class="team-org">Senior Specialist: FinTech, FSCA</div>
+          <p class="team-bio">Co-chair of the IFWG AI Working Group and a crypto-asset regulation
+          specialist. Faculty at the Cambridge Centre for Alternative Finance, contributor to the
+          IAIS FinTech Forum, and named among Africa Shapers' 60 African Women Experts in FinTech.</p>
+        </div>
+
+        <div class="team-card">
+          <div class="team-photo-wrap">
+            <img class="team-photo" src="/static/img/maqhobosheane-mohlerepe.jpg" alt="Maqhobosheane Mohlerepe"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"/>
+            <div class="team-photo team-photo-fallback">MM</div>
+          </div>
+          <div class="team-name">Maqhobosheane Mohlerepe</div>
+          <div class="team-role">Team lead &amp; AI builder</div>
+          <div class="team-org">Researcher, Cenfri</div>
+          <p class="team-bio">MPhil FinTech graduand (University of Cape Town) with a BSc Honours in
+          Computer Science. Works on economic development research, regulatory diagnostics and
+          payments across African markets, and was a teaching assistant at the Deep Dive into
+          Blockchain 2026 summer school.</p>
+        </div>
+
+        <div class="team-card">
+          <div class="team-photo-wrap">
+            <img class="team-photo" src="/static/img/eveshnie-reddy.jpg" alt="Eveshnie Reddy"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"/>
+            <div class="team-photo team-photo-fallback">ER</div>
+          </div>
+          <div class="team-name">Eveshnie Reddy</div>
+          <div class="team-role">Domain expert · crypto-crime law</div>
+          <div class="team-org">Senior Lecturer, University of South Africa</div>
+          <p class="team-bio">PhD in FinTech Law and Regulation. Her interdisciplinary research
+          addresses how law enforcement and regulators investigate, disrupt and prevent
+          cryptocurrency crime. Member of the African Fintech Law and Regulation Network and among
+          the Mail &amp; Guardian's 200 South Africans in Law and Justice.</p>
+        </div>
+
+        <div class="team-card">
+          <div class="team-photo-wrap">
+            <img class="team-photo" src="/static/img/benjamin-franck-root.jpg" alt="Benjamin Franck Root"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"/>
+            <div class="team-photo team-photo-fallback">BR</div>
+          </div>
+          <div class="team-name">Benjamin Franck Root</div>
+          <div class="team-role">Technical lead · full-stack engineer</div>
+          <div class="team-org">CyprusCodes Akdemy Technologie</div>
+          <p class="team-bio">Senior software engineer, data scientist and metallurgical engineer.
+          Full-stack work across React, React Native, Python, PHP, Laravel and Docker, with
+          industrial process-design experience in block flow diagrams and P&amp;IDs.</p>
+        </div>
+
+        <div class="team-card">
+          <div class="team-photo-wrap">
+            <img class="team-photo" src="/static/img/gires-kana-lekemo.jpg" alt="Gires Kana Lekemo"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"/>
+            <div class="team-photo team-photo-fallback">GK</div>
+          </div>
+          <div class="team-name">Gires Kana Lekemo</div>
+          <div class="team-role">Domain expert · AML &amp; crypto compliance</div>
+          <div class="team-org">Senior AML Analyst, Guidehouse</div>
+          <p class="team-bio">Works across transaction monitoring, KYC, sanctions screening and
+          financial-crime investigations, and created AML First Job, a practical case-study
+          training resource for aspiring AML professionals.</p>
+        </div>
+
+      </section>
+
+      <!-- ---------- Sources ---------- -->
+      <div class="section-title">Sources behind the rulebook corpus</div>
+      <section class="card card-pad">
+        <ul class="src-list">
+          <li><a href="https://www.fatf-gafi.org/content/dam/fatf-gafi/reports/Virtual-Assets-Red-Flag-Indicators.pdf" target="_blank" rel="noopener">FATF (2020) — Virtual Assets: Red Flag Indicators of Money Laundering and Terrorist Financing</a></li>
+          <li><a href="https://www.fic.gov.za/wp-content/uploads/2024/11/Directive-9-Travel-rule-relating-to-crypto-asset-transfers.pdf" target="_blank" rel="noopener">FIC (2024) — Directive 9: Travel Rule relating to crypto asset transfers</a></li>
+          <li><a href="https://www.fic.gov.za/wp-content/uploads/2025/10/2025.10-MR-South-Africa-exits-the-grey-list-.pdf" target="_blank" rel="noopener">FIC (2025) — Media release: South Africa exits the FATF grey list</a></li>
+          <li><a href="https://atlas.mitre.org/" target="_blank" rel="noopener">MITRE ATLAS — adversarial threat landscape for AI systems</a></li>
+          <li><a href="https://www.fatf-gafi.org/en/publications/Fatfrecommendations/Fatf-recommendations.html" target="_blank" rel="noopener">FATF Recommendations (Recommendations 10, 12, 15 and 16)</a></li>
+        </ul>
+        <p class="dim" style="font-size:12.5px;margin-bottom:0">Rule wording inside the app is a
+        working paraphrase prepared by the domain team to make each rule machine-testable. Where the
+        paraphrase and the source document differ, the source document governs.</p>
+      </section>
+
+      <footer>Drift Sentinel · C:\&gt;DIR Global 'Agentic Regulator' Hackathon 2026 · prototype · all
+      data synthetic and illustrative</footer>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="/static/js/app.js"></script>
+<script src="/static/js/shell.js"></script>
+<script>
+/* Once you are signed in there is nothing to sign in to, so the call to action
+   becomes a way into the console instead. The topbar chip is handled centrally
+   by renderUserChip() in app.js, which swaps the "Sign in" link for your name,
+   organisation, role and a sign-out button. ensureSession() reuses the identity
+   check app.js already started, so this costs no extra request. */
+ensureSession().then(() => {
+  const cta = document.getElementById('consoleCta');
+  if(!cta || !SESSION.authenticated) return;
+  const name = (SESSION.user && SESSION.user.display_name) ? SESSION.user.display_name : '';
+  cta.textContent = name ? `Open the console as ${name}` : 'Open the console';
+  cta.href = 'index.html';
+});
+</script>
+</body>
+</html>

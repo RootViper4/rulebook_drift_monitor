@@ -3,3 +3,7 @@
 .env
 __pycache__/
 *.pyc
+
+# Local session-signing key (see _resolve_secret_key in demo/web.py).
+# Never commit it: anyone holding it can forge a session cookie.
+data/.session_key

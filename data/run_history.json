@@ -65,5 +65,27 @@
     "findings": 13,
     "discarded": 1,
     "rulebook_version": "DS-01..DS-40 · 40 rules"
+  },
+  {
+    "run_id": "run-e06c77ce",
+    "ts": "2026-09-08T22:38:57",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-40 · 40 rules"
+  },
+  {
+    "run_id": "run-33e7527a",
+    "ts": "2026-09-08T22:44:35",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-40 · 40 rules"
   }
 ]

@@ -614,5 +614,131 @@
       "actor_org": "FSCA",
       "session_id": "sess-850e34d4c9"
     }
+  },
+  {
+    "id": "ae-91e0ccb8",
+    "ts": "2026-09-08T22:37:38",
+    "ts_utc": "2026-09-08T20:37:38Z",
+    "event": "login_success",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "N. Hlophe (FSCA) signed in",
+    "meta": {
+      "actor_username": "n.hlophe",
+      "actor_role": "analyst",
+      "actor_org": "FSCA",
+      "session_id": "sess-3188482639",
+      "role": "analyst"
+    }
+  },
+  {
+    "id": "ae-454d893d",
+    "ts": "2026-09-08T22:37:40",
+    "ts_utc": "2026-09-08T20:37:40Z",
+    "event": "run_started",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "actor_username": "",
+      "actor_role": "",
+      "actor_org": "",
+      "session_id": "",
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-05a83c42",
+    "ts": "2026-09-08T22:38:57",
+    "ts_utc": "2026-09-08T20:38:57Z",
+    "event": "run_finished",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "actor_username": "",
+      "actor_role": "",
+      "actor_org": "",
+      "session_id": "",
+      "findings": 13,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-d9016384",
+    "ts": "2026-09-08T22:40:14",
+    "ts_utc": "2026-09-08T20:40:14Z",
+    "event": "finding_decided",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "accepted ✓ CP-01",
+    "meta": {
+      "actor_username": "n.hlophe",
+      "actor_role": "analyst",
+      "actor_org": "FSCA",
+      "session_id": "sess-3188482639",
+      "fid": "CP-01",
+      "decision": "accept",
+      "mode": "reconciliation",
+      "reason": "Yes--implement fix. It is inline with expected risks."
+    }
+  },
+  {
+    "id": "ae-ad5c6097",
+    "ts": "2026-09-08T22:41:08",
+    "ts_utc": "2026-09-08T20:41:08Z",
+    "event": "red_team_probe",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "Probe → REJECTED · claim not reproducible (red-team) · victim TYP-001",
+    "meta": {
+      "actor_username": "n.hlophe",
+      "actor_role": "analyst",
+      "actor_org": "FSCA",
+      "session_id": "sess-3188482639",
+      "victim": "TYP-001",
+      "verdict": "REJECTED · claim not reproducible (red-team)"
+    }
+  },
+  {
+    "id": "ae-32020966",
+    "ts": "2026-09-08T22:41:48",
+    "ts_utc": "2026-09-08T20:41:48Z",
+    "event": "run_started",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "actor_username": "",
+      "actor_role": "",
+      "actor_org": "",
+      "session_id": "",
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-a294c160",
+    "ts": "2026-09-08T22:41:48",
+    "ts_utc": "2026-09-08T20:41:48Z",
+    "event": "run_skip",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "1 already-reviewed/covered typologies excluded",
+    "meta": {
+      "actor_username": "",
+      "actor_role": "",
+      "actor_org": "",
+      "session_id": "",
+      "excluded": 1
+    }
+  },
+  {
+    "id": "ae-2a6e3641",
+    "ts": "2026-09-08T22:44:35",
+    "ts_utc": "2026-09-08T20:44:35Z",
+    "event": "run_finished",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "actor_username": "",
+      "actor_role": "",
+      "actor_org": "",
+      "session_id": "",
+      "findings": 13,
+      "discarded": 1
+    }
   }
 ]

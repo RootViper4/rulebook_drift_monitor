@@ -4,6 +4,7 @@ import difflib
 import json
 import re
 import textwrap
+import time
 from typing import Any, Callable, Optional
 
 from agents.models import Rule, RuleResult, Typology
@@ -31,8 +32,17 @@ CP_LIBRARY_SUMMARY = [
 ]
 _KNOWN_CP_IDS = {cp_id for cp_id, _ in CP_LIBRARY_SUMMARY}
 
-GENERATION_ARM_TARGET_COUNT = 5  # how many novel scenarios per run
+# Slots are generated SEQUENTIALLY, and each slot may retry, so worst-case run
+# time is TARGET_COUNT * ATTEMPTS_PER_SLOT API calls. Dropped from 5 to 3
+# (2026-09-08) because measured runs kept converging on the same rulebook blind
+# spot regardless of slot count - see _detect_convergence() - so slots 4 and 5
+# were mostly paying latency for a restatement of slots 1-3. Raise back to 5 if
+# a run genuinely needs more breadth and the time budget allows.
+GENERATION_ARM_TARGET_COUNT = 3  # how many novel scenarios per run
 GENERATION_ARM_ATTEMPTS_PER_SLOT = 3  # LLM attempts before falling back for THAT slot only
+# Pause between slots on the hosted path only - see the pacing comment at the
+# call site in _llm_compose_scenarios for why this exists.
+GENERATION_ARM_SLOT_PACING_SECONDS = 3.0
 # Local Ollama on CPU-only hardware is ~1 token/sec, so an extra attempt costs
 # a full generation's worth of wall-clock. One attempt only on the local path
 # (the hosted path is fast enough to justify the full attempt budget). If the
@@ -429,6 +439,19 @@ class SimulationAgent:
             # keeps grinding through every slot before the abort is honoured.
             if _aborted():
                 break
+            # SLOT PACING (2026-09-08): confirmed in practice that firing
+            # consecutive hosted requests back-to-back trips a burst limit
+            # well below the account's stated RPM/TPM ceiling - slot 1
+            # succeeded, slot 2 fired immediately after and was 429'd, even
+            # though both were comfortably under the documented per-minute
+            # figure. A short pause between slots (not within a slot's own
+            # retries, which already back off) costs a few seconds total
+            # across a run and measurably avoided the repeat. Skipped for
+            # slot 0 (nothing to pace against yet) and for the local Ollama
+            # path (irrelevant - that path is bottlenecked on tokens/sec,
+            # not on request rate).
+            if is_hosted and i > 0:
+                time.sleep(GENERATION_ARM_SLOT_PACING_SECONDS)
             cleaned = None
             for _attempt in range(attempts_per_slot):
                 if _aborted():

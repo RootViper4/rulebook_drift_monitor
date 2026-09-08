@@ -1,20 +1,11 @@
 [
   {
-    "run_id": "run-79b2ff0a",
-    "ts": "2026-09-08T09:00:57",
-    "kind": "run",
-    "drift_index": 57.0,
-    "coverage": 0.452,
-    "ai_pressure": 0.683,
-    "findings": 15,
-    "discarded": 1,
-    "rulebook_version": "DS-01..DS-40 · 40 rules"
-<<<<<<< HEAD
-=======
   },
   {
     "run_id": "run-0ccd50d4",
     "ts": "2026-09-07T19:05:36",
+    "run_id": "run-033e9880",
+    "ts": "2026-09-08T10:57:28",
     "kind": "run",
     "drift_index": 57.0,
     "coverage": 0.452,
@@ -24,70 +15,14 @@
     "rulebook_version": "DS-01..DS-40 · 40 rules"
   },
   {
-    "run_id": "run-b72e50ac",
-    "ts": "2026-09-07T19:20:04",
-    "kind": "run",
-    "drift_index": 57.0,
-    "coverage": 0.452,
-    "ai_pressure": 0.683,
-    "findings": 15,
-    "discarded": 1,
-    "rulebook_version": "DS-01..DS-40 · 40 rules"
-  },
-  {
-    "run_id": "run-f255851d",
-    "ts": "2026-09-08T05:32:06",
-    "kind": "run",
-    "drift_index": 57.0,
-    "coverage": 0.452,
-    "ai_pressure": 0.683,
-    "findings": 14,
-    "discarded": 1,
-    "rulebook_version": "DS-01..DS-40 · 40 rules"
-  },
-  {
-    "run_id": "run-c43cf69a",
-    "ts": "2026-09-08T06:22:13",
+    "run_id": "run-cc709647",
+    "ts": "2026-09-08T11:31:35",
     "kind": "run",
     "drift_index": 57.0,
     "coverage": 0.452,
     "ai_pressure": 0.683,
     "findings": 13,
-    "discarded": 2,
-    "rulebook_version": "DS-01..DS-40 · 40 rules"
-  },
-  {
-    "run_id": "run-35b973b9",
-    "ts": "2026-09-08T06:38:29",
-    "kind": "run",
-    "drift_index": 57.0,
-    "coverage": 0.452,
-    "ai_pressure": 0.683,
-    "findings": 15,
     "discarded": 1,
     "rulebook_version": "DS-01..DS-40 · 40 rules"
-  },
-  {
-    "run_id": "checkpoint-f6bd4ab7",
-    "ts": "2026-09-08T06:45:06",
-    "kind": "checkpoint",
-    "drift_index": 57.0,
-    "coverage": 0.452,
-    "ai_pressure": 0.683,
-    "findings": null,
-    "discarded": null,
-    "rulebook_version": "DS-01..DS-40 · 40 rules"
-  },
-  {
-    "run_id": "checkpoint-9fe598f2",
-    "ts": "2026-09-08T06:45:08",
-    "kind": "checkpoint",
-    "drift_index": 57.0,
-    "coverage": 0.452,
-    "ai_pressure": 0.683,
-    "findings": null,
-    "discarded": null,
-    "rulebook_version": "DS-01..DS-40 · 40 rules"
->>>>>>> parent of 5a36025c (fixes)
   }
 ]

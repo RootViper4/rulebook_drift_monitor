@@ -3,32 +3,17 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Rulebook Drift Monitor · Dashboard</title>
+<title>Drift Sentinel · Where the gaps are</title>
+<link rel="icon" href="static/img/logo.svg" type="image/svg+xml"/>
 <link rel="stylesheet" href="static/css/app.css"/>
 </head>
 <body>
 <div class="app">
-  <aside class="sidebar">
-    <div class="side-brand">
-      <div class="side-logo">RD</div>
-      <div><div class="name">Rulebook Drift Monitor</div><div class="sub">Agentic Regulatory Oversight</div></div>
-    </div>
-    <nav class="side-nav">
-      <div class="nav-sec">Platform</div>
-      <a class="nav-link" href="dashboard.html"><span class="ic">◈</span>Dashboard</a>
-      <a class="nav-link" href="index.html"><span class="ic">▶</span>Run Console</a>
-      <a class="nav-link" href="rules.html"><span class="ic">⚖</span>Rule Catalog</a>
-      <a class="nav-link" href="forecast.html"><span class="ic">⌁</span>Forecast</a>
-      <div class="nav-sec">Review</div>
-      <a class="nav-link" href="compare.html"><span class="ic">⇄</span>Compare</a>
-      <a class="nav-link" href="audit.html"><span class="ic">🕮</span>Audit</a>
-    </nav>
-    <div class="side-foot">DS-01..DS-40 · 40 rules<br/>Synthetic data · hackathon demo</div>
-  </aside>
+  <aside class="sidebar"></aside>
 
   <div class="main">
     <div class="topbar">
-      <div class="page-title" id="pageTitle">Dashboard</div>
+      <div class="page-title" id="pageTitle">Where the gaps are</div>
       <div class="top-right">
         <span class="badge-status online" id="statusPill">● Ready</span>
         <span class="analyst-chip"><span class="avatar">AA</span><span id="analystName">A. Analyst</span></span>
@@ -125,12 +110,13 @@
         </div>
       </div>
 
-      <footer>Rulebook Drift Monitor · hackathon prototype · all data synthetic &amp; illustrative</footer>
+      <footer>Drift Sentinel · prototype · all data synthetic and illustrative</footer>
     </div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
 <script src="static/js/app.js"></script>
+<script src="static/js/shell.js"></script>
 <script>
 function sevColor(s){ return {critical:'var(--bad)',high:'var(--warn)',medium:'var(--info)',low:'var(--panel-3)'}[s]||'var(--accent)'; }
 

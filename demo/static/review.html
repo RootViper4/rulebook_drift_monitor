@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Drift Sentinel · Decisions waiting for you</title>
+<link rel="icon" href="static/img/logo.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="static/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar"></aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title" id="pageTitle">Decisions waiting for you</div>
+      <div class="top-right">
+        <span class="badge-status online" id="statusPill">● Ready</span>
+        <span class="analyst-chip"><span class="avatar">AA</span><span id="analystName">A. Analyst</span></span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="page-intro">
+        <h2>Nothing reaches the rulebook without your decision</h2>
+        <p class="lede">Each row below is a gap the system found and then independently
+        re-tested. For each one you can accept the drafted rule, amend it, or reject it.
+        Your reasoning is recorded against your name.</p>
+        <details class="explain">
+          <summary>How to read a finding</summary>
+          <div class="explain-body">
+            <p><b>Known attacks</b> come from documented fraud typologies — FATF, Chainalysis,
+            TRM. The evidence behind them is published.</p>
+            <p><b>Emerging threats</b> were invented by the system and have no published
+            evidence yet. Treat them as informed hypotheses, not established fact. Two badges
+            matter here:</p>
+            <ul>
+              <li><b>Written by the AI model, then checked</b> — the model proposed this and the
+              critic reproduced it against the real rulebook.</li>
+              <li><b>Coverage idea, not a fully tested gap</b> — the scenario relies on something
+              the rulebook has no field for, so parts of it could not be tested. Useful as a
+              prompt for discussion, not as a proven evasion.</li>
+            </ul>
+            <p>Opening a row shows which rules fired, which stayed silent, and the source
+            document behind each one.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="caveat-banner" id="caveatBanner" style="display:none">
+        <span>⚠</span>
+        <span>Rule wording shown here is a <b>provisional paraphrase</b> prepared by the domain
+        team, not verified regulatory text. The linked source document is authoritative — check
+        it before relying on the wording shown here.</span>
+        <button onclick="dismissCaveat()">Got it</button>
+      </div>
+
+      <div class="section-row">
+        <div class="section-title" id="findingsTitle">Findings awaiting your decision</div>
+        <div class="legend-line" style="width:100%">
+          <span><b class="lg-caught">Caught by a rule</b> = the rule fired and flagged this attack</span>
+          <span><b class="lg-miss">Slipped past a rule</b> = the rule did not trigger — the attack got through</span>
+          <span style="opacity:.75">Click a row to expand it</span>
+        </div>
+        <div class="diff-summary" id="diffSummary" style="display:none"></div>
+      </div>
+
+      <div class="review-type-tabs" id="reviewTypeTabs">
+        <button class="rtab active" data-tab="reconciliation" onclick="setReviewTab('reconciliation')">Known attacks <span class="rtab-count" id="cReconRev"></span></button>
+        <button class="rtab" data-tab="generation" onclick="setReviewTab('generation')">Emerging threats <span class="rtab-count" id="cGenRev"></span></button>
+      </div>
+      <div class="tab-desc" id="tabDesc"></div>
+      <div id="findings" class="list-rows"></div>
+      <div id="emptyFilter" class="empty blocked" style="display:none">Nothing left to decide in this tab.</div>
+
+      <div class="section-title" id="decidedTitle">Already decided</div>
+      <div id="decidedLog" class="list-rows"></div>
+
+      <div class="section-title" id="rejTitle" style="display:none">Thrown out by the critic</div>
+      <div class="dim" style="font-size:12.5px;margin-bottom:10px;max-width:76ch">These were
+      proposed but could not be reproduced on an independent re-test, so they never reached your
+      queue. They are listed for transparency.</div>
+      <div id="rejected" class="grid cards"></div>
+
+      <footer>Drift Sentinel · prototype · all data synthetic and illustrative</footer>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="static/js/app.js"></script>
+<script src="static/js/shell.js"></script>
+<script src="static/js/console.js"></script>
+<script>
+refresh();
+tick();
+</script>
+</body>
+</html>

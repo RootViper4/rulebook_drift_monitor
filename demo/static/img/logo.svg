@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Drift Sentinel">
+  <title>Drift Sentinel</title>
+  <!-- dashed horizon ring: the scanning perimeter -->
+  <circle cx="60" cy="58" r="45" fill="none" stroke="#7BAFA2" stroke-width="3.4"
+          stroke-dasharray="7 7" stroke-linecap="round"/>
+  <!-- shield -->
+  <path d="M60 20 L92 33 V62 c0 18-14 30-32 37 -18-7-32-19-32-37 V33 Z"
+        fill="#E1F5EE" stroke="#0F6E56" stroke-width="3.6" stroke-linejoin="round"/>
+  <!-- crosshair -->
+  <circle cx="60" cy="56" r="15" fill="none" stroke="#0F6E56" stroke-width="3"/>
+  <g stroke="#0F6E56" stroke-width="3" stroke-linecap="round">
+    <line x1="60" y1="35" x2="60" y2="46"/>
+    <line x1="60" y1="66" x2="60" y2="77"/>
+    <line x1="39" y1="56" x2="50" y2="56"/>
+    <line x1="70" y1="56" x2="81" y2="56"/>
+  </g>
+  <circle cx="60" cy="56" r="4.6" fill="#0A4A3C"/>
+  <!-- drift needle: the mark's one moment of tension -->
+  <line x1="60" y1="56" x2="88" y2="76" stroke="#D85A30" stroke-width="3.6" stroke-linecap="round"/>
+  <circle cx="88" cy="76" r="3.6" fill="#D85A30"/>
+  <!-- drift arc -->
+  <path d="M95 70 a30 30 0 0 1 -8 20" fill="none" stroke="#D85A30" stroke-width="6" stroke-linecap="round"/>
+  <!-- pendulum weight -->
+  <line x1="60" y1="99" x2="60" y2="108" stroke="#6b7a75" stroke-width="2.4"/>
+  <circle cx="60" cy="112" r="7" fill="#F2A623"/>
+</svg>

@@ -19,8 +19,13 @@ def main() -> None:
     print(f"LLM backend: {backend} ({llm.model} @ {llm.url})")
     print(f"available(): {llm.available()}")
     if not llm.available():
-        print("LLM endpoint is not reachable / credentials rejected / model not "
-              "pulled - nothing more to check.")
+        reason = getattr(llm, "last_error", None) or "(no reason recorded)"
+        print(f"  reason: {reason}")
+        print(f"  key loaded: {'yes' if getattr(llm, '_hosted_key', None) else 'NO - .env not found or LLM_API_KEY blank'}")
+        if getattr(llm, "_hosted_key", None):
+            k = llm._hosted_key
+            print(f"  key looks like: {k[:6]}...{k[-4:]} (length {len(k)})")
+        print("Nothing more to check until this resolves.")
         return
 
     known_fields_set = SimulationAgent._collect_known_fields(rulebook)
@@ -35,7 +40,15 @@ def main() -> None:
     # already accepted in earlier slots.
     proposed_names: list[str] = []
     proposed_scenarios: list[dict] = []
+    is_hosted = getattr(llm, 'is_hosted', False)
     for slot in range(3):
+        # Pace the same as a real run (SimulationAgent.GENERATION_ARM_SLOT_
+        # PACING_SECONDS) - firing this diagnostic's slots faster than the real
+        # pipeline would give a falsely rosy or falsely bleak read on rate limits.
+        if is_hosted and slot > 0:
+            import time as _time
+            from agents.simulation_agent import GENERATION_ARM_SLOT_PACING_SECONDS
+            _time.sleep(GENERATION_ARM_SLOT_PACING_SECONDS)
         print(f"\n===== SLOT {slot + 1} =====")
         prompt = SimulationAgent._build_single_scenario_prompt(rulebook, known_fields, proposed_scenarios)
         print(f"(prompt length: {len(prompt)} chars)")

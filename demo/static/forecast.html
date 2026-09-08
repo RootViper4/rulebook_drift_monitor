@@ -3,32 +3,17 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Rulebook Drift Monitor · Forecast</title>
+<title>Drift Sentinel · Where drift is heading</title>
+<link rel="icon" href="static/img/logo.svg" type="image/svg+xml"/>
 <link rel="stylesheet" href="static/css/app.css"/>
 </head>
 <body>
 <div class="app">
-  <aside class="sidebar">
-    <div class="side-brand">
-      <div class="side-logo">RD</div>
-      <div><div class="name">Rulebook Drift Monitor</div><div class="sub">Agentic Regulatory Oversight</div></div>
-    </div>
-    <nav class="side-nav">
-      <div class="nav-sec">Platform</div>
-      <a class="nav-link" href="dashboard.html"><span class="ic">◈</span>Dashboard</a>
-      <a class="nav-link" href="index.html"><span class="ic">▶</span>Run Console</a>
-      <a class="nav-link" href="rules.html"><span class="ic">⚖</span>Rule Catalog</a>
-      <a class="nav-link" href="forecast.html"><span class="ic">⌁</span>Forecast</a>
-      <div class="nav-sec">Review</div>
-      <a class="nav-link" href="compare.html"><span class="ic">⇄</span>Compare</a>
-      <a class="nav-link" href="audit.html"><span class="ic">🕮</span>Audit</a>
-    </nav>
-    <div class="side-foot">DS-01..DS-40 · 40 rules<br/>Synthetic data · hackathon demo</div>
-  </aside>
+  <aside class="sidebar"></aside>
 
   <div class="main">
     <div class="topbar">
-      <div class="page-title" id="pageTitle">Forecast &amp; risk projection</div>
+      <div class="page-title" id="pageTitle">Where drift is heading</div>
       <div class="top-right">
         <span class="badge-status online" id="statusPill">● Ready</span>
         <span class="analyst-chip"><span class="avatar">AA</span><span id="analystName">A. Analyst</span></span>
@@ -36,13 +21,44 @@
     </div>
 
     <div class="content">
-      <div class="hero">
-        <div class="eyebrow">Decision support · measured history + label model</div>
-        <h1>Where the rulebook drifts next</h1>
-        <p class="sub">A transparent predictive layer on top of the deterministic library scan. With 3+ recorded runs the projection is fitted to the MEASURED drift-index series (with a confidence band and hold-out backtest); otherwise it falls back to a clearly-labelled baseline. It also ranks the typologies most likely to evade next period.</p>
+      <div class="page-intro">
+        <h2>Where the gap is heading if nothing changes</h2>
+        <p class="lede">Every check produces a <b>drift index</b> — a single number for how much
+        of the AI-fraud surface the current rulebook fails to catch. This page takes that number
+        across past checks and projects where it goes next.</p>
+        <p>It is a planning aid, not a prediction of specific fraud. It answers &ldquo;if we keep
+        updating the rulebook at the pace we have been, how far behind will we be in six
+        cycles?&rdquo; — useful for arguing a review cadence, not for naming next quarter&rsquo;s scam.</p>
+        <details class="explain">
+          <summary>How the projection is calculated</summary>
+          <div class="explain-body">
+            <p><b>Two modes, always labelled.</b> With three or more recorded checks, the
+            projection is fitted to your <b>measured</b> drift-index history. With fewer, it falls
+            back to a clearly-marked baseline derived from the library scan — the page tells you
+            which mode produced the line you are looking at.</p>
+            <p><b>The fit.</b> A least-squares linear regression runs over the recorded
+            drift-index series against time. That slope alone would be a poor forecast, so it is
+            combined with a growth rate anchored in current measured evasion pressure
+            (<code>0.03 + 0.09 × AI-evasion share</code>): the more of today&rsquo;s evasions land on
+            AI-relevant rules, the faster drift is assumed to compound.</p>
+            <p><b>Damping.</b> Growth is compounded with a decay factor of 0.82 per step, so the
+            curve saturates instead of running away. Unbounded exponential growth would be an
+            artefact of the maths rather than a claim about the world, and the projection is
+            clamped to the 0–100 range the index occupies.</p>
+            <p><b>The confidence band.</b> Width comes from the residual error of the fit (RMSE),
+            widening by 35% per step forward, with a minimum width so the band never implies more
+            precision than there is. A wide band is the model telling you it does not know.</p>
+            <p><b>The backtest.</b> A rolling-origin, one-step-ahead hold-out: the model is
+            refitted using only data up to each point and asked to predict the next one it has
+            not seen. Reported as mean absolute error, MAPE and bias — bias shows whether it
+            systematically over- or under-shoots. Check these before trusting the line.</p>
+            <p><b>What it cannot do.</b> It assumes the pattern in past checks continues. A
+            structural change — a new typology class, a rulebook overhaul, a regulatory shift —
+            breaks that assumption, and the model has no way of knowing it happened.</p>
+          </div>
+        </details>
       </div>
-
-      <div class="grid kpis">
+lass="grid kpis">
         <div class="card card-pad kpi"><span class="icon k-warn" style="background:var(--warn-soft)">⌁</span>
           <span class="k-label">Drift index today</span><span class="k-value k-warn" id="kDrift">—</span>
           <span class="k-sub" id="kBand">band</span></div>
@@ -92,12 +108,13 @@
         <div class="card-sub" id="methodText"></div>
       </div>
 
-      <footer>Rulebook Drift Monitor · hackathon prototype · all data synthetic &amp; illustrative</footer>
+      <footer>Drift Sentinel · prototype · all data synthetic and illustrative</footer>
     </div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
 <script src="static/js/app.js"></script>
+<script src="static/js/shell.js"></script>
 <script>
 function sevColorBg(s){ return {critical:'var(--bad)',high:'var(--warn)',medium:'var(--info)',low:'var(--panel-3)'}[s]||'var(--accent)'; }
 

@@ -36,6 +36,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from agents.models import Rule, Typology
+from agents.paths import get_data_dir
 from agents.rule_engine import RuleEvaluationEngine
 
 SEV_W = {"critical": 1.0, "high": 0.75, "medium": 0.45, "low": 0.2}
@@ -56,8 +57,7 @@ CATEGORY_LABELS = {
     "pep_and_connections": "PEP & Connections",
 }
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEFAULT_HISTORY_PATH = os.path.join(PROJECT_ROOT, "data", "run_history.json")
+DEFAULT_HISTORY_PATH = os.path.join(get_data_dir(), "run_history.json")
 
 
 def load_history(path: Optional[str] = None) -> list[dict]:
@@ -74,11 +74,19 @@ def load_history(path: Optional[str] = None) -> list[dict]:
         return []
 
 
-def save_history(entries: list[dict], path: Optional[str] = None) -> None:
+def save_history(entries: list[dict], path: Optional[str] = None) -> bool:
     path = path or DEFAULT_HISTORY_PATH
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(entries, f, indent=2, ensure_ascii=False)
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(entries, f, indent=2, ensure_ascii=False)
+        return True
+    except (OSError, IOError):
+        # A failed checkpoint write means this run's point won't feed next
+        # time's projection, but the forecast page still works off whatever
+        # history IS readable - degrade quietly rather than crashing the
+        # request that triggered the checkpoint.
+        return False
 
 
 def _to_dt(ts: str) -> Optional[datetime]:

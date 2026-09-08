@@ -23,10 +23,10 @@ import uuid
 from typing import Optional
 
 from agents.models import Rule, Typology
+from agents.paths import get_data_dir
 from agents.rule_engine import RuleEvaluationEngine
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, "data")
+DATA_DIR = get_data_dir()
 RULEBOOK_PATH = os.path.join(DATA_DIR, "rulebook.json")
 BASE_RULEBOOK_PATH = os.path.join(DATA_DIR, "rulebook.base.json")
 INSTITUTED_PATH = os.path.join(DATA_DIR, "instituted.json")

@@ -444,6 +444,40 @@ def compare_page():
     return send_from_directory(STATIC, "compare.html")
 
 
+@app.route("/review.html")
+def review_page():
+    return send_from_directory(STATIC, "review.html")
+
+
+@app.route("/sandbox.html")
+def sandbox_page():
+    return send_from_directory(STATIC, "sandbox.html")
+
+
+@app.route("/<page>.html")
+def any_page(page: str):
+    """Serve any .html that exists in the static folder.
+
+    The explicit routes above are kept so nothing changes for the pages that
+    already had one, but this catch-all means adding a new page is a matter of
+    dropping the file in demo/static/ - no route needed, and no silent 404 that
+    looks like a missing file when it is actually a missing route.
+
+    `page` cannot contain a slash (Flask's default string converter stops at
+    one), and send_from_directory refuses to escape STATIC, so this cannot be
+    used to read files outside the static folder.
+    """
+    target = os.path.join(STATIC, f"{page}.html")
+    if not os.path.isfile(target):
+        return (
+            f"<h1>Page not found</h1><p>There is no <code>{page}.html</code> in "
+            f"<code>{STATIC}</code>.</p><p>The route is working - the file is "
+            f"missing. Check the file was extracted to the right folder.</p>",
+            404,
+        )
+    return send_from_directory(STATIC, f"{page}.html")
+
+
 @app.route("/audit.html")
 def audit_page():
     return send_from_directory(STATIC, "audit.html")

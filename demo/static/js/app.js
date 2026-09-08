@@ -1,4 +1,4 @@
-/* Rulebook Drift Monitor - shared app JS */
+/* Drift Sentinel - shared app JS */
 const $ = (id) => document.getElementById(id);
 
 function toast(msg){
@@ -76,89 +76,80 @@ function renderDonut(el, parts, colors, center=null){
 }
 
 function renderHeatmap(el, matrix, covered=[]){
+  /* Evasion heatmap, rebuilt as a CSS grid rather than a hand-laid-out SVG.
+     The SVG version rotated its column labels 60 degrees and truncated them to
+     fit a 36px column pitch, which made the axis effectively unreadable and
+     forced a tooltip hover to identify any column. A grid lets the browser do
+     the layout, keeps the labels legible, and keeps the row labels pinned when
+     the table scrolls sideways.
+
+     Colour runs on the brand orange - drift - rather than an unrelated blue,
+     and intensity is never the only signal: every cell also carries its count
+     as a number, so the chart is readable without relying on colour. */
   const host = $(el); if(!host) return;
-  if(!matrix || !matrix.rows || !matrix.rows.length){ host.innerHTML='<div class="empty">no matrix</div>'; return; }
-  const cats = matrix.categories;
+  if(!matrix || !matrix.rows || !matrix.rows.length){
+    host.innerHTML = '<div class="empty">Run a check to populate this.</div>'; return;
+  }
+  const cats = matrix.categories || [];
   const sevRank = {critical:0, high:1, medium:2, low:3};
-  const sevFill = {critical:'#e25563', high:'#e1a135', medium:'#3b82f6', low:'#9aa3b5', default:'#3b82f6'};
+  const sevFill = {critical:'#C4462A', high:'#D85A30', medium:'#F2A623', low:'#7BAFA2', default:'#F2A623'};
   const rows = matrix.rows.slice().sort((a,b)=>
     (sevRank[b.severity]!=null?sevRank[b.severity]:2) - (sevRank[a.severity]!=null?sevRank[a.severity]:2) ||
     b.total - a.total);
-  const max = Math.max(1, ...rows.map(r=>Math.max(...r.cells)));
-  const cw = 36, rh = 18, labelW = 168, totalW = 46, headH = 80;
-  const W = labelW + cats.length*cw + totalW;
-  const H = headH + rows.length*rh + 34;
-  const px = (c) => labelW + c*cw;
-  const color = (v) => {
-    if(v<=0) return 'transparent';
-    const a = Math.min(1, 0.14 + 0.86*(v/max));
-    return `rgba(59,71,176,${a.toFixed(2)})`;
-  };
-  const textColor = (v)=>'#ffffff';
+  const max = Math.max(1, ...rows.map(r=>Math.max(0, ...r.cells)));
 
-  // Category headers: single line, 60° up-left with a char cap so labels never cross column pitch.
-  const constrain = (label) => {
-    const mw = 9*0.6, pitch = cw, allowed = pitch - 10;
-    const cap = Math.floor(allowed/(mw*Math.cos(Math.PI/3)));
-    return label.length > cap ? label.slice(0, Math.max(1,cap-1))+'…' : label;
+  const cellStyle = (v) => {
+    if(v<=0) return 'background:var(--panel-3);color:var(--dim)';
+    const t = v/max;
+    // 0.18 -> 1.0 alpha on the brand orange; white text once dark enough to need it
+    const a = (0.18 + 0.82*t).toFixed(2);
+    const fg = t > 0.55 ? '#fff' : 'var(--brand-deep)';
+    return `background:rgba(216,90,48,${a});color:${fg}`;
   };
 
-  let header = '';
-  header += `<text x="${labelW/2}" y="14" text-anchor="middle" class="hm-colh">TYPOLOGY</text>`;
-  cats.forEach((c,i)=>{
-    const cx = px(i)+cw-3, cy = headH-7;
-    header += `<text x="${cx}" y="${cy}" text-anchor="end" class="hm-label" transform="rotate(60 ${cx} ${cy})"><title>${esc(c)}</title>${esc(constrain(c))}</text>`;
+  let html = '<div class="hm2-scroll"><div class="hm2-grid" style="grid-template-columns:auto repeat('
+           + cats.length + ', 34px) 34px">';
+
+  // header row
+  html += '<div></div>';
+  cats.forEach(c=>{
+    html += `<div class="hm2-colhead" title="${esc(c)}">${esc(c)}</div>`;
   });
-  header += `<text x="${W-totalW/2}" y="14" text-anchor="middle" class="hm-colh">EVADED</text>`;
-  header += `<line x1="0" y1="${headH-5}" x2="${W}" y2="${headH-5}" stroke="var(--border)" stroke-width="1"/>`;
+  html += '<div class="hm2-colhead" title="Total rules evaded"><b>Total</b></div>';
 
-  let body = '';
-  rows.forEach((r,ridx)=>{
-    const y = headH + ridx*rh;
+  // body
+  rows.forEach(r=>{
     const isCovered = covered.includes(r.id);
-    const band = ridx%2 ? 'rgba(15,20,40,0.05)' : 'transparent';
-    body += `<rect x="0" y="${y}" width="${W}" height="${rh}" fill="${band}"/>`;
-    // label column: severity dot + id + name (two lines) + covered marker
-    const sv = r.severity||'medium';
-    body += `<circle cx="8" cy="${y+10}" r="4" fill="${sevFill[sv]||sevFill.default}"/>`;
-    body += `<text x="16" y="${y+8}" class="hm-rowid ${isCovered?'hm-covered':''}" fill="${isCovered?'var(--good)':'var(--accent)'}">${esc(r.id)}</text>`;
-    body += `<text x="16" y="${y+16}" class="hm-name">${esc(r.name.length>26?r.name.slice(0,25)+'…':r.name)}</text>`;
-    if(isCovered) body += `<text x="${labelW-8}" y="${y+17}" text-anchor="end" fill="var(--good)" font-size="9" font-weight="800">✦</text>`;
-    // cells
+    const sv = r.severity || 'medium';
+    const dot = sevFill[sv] || sevFill.default;
+    html += `<div class="hm2-rowlabel" title="${esc(r.id)} · ${esc(r.name)} · severity ${esc(sv)}">
+        <span class="hm2-sevdot" style="background:${dot}"></span>
+        <span class="hm2-rowid" style="color:${isCovered?'var(--good)':'var(--accent)'}">${esc(r.id)}</span>
+        <span class="hm2-rowname">${esc(r.name)}</span>
+        ${isCovered?'<span title="You approved a rule that closes this" style="color:var(--good);font-weight:800">✦</span>':''}
+      </div>`;
     r.cells.forEach((v,ci)=>{
-      const x = px(ci);
-      const fill = color(v);
-      if(fill!=='transparent'){
-        body += `<rect x="${x+1}" y="${y+1}" width="${cw-2}" height="${rh-2}" rx="2" fill="${fill}">
-          <title>${esc(r.id)} evades ${v} rule(s) in ${esc(cats[ci])}</title></rect>`;
-        body += `<text x="${x+cw/2}" y="${y+rh-5}" text-anchor="middle" class="hm-count" fill="${textColor(v)}">${v}</text>`;
-      } else {
-        body += `<line x1="${x+3}" y1="${y+rh-5}" x2="${x+cw-3}" y2="${y+rh-5}" stroke="var(--border-2)" stroke-width="1" stroke-dasharray="2 2" opacity="0.55"><title>no evasion · ${esc(cats[ci])}</title></line>`;
-      }
+      const label = v>0
+        ? `${r.id} evades ${v} ${esc(cats[ci])} rule(s)`
+        : `${r.id} evades nothing in ${esc(cats[ci])}`;
+      html += `<div class="hm2-cell" style="${cellStyle(v)}" title="${esc(label)}">${v>0?v:'·'}</div>`;
     });
-    if(isCovered){
-      body += `<rect x="${px(0)+1}" y="${y+1}" width="${cats.length*cw-2}" height="${rh-2}" fill="none" stroke="var(--good)" stroke-width="1.5" rx="3"><title>covered by institutionalised indicator</title></rect>`;
-    }
-    // total column
-    body += `<text x="${W-totalW/2}" y="${y+rh-5}" text-anchor="middle" class="hm-total ${r.total>0?'on':''}">${r.total}</text>`;
+    html += `<div class="hm2-total ${r.total>0?'on':''}" title="${esc(r.id)} evades ${r.total} rule(s) in total">${r.total}</div>`;
   });
+  html += '</div></div>';
 
-  // legend: intensity scale + covered
-  const ly = headH + rows.length*rh;
-  const legW = 150;
-  const stops = [0,0.25,0.5,0.75,1].map(f=>{ const a=(0.14+0.86*f); return `${Math.round(f*100)}% #3b47b0`;}).join(',');
-  let legend = '';
-  legend += `<rect x="0" y="${ly+10}" width="${legW}" height="10" fill="url(#hmgrad)"/>`;
-  legend += `<text x="0" y="${ly+27}" class="hm-legend">0 evaded rules</text>`;
-  legend += `<text x="${legW}" y="${ly+27}" text-anchor="end" class="hm-legend">${max} rule(s) evaded</text>`;
-  legend += `<line x1="${labelW+6}" y1="${ly+15}" x2="${labelW+26}" y2="${ly+15}" stroke="var(--good)" stroke-width="2"/><text x="${labelW+30}" y="${ly+19}" class="hm-legend">typology covered by instituted indicator</text>`;
+  // legend
+  const swatches = [0,0.25,0.5,0.75,1].map(t=>{
+    const a=(0.18+0.82*t).toFixed(2);
+    return `<span class="hm2-swatch" style="background:${t===0?'var(--panel-3)':'rgba(216,90,48,'+a+')'}"></span>`;
+  }).join('');
+  html += `<div class="hm2-legend">
+      <span class="hm2-scale">Fewer rules evaded ${swatches} more</span>
+      <span class="hm2-scale"><span class="hm2-covered-key"></span> ✦ marks a typology you have already closed</span>
+      <span>Each cell shows how many rules in that category this typology got past.</span>
+    </div>`;
 
-  const svg = `<svg class="trend-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="evasion heatmap by rule category">
-    <defs><linearGradient id="hmgrad" x1="0" x2="1" y1="0" y2="0">
-      <stop offset="0" stop-color="#3b47b0" stop-opacity="0.14"/><stop offset="1" stop-color="#3b47b0" stop-opacity="1"/>
-    </linearGradient></defs>
-    ${header}${body}${legend}</svg>`;
-  host.innerHTML = `<div class="hm-scroll">${svg}</div>`;
+  host.innerHTML = `<div class="hm2-wrap">${html}</div>`;
 }
 
 function renderLine(el, labels, values, color='var(--accent)', h=140){

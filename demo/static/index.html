@@ -3,32 +3,17 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Rulebook Drift Monitor · Run Console</title>
+<title>Drift Sentinel · Run a check</title>
+<link rel="icon" href="static/img/logo.svg" type="image/svg+xml"/>
 <link rel="stylesheet" href="static/css/app.css"/>
 </head>
 <body>
 <div class="app">
-  <aside class="sidebar">
-    <div class="side-brand">
-      <div class="side-logo">RD</div>
-      <div><div class="name">Rulebook Drift Monitor</div><div class="sub">Agentic Regulatory Oversight</div></div>
-    </div>
-    <nav class="side-nav">
-      <div class="nav-sec">Platform</div>
-      <a class="nav-link" href="dashboard.html"><span class="ic">◈</span>Dashboard</a>
-      <a class="nav-link" href="index.html"><span class="ic">▶</span>Run Console</a>
-      <a class="nav-link" href="rules.html"><span class="ic">⚖</span>Rule Catalog</a>
-      <a class="nav-link" href="forecast.html"><span class="ic">⌁</span>Forecast</a>
-      <div class="nav-sec">Review</div>
-      <a class="nav-link" href="compare.html"><span class="ic">⇄</span>Compare</a>
-      <a class="nav-link" href="audit.html"><span class="ic">🕮</span>Audit</a>
-    </nav>
-    <div class="side-foot">DS-01..DS-40 · 40 rules<br/>Synthetic data · hackathon demo</div>
-  </aside>
+  <aside class="sidebar"></aside>
 
   <div class="main">
     <div class="topbar">
-      <div class="page-title" id="pageTitle">Run Console</div>
+      <div class="page-title" id="pageTitle">Run a check</div>
       <div class="top-right">
         <span class="badge-status online" id="statusPill">● Ready</span>
         <span class="analyst-chip"><span class="avatar">AA</span><span id="analystName">A. Analyst</span></span>
@@ -36,29 +21,48 @@
     </div>
 
     <div class="content">
-      <div class="hero">
-        <div class="eyebrow">Agentic pipeline</div>
-        <h1>Drift detection run</h1>
-        <p class="sub">Two scans in one system: <b>Run 1</b> fires the documented typologies at the rulebook, <b>Run 2</b> fires the system's own invented frauds at it. Every result is double-checked before it reaches you — check <a href="compare.html" style="color:var(--accent)">Compare</a> to see how the two kinds of gap stack up.</p>
+      <div class="page-intro">
+        <h2>Test today's rulebook against today's fraud</h2>
+        <p class="lede">A check runs two scans. The first fires fraud patterns that have already
+        been documented at all 40 rules. The second has the system invent fraud nobody has
+        reported yet, and fires that at the rules too.</p>
+        <p>Anything that gets through is re-tested independently before you ever see it. Nothing
+        changes in the rulebook until you decide it should.</p>
+        <details class="explain">
+          <summary>What happens during a check</summary>
+          <div class="explain-body">
+            <p>Four agents work in sequence, and each one's output is checked by the next:</p>
+            <ol>
+              <li><b>Retrieval</b> loads the current rulebook and the documented fraud typologies.</li>
+              <li><b>Simulation</b> runs both scans — known typologies first, then invented ones.</li>
+              <li><b>Critic</b> independently re-runs every claimed gap. If it cannot reproduce
+              the result, the finding is thrown out rather than shown to you.</li>
+              <li><b>Drafting</b> turns each surviving gap into a plain-English candidate rule.</li>
+            </ol>
+            <p>Whether a rule fired is decided by a deterministic rule engine, not by the language
+            model — so a finding cannot be invented by the model on its own. The model proposes
+            scenarios; the engine decides what they hit.</p>
+          </div>
+        </details>
       </div>
 
       <div class="runbar">
-        <button class="btn btn-primary" id="runBtn"><span class="icon" id="runBtnIcon">▶</span>New run</button>
-        <button class="btn btn-ghost" id="resetBtn">Reset</button>
-        <button class="btn btn-ghost-2" onclick="exportDossier('json')">Export dossier JSON</button>
-        <button class="btn btn-ghost-2" onclick="exportDossier('pdf')">Export dossier PDF</button>
+        <button class="btn btn-primary" id="runBtn"><span class="icon" id="runBtnIcon">▶</span>Start a check</button>
+        <button class="btn btn-ghost" id="resetBtn">Clear results</button>
+        <button class="btn btn-ghost-2" onclick="exportDossier('json')">Download findings (JSON)</button>
+        <button class="btn btn-ghost-2" onclick="exportDossier('pdf')">Download findings (PDF)</button>
         <div class="run-meta">
-          <span>Run <b class="mono" id="runId">none</b></span>
+          <span>Check <b class="mono" id="runId">none</b></span>
           <span>Rulebook <b id="rulebookVersion">—</b></span>
           <span>Status <b id="runStatus">ready</b></span>
-          <span>Findings <b id="findingCount">0</b></span>
+          <span>Found <b id="findingCount">0</b></span>
         </div>
       </div>
 
       <div class="inst-banner" id="instBanner" style="display:none">
         <div class="ib-icon">✦</div>
         <div>
-          <div class="ib-title" id="instTitle">Institutionalised indicators in force</div>
+          <div class="ib-title" id="instTitle">Your approved rules are now in force</div>
           <div class="ib-sub" id="instSub"></div>
         </div>
         <div style="margin-left:auto"><span class="chip-chip" id="instDrift" style="font-family:var(--mono);font-weight:800;font-size:12px"></span></div>
@@ -75,756 +79,24 @@
         <div id="logPane" class="tech-log" style="display:none"></div>
       </div>
 
-      <div class="caveat-banner" id="caveatBanner" style="display:none">
-        <span>⚠</span>
-        <span>Reminder: rule wording shown below is a <b>provisional paraphrase</b> prepared by the domain team, not verified exact regulatory text. The linked source document is authoritative — check it before relying on the wording shown here.</span>
-        <button onclick="dismissCaveat()">Got it</button>
+      <div class="done-cta" id="doneCta" style="display:none">
+        <div>
+          <div class="dc-title" id="dcTitle">Check complete</div>
+          <div class="dc-sub" id="dcSub"></div>
+        </div>
+        <a class="btn btn-primary" href="review.html">Review the findings →</a>
       </div>
 
-      <div class="section-row">
-        <div class="section-title" id="findingsTitle">Verified findings · awaiting human approval</div>
-        <div class="legend-line" style="width:100%">
-          <span><b class="lg-caught">Caught by a rule</b> = the rule fired and flagged this attack</span>
-          <span><b class="lg-miss">Slipped past a rule</b> = the rule did not trigger — the attack got through</span>
-          <span style="opacity:.75">Click a row to expand it</span>
-        </div>
-        <div class="diff-summary" id="diffSummary" style="display:none"></div>
-      </div>
-
-      <div class="review-type-tabs" id="reviewTypeTabs">
-        <button class="rtab active" data-tab="reconciliation" onclick="setReviewTab('reconciliation')">Known Attacks <span class="rtab-count" id="cReconRev"></span></button>
-        <button class="rtab" data-tab="generation" onclick="setReviewTab('generation')">Emerging Threats <span class="rtab-count" id="cGenRev"></span></button>
-      </div>
-      <div class="tab-desc" id="tabDesc"></div>
-      <div id="findings" class="list-rows"></div>
-      <div id="emptyFilter" class="empty blocked" style="display:none">No undecided findings in this tab.</div>
-
-      <div class="section-title" id="decidedTitle">Decided</div>
-      <div id="decidedLog" class="list-rows"></div>
-
-      <div class="section-title">Throw a fraud at it</div>
-      <div class="fx-card">
-        <div class="fx-head">
-          <div class="fx-label">Describe an attack in plain words</div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input class="fx-inputs" id="fxName" placeholder="Name your attack (e.g. &quot;Crypto romance scam&quot;)"/>
-          </div>
-        </div>
-        <div class="fx-selects">
-          <select class="fx-inputs" id="fxAmount" style="width:auto">
-            <option value="0">Amount: pick one</option>
-            <option value="400">Small, under limits (€400)</option>
-            <option value="1200">Medium (€1,200)</option>
-            <option value="50000">Large (€50,000)</option>
-          </select>
-          <select class="fx-inputs" id="fxJuris" style="width:auto">
-            <option value="">Counterparty: pick a location</option>
-            <option value="regulated">Regulated market</option>
-            <option value="high_risk">High-risk country</option>
-            <option value="grey_list">Grey-listed country</option>
-            <option value="sanctioned">Sanctioned country</option>
-          </select>
-          <select class="fx-inputs" id="fxReason" style="width:auto">
-            <option value="">Reason for the transaction: pick one</option>
-            <option value="structuring">Trying to dodge reporting limits</option>
-            <option value="documented_legitimate_investment">Legitimate, documented investment</option>
-          </select>
-        </div>
-        <div class="fx-grid" id="fxGrid"></div>
-        <div class="fx-actions">
-          <button class="btn btn-primary" id="fxRun">▶ Run my attack against the rules</button>
-          <span class="dim" style="font-size:11.5px" id="fxHint"></span>
-        </div>
-        <div id="fxResult"></div>
-      </div>
-
-      <div class="section-title">Can a scammer fool the system?</div>
-      <div class="probe-card">
-        <div class="rulebar">
-          <div style="font-weight:800;font-size:13.5px">Live attack test</div>
-          <button class="btn-sm btn-ghost" id="probeBtn">Try to fool it</button>
-        </div>
-        <div class="dim" style="font-size:12px;margin-top:4px">A fake attacker tries to cheat the review: they hide a hidden override inside their description and boast that they slipped past more rules than they actually did. The system is not impressed — it re-checks the claim itself and throws it out.</div>
-        <div id="probeResult"></div>
-      </div>
-
-      <div class="section-title" id="rejTitle" style="display:none">Rejected by critic</div>
-      <div id="rejected" class="grid cards"></div>
-
-      <footer>Rulebook Drift Monitor · hackathon prototype · all data synthetic &amp; illustrative</footer>
+      <footer>Drift Sentinel · prototype · all data synthetic and illustrative</footer>
     </div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
 <script src="static/js/app.js"></script>
+<script src="static/js/shell.js"></script>
+<script src="static/js/console.js"></script>
 <script>
-const MILESTONES = {ingest:0, reconcile:1, generate_meta:2, critic_meta:3, draft:4, report:5};
-const STEP_NAMES = ['Load the rulebook', 'Test known scam tricks', 'Invent new scam tricks', 'Double-check every result', 'Write plain-English fixes', 'Wait for your decision'];
-const STEP_DESC  = ['getting today\u2019s rules ready to test', 'running 12 real, reported scams through every rule', 'having the system dream up scams nobody has reported yet', 'independently re-checking every claim before trusting it', 'drafting a plain-English fix for each real gap', 'nothing changes until you accept, amend or reject it'];
-
-let stepIndex = -1;
-let logCache = null;
-let decisions = {};
-let runFinishedShown = false;
-
-function buildPipe(){
-  $('pipe').innerHTML = STEP_NAMES.map((n,i)=>`
-    <div class="pipe-step" id="pstep${i}">
-      <div style="display:flex;flex-direction:column;align-items:center">
-        <div class="pipe-dot" id="pdot${i}">${i+1}</div>
-        ${i<STEP_NAMES.length-1?'<div class="pipe-line"></div>':''}
-      </div>
-      <div><div class="pipe-label">${n}</div>
-      <div class="dim" style="font-size:12px">${STEP_DESC[i]}</div></div>
-    </div>`).join('');
-}
-
-function markStep(idx){
-  if(idx>stepIndex){
-    for(let i=0;i<=idx;i++){
-      const s=$('pstep'+i);
-      if(s && stepIndex<i){ s.classList.add('done'); s.classList.remove('active'); }
-    }
-    const cur=$('pstep'+idx);
-    if(cur){ cur.classList.add('active'); cur.classList.remove('done'); }
-    stepIndex=idx;
-  }
-}
-
-const NODE_LABEL = {
-  ingest:'Setup', reconcile:'Known-fraud scan', generate:'New-trick scan', critic:'Double-check',
-  draft:'Draft fixes', report:'Human gate', orchestrator:'Orchestrator', 'human-gate':'You',
-  probe:'Probe', error:'Error'
-};
-const AGENT_LABEL = {retriever:'Retriever agent', simulator:'Attack simulator', critic:'Critic agent', drafter:'Drafting agent'};
-const MODE_LABEL = {documented:'Known fraud', reconciliation:'Known fraud', generated:'Invented fraud', generation:'Invented fraud'};
-const ARM_LABEL  = {documented:'known', generated:'invented', both:'both'};
-
-function renderLog(log, running){
-  if(log===logCache) return;
-  logCache=log;
-  const pane=$('logPane'); if(!pane) return;
-  let maxIdx=-1;
-  (log||[]).forEach(l=>{ const s=MILESTONES[l.node]; if(s!=null) maxIdx=Math.max(maxIdx,s); });
-  if(maxIdx>=0) markStep(maxIdx);
-  pane.innerHTML=(log||[]).map(l=>`<div class="logline"><span class="ln">[${l.ts||''}]</span> <b>${esc(NODE_LABEL[l.node]||l.node)}</b>: ${esc(l.message)}</div>`).join('');
-  if(!log.length) pane.innerHTML='<div class="logline"><span class="ln">[—]</span> idle · click New run to start a scan of the rules</div>';
-  if(running && pane.lastElementChild) pane.lastElementChild.scrollIntoView({block:'nearest'});
-  renderFriendlyLog(log, running);
-}
-
-// Plain-English version of the same log, for anyone who doesn't need (or
-// want) the raw technical trail. Never invents information the log entry
-// doesn't already carry - just re-words it and pulls out the numbers that
-// matter (counts of gaps found, confirmed, discarded), so a non-coder gets
-// the same facts a developer gets from the technical log below it.
-function friendlyLine(l){
-  const n = l.node;
-  if(n==='orchestrator') return '🚀 Starting a new scan of the rulebook…';
-  if(n==='ingest') return '📖 Getting the rulebook and scam catalogue ready…';
-  if(n==='simulation'){
-    const rec = l.reconciliation, gen = l.generation;
-    if(rec!=null && gen!=null) return `🔍 Tested the rules — found ${rec} weak spot${rec===1?'':'s'} in known scams, plus ${gen} brand-new idea${gen===1?'':'s'} to check.`;
-    return '🔍 Testing the rulebook against real and invented scams…';
-  }
-  if(n==='critic'){
-    const c = l.confirmed, d = l.discarded;
-    if(c!=null && d!=null) return `🔬 Double-checked every result — ${c} held up, ${d} ${d===1?'didn\u2019t':'didn\u2019t'} and ${d===1?'was':'were'} thrown out.`;
-    return '🔬 Double-checking every claim before trusting it…';
-  }
-  if(n==='draft') return '✍️ Writing a plain-English suggested fix for each real gap…';
-  if(n==='report') return `📋 Done — ${esc(l.analyst||'the analyst')} now has a list to review. Nothing changes until a decision is made.`;
-  if(n==='human-gate') return '🧑\u200d⚖️ '+(l.message||'A decision was recorded.');
-  if(n==='probe') return '🧪 Ran a red-team test to make sure the checker itself can\u2019t be fooled.';
-  if(n==='error') return '⚠️ Something went wrong — see the technical detail for what happened.';
-  return l.message||'';
-}
-
-function renderFriendlyLog(log, running){
-  const pane = $('friendlyLog'); if(!pane) return;
-  pane.innerHTML = (log||[]).map(l=>`<div class="friendly-line">${friendlyLine(l)}</div>`).join('');
-  if(!log || !log.length) pane.innerHTML = '<div class="friendly-line dim">Nothing running yet — click New run to start a scan.</div>';
-  if(running && pane.lastElementChild) pane.lastElementChild.scrollIntoView({block:'nearest'});
-}
-
-let showingTechLog = false;
-function toggleTechLog(){
-  showingTechLog = !showingTechLog;
-  $('friendlyLog').style.display = showingTechLog ? 'none' : 'block';
-  $('logPane').style.display = showingTechLog ? 'block' : 'none';
-  $('logToggle').textContent = showingTechLog ? 'Show plain-English summary' : 'Show technical detail';
-}
-
-let rationaleDrafts = {};
-let openRows = new Set();
-
-function toggleRow(fid){
-  if(openRows.has(fid)) openRows.delete(fid); else openRows.add(fid);
-  renderFindings();
-}
-
-// Honest provenance for a generation-arm finding: did the local model
-// actually propose this, or did the platform fall back to a hand-authored
-// scenario (because no model was available, or the model's output failed
-// validation)? Never claim "AI-generated" for a fallback finding - that
-// would overstate what actually happened. See agents/simulation_agent.py.
-function sourceBadgeHtml(source){
-  if(source==='llm') return '<span class="badge-source badge-source-llm">🤖 Written by the AI model, then checked</span>';
-  if(source==='fixed_probe') return '<span class="badge-source badge-source-probe">🧪 Test case, not a real scam</span>';
-  if(source==='deterministic_fallback') return '<span class="badge-source badge-source-fallback">🧩 Built by the system (AI model wasn\u2019t used this time)</span>';
-  return '';
-}
-
-function partialCoverageBadgeHtml(f){
-  if(f.fully_verified===false){
-    const fields = (f.unmodeled_fields||[]).join(', ');
-    return `<span class="badge-source badge-source-partial" title="References field(s) not modelled anywhere in the rulebook: ${esc(fields)}">\u26a0\ufe0f Coverage idea, not a fully tested gap</span>`;
-  }
-  return '';
-}
-
-// Collapsed: headline + one-line result summary only - a scannable triage
-// queue. Expanded (click): full plain-language rule-by-rule detail, source
-// links, the editable proposed fix, and the accept/amend/reject controls.
-function findingRow(f, tabMode){
-  const fid = f.typology_id;
-  const fired = f.fired_rules||[], evaded = f.evaded_rules||[];
-  const open = openRows.has(fid);
-  const headline = f.attack_description || f.typology_name;
-  const isGap = fired.length===0;
-  const summary = isGap
-    ? `⚠ Nothing in the rulebook catches this${evaded.length?` (${evaded.length} rule${evaded.length===1?'':'s'} stayed quiet)`:''}`
-    : `✅ Caught by ${fired.length} rule${fired.length===1?'':'s'}${evaded.length?`, but missed by ${evaded.length} rule${evaded.length===1?'':'s'}`:''}`;
-  const genBadge = tabMode==='generation'
-    ? '<span class="badge-unverified">💡 New idea — not a reported attack yet</span>' : '';
-  const sourceBadge = tabMode==='generation' ? sourceBadgeHtml(f.generation_source) : '';
-  const partialBadge = tabMode==='generation' ? partialCoverageBadgeHtml(f) : '';
-  const delta = f.delta==='new'?'<span class="diff-badge diff-new">NEW</span>'
-              : f.delta==='repeat'?'<span class="diff-badge diff-repeat">REPEAT</span>':'';
-
-  return `<div class="row ${open?'open':''} ${isGap?'gap':''}" id="f-${esc(fid)}" data-fid="${esc(fid)}">
-    <div class="row-head" onclick="toggleRow('${esc(fid)}')">
-      <span class="row-chevron">${open?'▾':'▸'}</span>
-      <div class="row-main">
-        <div class="row-headline">${delta} ${esc(headline)}</div>
-        <div class="row-sub">${summary} ${genBadge} ${sourceBadge} ${partialBadge}</div>
-      </div>
-      <span class="fid">ref: ${esc(fid)}</span>
-    </div>
-    ${open ? findingDetail(f, tabMode) : ''}
-  </div>`;
-}
-
-function findingDetail(f, tabMode){
-  const fid = f.typology_id;
-  const fired = f.fired_rules||[], evaded = f.evaded_rules||[];
-  const instituted = amendments.covered.includes(fid);
-  const isCustom = customIds.has(fid);
-  const instBtn = instituted
-    ? '<span class="chip good" style="font-size:11px">✦ instituted · gap closed</span>'
-    : isCustom
-      ? '<span class="chip dim" style="font-size:11px">your test attack · review above</span>'
-      : `<button class="btn-sm btn-institute" onclick="event.stopPropagation();institute('${esc(fid)}')">Institute rule</button>`;
-  const draft = rationaleDrafts[fid]||'';
-  return `<div class="row-detail" onclick="event.stopPropagation()">
-    <div class="ref-line">${esc(f.typology_name)}</div>
-
-    <div class="section-kd">What the rulebook did</div>
-    <div class="chip-row mt" style="margin-top:4px">
-      <span class="chip good">✅ Caught by ${fired.length} rule${fired.length===1?'':'s'}</span>
-      <span class="chip bad">⚠ Missed by ${evaded.length} rule${evaded.length===1?'':'s'}</span>
-    </div>
-    ${rulesDetail(fired, true)}
-    ${rulesDetail(evaded, false)}
-
-    <div class="fix-label">Suggested fix ${tabMode==='generation'?'(not yet checked by a human)':''}</div>
-    <textarea class="fix-box" id="fix-${esc(fid)}" placeholder="No candidate fix drafted.">${esc(f.drafted_candidate_red_flag||'')}</textarea>
-    <div class="rationale-req" style="margin-top:2px">Editing this box before choosing Amend records your edited wording as the final rule text.</div>
-
-    <div class="actions" style="flex-direction:column;align-items:stretch;gap:4px">
-      <textarea class="rationale-box" id="rat-${esc(fid)}" placeholder="Required: explain your decision in plain language (what the rulebook got right or missed, and why)." oninput="rationaleDrafts['${esc(fid)}']=this.value; this.classList.remove('err')">${esc(draft)}</textarea>
-      <div class="rationale-req">A rationale is required before Accept, Amend or Reject will be recorded.</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
-        <button class="btn-sm btn-accept" onclick="decide('${esc(fid)}','accept')">Accept</button>
-        <button class="btn-sm btn-amend"  onclick="decide('${esc(fid)}','amend')">Amend</button>
-        <button class="btn-sm btn-reject" onclick="decide('${esc(fid)}','reject')">Reject</button>
-        ${instBtn}
-      </div>
-    </div>
-  </div>`;
-}
-
-async function decide(fid, decision){
-  const box = $('rat-'+fid);
-  const rationale = (box ? box.value : (rationaleDrafts[fid]||'')).trim();
-  if(!rationale){
-    if(box){ box.classList.add('err'); box.focus(); }
-    toast('A rationale is required before you can decide this finding.');
-    return;
-  }
-  const fixBox = $('fix-'+fid);
-  const rule_text = fixBox ? fixBox.value.trim() : '';
-  try{
-    await api('/api/decide', {method:'POST', body:JSON.stringify({fid, decision, rationale, rule_text})});
-    delete rationaleDrafts[fid];
-    openRows.delete(fid);
-    toast('Finding '+fid+' → '+decision+' · moved to the Decided log');
-    refresh();
-  }catch(e){ toast('Decide failed: '+e.message); }
-}
-
-function dismissCaveat(){
-  try{ localStorage.setItem('rd_caveat_seen','1'); }catch(e){}
-  const b=$('caveatBanner'); if(b) b.style.display='none';
-}
-
-async function institute(fid){
-  try{
-    const r = await api('/api/institute', {method:'POST', body:JSON.stringify({fid})});
-    toast(r.ok ? '✦ '+r.rule+' instituted for '+fid+' · drift → '+r.drift_index.toFixed(1)
-               : 'Institute failed: '+(r.error||'?'));
-    refresh();
-  }catch(e){ toast('Institute failed: '+e.message); }
-}
-
-async function exportDossier(kind){
-  const fn = function(){ try{ window.location = '/api/dossier'+(kind==='pdf'?'.pdf':''); }catch(e){} };
-  try{
-    const r = await api('/api/dossier');
-    if(kind==='json'){
-      const blob = new Blob([JSON.stringify(r, null, 2)], {type:'application/json'});
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'drift-dossier.json';
-      a.click();
-      toast('Dossier exported · '+r.approved_findings.length+' approved findings');
-    }else{
-      fn();
-      toast('Downloading '+r.run_id+' dossier PDF…');
-    }
-  }catch(e){ toast('Dossier export failed: '+e.message); }
-}
-
-const TAB_DESC = {
-  reconciliation: 'Known Attacks — 12 scams that have actually happened, tested against every single rule. If one is marked as a gap here, that is a real, provable weakness, not a guess.',
-  generation: 'Emerging Threats — new scams nobody has reported yet. The system dreams these up itself, so treat each one as a "what if?" worth a second look, not a confirmed attack.',
-};
-
-let reviewTab = 'reconciliation';
-function setReviewTab(tab){
-  reviewTab = tab;
-  document.querySelectorAll('.rtab').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
-  renderFindings();
-  renderDecidedLog();
-}
-
-function renderFindings(){
-  const list = reviewTab==='reconciliation' ? (reconFindings||[]) : (genFindings||[]);
-  $('cReconRev').textContent = (reconFindings||[]).length;
-  $('cGenRev').textContent = (genFindings||[]).length;
-  $('tabDesc').textContent = TAB_DESC[reviewTab];
-  $('findings').innerHTML = list.map(f=>findingRow(f, reviewTab)).join('');
-  $('emptyFilter').style.display = list.length?'none':'block';
-}
-
-function decidedRow(d){
-  const finalLabel = d.rule_text_amended ? 'amended' : 'original';
-  return `<div class="row decided-row">
-    <div class="row-main" style="padding:11px 12px">
-      <div class="row-headline">${esc(d.headline||d.typology_name)}</div>
-      <div class="row-sub"><span class="decided-tag ${esc(d.decision)}">${esc(d.decision_label)}</span> · ${esc(d.analyst)} · ${esc((d.timestamp||'').replace('T',' '))}</div>
-      ${d.final_rule_text?`<div class="rp-text" style="margin-top:6px">Final rule text (${finalLabel}): ${esc(d.final_rule_text)}</div>`:''}
-      <div class="rp-text" style="margin-top:4px"><i>Rationale:</i> ${esc(d.rationale)}</div>
-      <div class="rp-ref">ref: ${esc(d.fid)}${(d.fired_rules&&d.fired_rules.length)?' · fired '+d.fired_rules.join(', '):''}${(d.evaded_rules&&d.evaded_rules.length)?' · evaded '+d.evaded_rules.join(', '):''}</div>
-    </div>
-  </div>`;
-}
-
-function renderDecidedLog(){
-  const list = (decisionsLog||[]).filter(d=>d.mode===reviewTab);
-  $('decidedTitle').textContent = 'Decided · ' + (reviewTab==='reconciliation'?'Known Attacks':'Emerging Threats') + ' (' + list.length + ')';
-  $('decidedLog').innerHTML = list.length
-    ? list.slice().reverse().map(decidedRow).join('')
-    : '<div class="empty blocked">No decisions recorded yet in this tab.</div>';
-}
-
-let reconFindings = [];
-let genFindings = [];
-let decisionsLog = [];
-let amendments = {rules:[], covered:[], resolved_findings:[]};
-async function refresh(){
-  let s;
-  try{ s = await api('/api/state'); }catch(e){ $('statusPill').textContent='● Offline'; return; }
-  applyState(s);
-}
-function applyState(s){
-  decisions = s.decisions||{};
-  running = Boolean(s.running);
-  reconFindings = s.reconciliation_findings||[];
-  genFindings = s.generation_findings||[];
-  decisionsLog = s.decisions_log||[];
-  amendments = s.amendments||{rules:[], covered:[], resolved_findings:[]};
-  $('runId').textContent = s.run_id||'none';
-  $('rulebookVersion').textContent = s.rulebook_version||'—';
-  const st = s.status||'ready';
-  const statusMap = {
-    awaiting_human_approval: (s.total?'Awaiting approval · 0/'+s.total+' decided':'Awaiting approval'),
-    under_review: 'Under review · '+(s.reviewed||0)+'/'+(s.total||0)+' decided',
-    review_complete: 'Review complete · all '+(s.total||0)+' findings decided',
-    aborted: 'Run aborted',
-    ready_no_findings: 'ready',
-  };
-  $('runStatus').textContent = s.running?'running':(statusMap[st]||st||'ready');
-  $('findingCount').textContent = (s.findings||[]).length;
-  $('analystName').textContent = s.analyst;
-  $('findingsTitle').textContent = 'Verified findings · ' +
-    ((s.reviewed||0)+'/'+(s.total||0)+' reviewed');
-
-  const b1 = $('runBtn'), biome = $('runBtnIcon');
-  if(s.running){
-    $('runBtn').disabled = true;
-    if(biome) biome.innerHTML = '<span class="spinner"></span>';
-    runFinishedShown = false;
-  }else{
-    $('runBtn').disabled = false;
-    if(biome) biome.textContent = '▶';
-    if(!runFinishedShown && (s.total||0)>0){
-      runFinishedShown = true;
-      markStep(5);
-      const n = s.total, r = s.reviewed||0;
-      if(s.all_decided) toast('Review complete · all '+n+' findings decided');
-      else if(r>0) toast('Run complete · '+n+' verified findings · '+r+'/'+n+' decided');
-      else toast('Run complete · '+n+' verified findings awaiting your review');
-    }
-  }
-
-  renderLog(s.log, running);
-  renderFindings();
-  renderDecidedLog();
-  renderAmendments();
-  renderDiff(s.diff);
-  $('rejTitle').style.display = (s.discarded||[]).length?'block':'none';
-  $('rejected').innerHTML = (s.discarded||[]).map(d=>`<div class="rejected"><h3>✗ ${esc(d.typology_name||d.typology_id)}</h3><div class="basis">${esc(d.evidential_basis||'rejected by critic')}</div></div>`).join('');
-}
-
-function renderAmendments(){
-  const rules = amendments.rules||[];
-  const banner = $('instBanner');
-  if(rules.length){
-    banner.style.display = 'flex';
-    $('instTitle').textContent = 'Institutionalised indicators in force';
-    $('instSub').textContent = rules.map(r=>r.id+' · '+r.name).join('  ·  ');
-    $('instDrift').textContent = (amendments.covered||[]).length+' gap(s) closed';
-  }else{
-    banner.style.display = 'none';
-  }
-}
-
-function renderDiff(diff){
-  const el = $('diffSummary');
-  if(!diff || !(diff.prev_count>0)){
-    el.style.display = 'none';
-    return;
-  }
-  el.style.display = 'flex';
-  el.innerHTML = `<span><b>${diff.new.length}</b> new finding(s)</span>
-    <span><b>${diff.repeat.length}</b> repeat finding(s)</span>
-    <span><b>${diff.regressed.length}</b> regressed</span>
-    <span class="dim">vs previous run (${diff.prev_count} findings)</span>`;
-}
-
-const TX_SCENARIOS = [
-  {g:'Identity & documents', opts:[
-    {label:'Uses a deepfake / AI video to pass an identity check', add:{identity_markers:['deepfake_media']}},
-    {label:'Uploads forged or doctored documents', add:{identity_markers:['forged']}},
-    {label:'Opens the account without finishing the KYC paperwork', set:{kyc_complete:false}},
-    {label:'Refuses to give any identity details', set:{unwilling_identity:true}},
-    {label:'Brand-new customer with a brand-new account', set:{new_account:true}},
-    {label:'Uses a wallet created less than 3 days ago', set:{fresh_wallet:true, wallet_age_days:2}},
-  ]},
-  {g:'How the money moves', opts:[
-    {label:'Many small payments just under the reporting limit', set:{below_threshold:true, round_amount:true}},
-    {label:'Money arrives and leaves again almost immediately', set:{rapid_withdrawal:true, rapid_accumulation:true, velocity:true, high_value:true, quick_succession:true}},
-    {label:'Money keeps changing form (cash → card → crypto)', set:{crypto_to_plastic:true, cash_deposit_cards:true}},
-    {label:'Funds hop across many accounts before settling', set:{pass_through:true, multi_hop:true, fan_in:true}},
-    {label:'Funds washed through a mixer / tumbler', set:{uses_mixer:true, tumbler:true}, add:{tools:['mixer']}},
-  ]},
-  {g:'Wallets & who they deal with', opts:[
-    {label:'Pays from a private, self-hosted wallet', set:{unhosted_wallet:true, self_custody:true}},
-    {label:'Uses an unregistered exchange', set:{unregistered_exchange:true}},
-    {label:'Transfers to someone on a watchlist or with criminal links', set:{threat_list_hit:true, criminal_source:true}},
-    {label:'Sends crypto across borders without travel-rule info', set:{travel_rule_missing:true, missing_orig_benef:true, cross_border:true}},
-  ]},
-  {g:'Staying hidden', opts:[
-    {label:'Hides their location with VPN or Tor', set:{uses_vpn_tor:true, ip_geo_mismatch:true}},
-    {label:'Uses a privacy coin or coin-to-coin swap', set:{privacy_coin:true, token_swap:true}},
-    {label:'Tries to withdraw straight from a brand-new wallet', set:{low_history_wallet:true}},
-  ]},
-];
-
-const RULES_MAP = {};
-const customIds = new Set();
-let lastFx = null;
-
-function renderFxGrid(){
-  $('fxGrid').innerHTML = TX_SCENARIOS.map(g=>
-    `<div class="fx-group">${g.g}</div>` +
-    g.opts.map((o,i,arr)=>`<label class="fx-opt"><input type="checkbox" value="${esc(g.g)}__${i}"/> <span>${o.label}</span></label>`).join('')
-  ).join('');
-}
-
-function collectTx(){
-  const tx = {};
-  document.querySelectorAll('#fxGrid input:checked').forEach(cb=>{
-    const [g, idx] = cb.value.split('__');
-    const o = TX_SCENARIOS.find(x=>x.g===g).opts[+idx];
-    if(o.set) Object.assign(tx, o.set);
-    if(o.add) for(const [k,v] of Object.entries(o.add)) tx[k] = [...(tx[k]||[]), ...v];
-  });
-  const amt = parseInt($('fxAmount').value,10)||0;
-  if(amt>0) tx.amount = amt;
-  const jur = $('fxJuris').value;
-  if(jur) tx.counterparty_jurisdiction = jur;
-  tx.economic_rationale = $('fxReason').value || '';
-  return tx;
-}
-
-function fxChip(m, miss){
-  const tip = m.id+' · '+m.name+' — '+(m.text||'');
-  return `<span class="rule-chip ${miss?'miss':''}" title="${esc(tip)}">${esc(m.id)} · <span style="font-family:var(--sans);font-weight:600">${esc(m.name)}</span></span>`;
-}
-
-function renderFxResult(r, committed){
-  const gap = r.evaded.length>0;
-  $('fxResult').innerHTML = `
-    <div class="fx-verdict ${gap?'gap':'ok'}">${esc(r.verdict)}${committed?` · added as finding <b>${committed}</b> for your review`:''}</div>
-    <p class="fx-sub">${esc(r.label)} — checked against ${r.rules_total} rules in the rulebook.</p>
-    <div class="fx-lists">
-      <div>
-        <div class="fx-list-title g">🛡 Caught by ${r.fired.length} rule${r.fired.length===1?'':'s'}</div>
-        <div>${r.fired.length?r.fired.map(m=>fxChip(m,false)).join(''):'<span class="dim">none</span>'}</div>
-      </div>
-      <div>
-        <div class="fx-list-title r">⚠ Slipped past ${r.evaded.length} rule${r.evaded.length===1?'':'s'}</div>
-        <div>${r.evaded.length?r.evaded.map(m=>fxChip(m,true)).join(''):'<span class="dim">none</span>'}</div>
-      </div>
-    </div>
-    ${gap && !committed?`<div class="fx-actions"><button class="btn-sm btn-institute" onclick="commitFx()">+ Add this as a finding for my review</button><span class="dim" style="font-size:11px">it will be verified into the human approval gate</span></div>`:''}`;
-}
-
-async function runFx(){
-  const label = $('fxName').value.trim() || 'My custom attack';
-  const tx = collectTx();
-  if(!document.querySelectorAll('#fxGrid input:checked').length){
-    toast('Pick at least one thing the attacker does'); return;
-  }
-  $('fxRun').disabled = true;
-  try{
-    lastFx = {label, tx};
-    const r = await api('/api/fraudtest', {method:'POST', body:JSON.stringify({label, tx, commit:false})});
-    renderFxResult(r, null);
-    toast('Attack run through the rulebook');
-  }catch(e){ toast('Attack test failed: '+e.message); }
-  $('fxRun').disabled = false;
-}
-
-async function commitFx(){
-  try{
-    const r = await api('/api/fraudtest', {method:'POST', body:JSON.stringify({...lastFx, commit:true})});
-    if(r.committed){ customIds.add(r.committed); }
-    renderFxResult(r, r.committed||null);
-    toast('Added as finding '+r.committed+' · awaiting your review');
-    refresh();
-  }catch(e){ toast('Could not add finding: '+e.message); }
-}
-
-function ruleChip(id, miss){
-  const r = ruleMeta(id);
-  const tip = 'DS-'+id.replace('DS-','')+' · '+r.name+' — '+(r.text||'rulebook entry');
-  return `<span class="rule-chip ${miss?'miss':''}" title="${esc(tip)}">${esc(id)}</span>`;
-}
-
-function ruleMeta(id){
-  const r = RULES_MAP[id];
-  return r ? {name:r.name, text:r.text, category:r.category} : {name:id+' (no description)', text:'', category:''};
-}
-
-// Canonical source PDFs, keyed off the rule's `source` field. `source_ref`
-// carries the page (FATF) or paragraph (Directive 9) - read straight from the
-// rule, never hardcoded per rule.
-const FATF_URL = 'https://www.fatf-gafi.org/content/dam/fatf-gafi/reports/Virtual-Assets-Red-Flag-Indicators.pdf';
-const FIC_URL  = 'https://www.fic.gov.za/wp-content/uploads/2024/11/Directive-9-Travel-rule-relating-to-crypto-asset-transfers.pdf';
-
-function sourceSegments(rule){
-  // A rule can cite more than one source (e.g. DS-04: FATF ; FIC), each
-  // ';'-separated and paired positionally with the matching source_ref segment.
-  const srcs = (rule.source||'').split(';').map(s=>s.trim()).filter(Boolean);
-  const refs = (rule.source_ref||'').split(';').map(s=>s.trim()).filter(Boolean);
-  const n = Math.max(srcs.length, refs.length, 1);
-  const out = [];
-  for(let i=0;i<n;i++){
-    const s = srcs[i] || srcs[0] || '';
-    const label = refs[i] || refs[0] || s || 'source';
-    let url = null;
-    if(/FATF/i.test(s)) url = FATF_URL;
-    else if(/FIC|Directive/i.test(s)) url = FIC_URL;
-    out.push({label, url});
-  }
-  return out;
-}
-
-function sourceLinksHtml(rule){
-  return sourceSegments(rule).map(seg=>
-    seg.url
-      ? `<a href="${seg.url}" target="_blank" rel="noopener">${esc(seg.label)} ↗</a>`
-      : `<span>${esc(seg.label)}</span>`
-  ).join(' · ');
-}
-
-function cpRefSuffix(rule){
-  const cps = rule.capability_primitives||[];
-  if(!cps.length) return '';
-  return ' · relates to ' + cps.map(c=>esc(String(c).split(':')[0].trim())).join(', ');
-}
-
-function lowerFirst(s){ return s ? s.charAt(0).toLowerCase()+s.slice(1) : s; }
-
-function ruleSentence(id, fired){
-  const r = RULES_MAP[id];
-  if(!r){
-    return `<div class="rule-plain ${fired?'ok':'miss'}">
-      <div class="rp-verdict">${fired?'✅ Caught it':'🚫 Missed it'}</div>
-      <div class="rp-name">Rule ${esc(id)} (details still loading)</div>
-    </div>`;
-  }
-  const verdict = fired
-    ? '✅ Caught it — this rule spotted the activity and would have flagged it.'
-    : '🚫 Missed it — this rule looked, but didn\u2019t find what it was looking for here.';
-  const why = (!fired && r.trigger)
-    ? `<div class="rp-why">Why it missed: the rule only fires when <i>“${esc(r.trigger)}”</i> — and that specific pattern wasn\u2019t present in this case.</div>`
-    : '';
-  return `<div class="rule-plain ${fired?'ok':'miss'}">
-    <div class="rp-verdict">${verdict}</div>
-    <div class="rp-name">Rule: ${esc(r.name)}</div>
-    ${r.text?`<div class="rp-text">In plain terms: ${esc(r.text)}</div>`:''}
-    ${why}
-    <div class="rp-source">Where this rule comes from: ${sourceLinksHtml(r)}</div>
-    <div class="rp-ref">ref: ${esc(id)}${cpRefSuffix(r)}</div>
-  </div>`;
-}
-
-function rulesDetail(ids, fired){
-  if(!ids.length) return '<div class="dim" style="font-size:12px;margin:4px 0">—</div>';
-  return ids.map(id=>ruleSentence(id, fired)).join('');
-}
-
-async function runProbe(){
-  const btn = $('probeBtn');
-  btn.disabled = true; btn.textContent = 'Testing…';
-  try{
-    const p = await api('/api/probe');
-    const claimed = p.claim.map(id=>ruleChip(id,true)).join('');
-    const actual  = p.actual_evaded.map(id=>ruleChip(id,true)).join('');
-    const inflated = p.claim.filter(id=>!p.actual_evaded.includes(id));
-    const steps = [
-      ['The attacker submits their claim', `They say their attack slips past ${p.claim.length} rules. They also hid a trick inside the submission: "${esc(p.scheme)}"`],
-      ['The system re-checks it itself', 'A second run goes through the rule engine using a cleaned-up, more honest version of the transaction.'],
-      ['Claim vs reality', `${p.claim.length} claimed vs ${p.actual_evaded.length} actually found — ` +
-        (inflated.length ? `the extra ${inflated.map(id=>esc(id)).join(', ')} ${inflated.length===1?'didn\'t':'didn\'t'} hold up` : 'nothing inflated — the claim held up')],
-      ['Outcome', p.reproduced ? 'Reproduced — this one goes to human review.' : 'Not proved — thrown out. Re-checking showed the attacker overstated their attack.'],
-    ];
-    $('probeResult').innerHTML =
-      `<div class="probe-steps mt2" style="margin-top:14px">` +
-      steps.map(([n,t],i)=>`<div class="probe-step"><span class="nnum">${i+1}</span><div><b>${esc(n)}</b><br/><span class="dim">${t}</span></div></div>`).join('') +
-      `</div>
-       <div class="flex mt" style="gap:10px;flex-wrap:wrap">
-         <span class="chip bad">claimed slipped past ${p.claim.length}</span>
-         <span class="chip good">re-check showed ${p.actual_evaded.length}</span>
-       </div>
-       <div class="probe-verdict ${p.reproduced?'keep':'keep'}">${p.reproduced?'FLAGGED · reproduced (for human review)':'THROWN OUT · not proved'}</div>
-       <div class="fx-lists">
-         <div><div class="fx-list-title r">What the attacker claimed</div>${claimed||'<span class="dim">—</span>'}</div>
-         <div><div class="fx-list-title g">What re-checking actually showed</div>${actual||'<span class="dim">—</span>'}</div>
-       </div>
-       <div class="dim" style="font-size:11.5px;margin-top:6px">Attacker profile used: ${esc(p.victim.id)} · ${esc(p.victim.name)}</div>`;
-    toast(p.reproduced?'Probe: claim held up':'Probe: attacker\u2019s claim was thrown out');
-  }catch(e){ toast('Probe failed: '+e.message); }
-  btn.disabled = false; btn.textContent = 'Try to fool it';
-}
-
-let running = false;
-async function tick(){
-  try{ await refresh(); }catch(e){ console.error('tick error', e); }
-  setTimeout(tick, running?600:3000);
-}
-
-async function startRun(){
-  const btn = $('runBtn'), biome = $('runBtnIcon');
-  try{
-    if(biome) biome.innerHTML='<span class="spinner"></span>';
-    stepIndex=-1; logCache=null; runFinishedShown=false;
-    decisions={}; reconFindings=[]; genFindings=[];
-    buildPipe();
-    const r = await api('/api/run', {method:'POST', body:JSON.stringify({trigger:'manual'})});
-    if(r && r.sync && r.state){
-      // Serverless run completed inside the POST — render it straight away,
-      // the poller will continue to refresh from /api/state while the
-      // function instance stays warm.
-      runFinishedShown = true;
-      applyState(r.state);
-    }
-  }catch(e){ toast('Could not start run: '+e.message); if(biome) biome.textContent='▶'; }
-}
-$('runBtn').addEventListener('click', startRun);
-
-$('resetBtn').addEventListener('click', async ()=>{
-  try{
-    $('resetBtn').disabled = true;
-    const r = await api('/api/reset', {method:'POST', body:'{}'});
-    if(r.aborted){
-      toast('Aborting running scan…');
-      $('runStatus').textContent = 'aborting…';
-      $('runBtn').disabled = true;
-      const wait = async ()=>{
-        const s = await api('/api/state');
-        if(!s.running){ doResetUI(); toast('Run aborted · state cleared'); }
-        else setTimeout(wait, 800);
-      };
-      wait();
-    }else{
-      if(r.restored && r.restored.length) toast('Baseline restored · removed '+(r.restored.length)+' instituted rule(s)');
-      doResetUI();
-      if(!(r.restored&&r.restored.length)) toast('State reset');
-    }
-  }catch(e){ toast('Reset failed: '+e.message); }
-  $('resetBtn').disabled = false;
-});
-
-$('probeBtn').addEventListener('click', runProbe);
-$('fxRun').addEventListener('click', runFx);
-
-(function initCaveat(){
-  let seen = false;
-  try{ seen = !!localStorage.getItem('rd_caveat_seen'); }catch(e){ seen = false; }
-  if(!seen){ const b=$('caveatBanner'); if(b) b.style.display='flex'; }
-})();
-
-(async function loadRules(){
-  try{
-    const r = await api('/api/rules');
-    (r.rules||[]).forEach(x=>RULES_MAP[x.id]=x);
-  }catch(e){}
-})();
-
-function doResetUI(){
-  stepIndex=-1; logCache=null; runFinishedShown=false;
-  decisions={}; reconFindings=[]; genFindings=[];
-  buildPipe();
-  refresh();
-}
-
 buildPipe();
-renderFxGrid();
 refresh();
 tick();
 </script>

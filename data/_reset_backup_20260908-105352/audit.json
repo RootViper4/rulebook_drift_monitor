@@ -1,0 +1,134 @@
+[
+  {
+    "id": "ae-dbeef02d",
+    "ts": "2026-09-08T10:35:12",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-79a44c8c",
+    "ts": "2026-09-08T10:35:12",
+    "event": "run_skip",
+    "actor": "A. Analyst",
+    "detail": "12 already-reviewed/covered typologies excluded",
+    "meta": {
+      "excluded": 12
+    }
+  },
+  {
+    "id": "ae-d88def29",
+    "ts": "2026-09-08T10:35:12",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 15 findings to review",
+    "meta": {
+      "findings": 15,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-e51402ce",
+    "ts": "2026-09-08T10:39:01",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-daf52cdb",
+    "ts": "2026-09-08T10:39:01",
+    "event": "run_skip",
+    "actor": "A. Analyst",
+    "detail": "12 already-reviewed/covered typologies excluded",
+    "meta": {
+      "excluded": 12
+    }
+  },
+  {
+    "id": "ae-167325d4",
+    "ts": "2026-09-08T10:39:01",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 15 findings to review",
+    "meta": {
+      "findings": 15,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-fb787889",
+    "ts": "2026-09-08T10:39:31",
+    "event": "console_reset",
+    "actor": "A. Analyst",
+    "detail": "Console state cleared ; baseline restored",
+    "meta": {}
+  },
+  {
+    "id": "ae-6c9b8072",
+    "ts": "2026-09-08T10:39:40",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-a7bd4aac",
+    "ts": "2026-09-08T10:39:40",
+    "event": "run_skip",
+    "actor": "A. Analyst",
+    "detail": "12 already-reviewed/covered typologies excluded",
+    "meta": {
+      "excluded": 12
+    }
+  },
+  {
+    "id": "ae-fb7eea50",
+    "ts": "2026-09-08T10:39:40",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 15 findings to review",
+    "meta": {
+      "findings": 15,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-5aa6a259",
+    "ts": "2026-09-08T10:46:17",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-20de2d1a",
+    "ts": "2026-09-08T10:46:18",
+    "event": "run_skip",
+    "actor": "A. Analyst",
+    "detail": "12 already-reviewed/covered typologies excluded",
+    "meta": {
+      "excluded": 12
+    }
+  },
+  {
+    "id": "ae-24be943c",
+    "ts": "2026-09-08T10:47:50",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 15 findings to review",
+    "meta": {
+      "findings": 15,
+      "discarded": 1
+    }
+  }
+]

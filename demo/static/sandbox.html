@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Drift Sentinel · Try your own scenario</title>
+<link rel="icon" href="static/img/logo.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="static/css/app.css"/>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar"></aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title" id="pageTitle">Try your own scenario</div>
+      <div class="top-right">
+        <span class="badge-status online" id="statusPill">● Ready</span>
+        <span class="analyst-chip"><span class="avatar">AA</span><span id="analystName">A. Analyst</span></span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="page-intro">
+        <h2>Describe a fraud and see which rules catch it</h2>
+        <p class="lede">Build a scenario from the options below and run it against all 40 rules.
+        You will see exactly which rules fired, which stayed silent, and why.</p>
+        <p>This uses the same deterministic rule engine as a full check, so the result here is
+        the result you would get in a real run.</p>
+      </div>
+
+      <div class="fx-card">
+        <div class="fx-head">
+          <div class="fx-label">Describe an attack in plain words</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="fx-inputs" id="fxName" placeholder="Name your attack (e.g. &quot;Crypto romance scam&quot;)"/>
+          </div>
+        </div>
+        <div class="fx-selects">
+          <select class="fx-inputs" id="fxAmount" style="width:auto">
+            <option value="0">Amount: pick one</option>
+            <option value="400">Small, under limits (€400)</option>
+            <option value="1200">Medium (€1,200)</option>
+            <option value="50000">Large (€50,000)</option>
+          </select>
+          <select class="fx-inputs" id="fxJuris" style="width:auto">
+            <option value="">Counterparty: pick a location</option>
+            <option value="regulated">Regulated market</option>
+            <option value="high_risk">High-risk country</option>
+            <option value="grey_list">Grey-listed country</option>
+            <option value="sanctioned">Sanctioned country</option>
+          </select>
+          <select class="fx-inputs" id="fxReason" style="width:auto">
+            <option value="">Reason for the transaction: pick one</option>
+            <option value="structuring">Trying to dodge reporting limits</option>
+            <option value="documented_legitimate_investment">Legitimate, documented investment</option>
+          </select>
+        </div>
+        <div class="fx-grid" id="fxGrid"></div>
+        <div class="fx-actions">
+          <button class="btn btn-primary" id="fxRun">▶ Run my scenario against the rules</button>
+          <span class="dim" style="font-size:11.5px" id="fxHint"></span>
+        </div>
+        <div id="fxResult"></div>
+      </div>
+
+      <div class="section-title">Can someone fool the review?</div>
+      <div class="probe-card">
+        <div class="rulebar">
+          <div style="font-weight:800;font-size:13.5px">Live tampering test</div>
+          <button class="btn-sm btn-ghost" id="probeBtn">Try to fool it</button>
+        </div>
+        <div class="dim" style="font-size:12.5px;margin-top:6px;max-width:78ch">A fake attacker
+        tries to cheat the review twice over: they hide an instruction inside their scenario
+        description hoping the system will obey it, and they overstate how many rules they got
+        past. The critic re-tests the claim against the real rulebook and throws out whatever it
+        cannot reproduce.</div>
+        <details class="explain">
+          <summary>Why this matters for governance</summary>
+          <div class="explain-body">
+            <p>Ingesting outside threat intelligence means ingesting text an attacker may have
+            written. If a hidden instruction in that text could change what the system reports,
+            the whole pipeline would be untrustworthy.</p>
+            <p>Two controls apply here: the deterministic rule engine decides what actually fired
+            regardless of what any text claims, and the critic re-runs every claim independently.
+            A boast that isn't reproducible doesn't survive.</p>
+          </div>
+        </details>
+        <div id="probeResult"></div>
+      </div>
+
+      <footer>Drift Sentinel · prototype · all data synthetic and illustrative</footer>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="static/js/app.js"></script>
+<script src="static/js/shell.js"></script>
+<script src="static/js/console.js"></script>
+<script>
+renderFxGrid();
+refresh();
+</script>
+</body>
+</html>

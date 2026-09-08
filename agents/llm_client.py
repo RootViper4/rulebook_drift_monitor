@@ -98,7 +98,12 @@ class LocalLLMClient:
         compatible providers (Groq, OpenRouter, OpenAI) expose GET /models
         for exactly this purpose.
         """
-        if not (self._hosted_url and self._hosted_key):
+        self.last_error = None
+        if not self._hosted_url:
+            self.last_error = "LLM_BASE_URL is not set"
+            return False
+        if not self._hosted_key:
+            self.last_error = "LLM_API_KEY is not set (is .env present in this folder?)"
             return False
         try:
             r = requests.get(
@@ -106,8 +111,22 @@ class LocalLLMClient:
                 headers={"Authorization": f"Bearer {self._hosted_key}"},
                 timeout=5,
             )
-            return r.status_code == 200
-        except Exception:
+            if r.status_code == 200:
+                return True
+            # Record WHY, so a caller/diagnostic can distinguish a revoked key
+            # from a rate limit from a blocked network - all three used to
+            # surface identically as a bare False.
+            reason = {
+                401: "key rejected (401) - revoked, mistyped, or wrong provider",
+                403: "key forbidden (403) - key valid but not permitted here",
+                404: "endpoint not found (404) - check LLM_BASE_URL",
+                429: "rate limited or quota exhausted (429)",
+            }.get(r.status_code, f"HTTP {r.status_code}")
+            body = (r.text or "").strip().replace("\n", " ")[:200]
+            self.last_error = f"{reason}{': ' + body if body else ''}"
+            return False
+        except Exception as exc:
+            self.last_error = f"{type(exc).__name__}: {exc}"
             return False
 
     def _pick_ollama_model(self) -> Optional[str]:
@@ -195,6 +214,18 @@ class LocalLLMClient:
                     last_error = f"{kind}, retrying after {sleep_s:.1f}s"
                     time.sleep(max(1.0, min(sleep_s, 15.0)))
                     continue
+                if r.status_code == 404:
+                    # An OpenAI-compatible endpoint returns 404 from
+                    # /chat/completions when the MODEL name is unknown, not
+                    # when the URL is wrong (a wrong URL fails earlier, and
+                    # available() would already be False). Say so plainly -
+                    # the bare HTTPError sends people checking the URL, which
+                    # is the wrong place to look.
+                    self.last_error = (
+                        f"model '{self.model}' not found at this provider (404). "
+                        f"Run: python -m scripts.list_models  to see valid names."
+                    )
+                    return None
                 r.raise_for_status()
                 choice = r.json()["choices"][0]["message"]
                 out = choice.get("content")

@@ -13,8 +13,9 @@ from __future__ import annotations
 import json
 import os
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CACHE_PATH = os.path.join(BASE_DIR, "data", "drafted_flags.json")
+from agents.paths import get_data_dir
+
+CACHE_PATH = os.path.join(get_data_dir(), "drafted_flags.json")
 
 
 def load_cache() -> dict:
@@ -26,10 +27,17 @@ def load_cache() -> dict:
         return {}
 
 
-def save_cache(data: dict) -> None:
-    os.makedirs(os.path.dirname(CACHE_PATH), exist_ok=True)
-    with open(CACHE_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+def save_cache(data: dict) -> bool:
+    try:
+        os.makedirs(os.path.dirname(CACHE_PATH), exist_ok=True)
+        with open(CACHE_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        return True
+    except (OSError, IOError):
+        # Draft text is regenerable on demand (see get_draft below) - losing
+        # the cache costs a re-draft, not correctness, so degrade quietly
+        # rather than crashing the request that triggered the save.
+        return False
 
 
 def get_draft(typology_id: str) -> str | None:

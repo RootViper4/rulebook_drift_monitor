@@ -6,10 +6,10 @@ import sys
 from typing import Optional
 
 from agents.models import Rule, Typology
+from agents.paths import get_data_dir
 from agents.trigger_schema import validate_rule_type, validate_trigger_schema
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, "data")
+DATA_DIR = get_data_dir()
 RULEBOOK_PATH = os.path.join(DATA_DIR, "rulebook.json")
 LEGACY_RULEBOOK_PATH = os.path.join(DATA_DIR, "rulebook.legacy.json")
 TYPOLOGIES_PATH = os.path.join(DATA_DIR, "typologies.json")

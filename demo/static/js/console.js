@@ -147,10 +147,13 @@ function toggleRow(fid){
 // scenario (because no model was available, or the model's output failed
 // validation)? Never claim "AI-generated" for a fallback finding - that
 // would overstate what actually happened. See agents/simulation_agent.py.
-function sourceBadgeHtml(source){
+function sourceBadgeHtml(source, reason){
   if(source==='llm') return '<span class="badge-source badge-source-llm">🤖 Written by the AI model, then checked</span>';
   if(source==='fixed_probe') return '<span class="badge-source badge-source-probe">🧪 Test case, not a real scam</span>';
-  if(source==='deterministic_fallback') return '<span class="badge-source badge-source-fallback">🧩 Built by the system (AI model wasn\u2019t used this time)</span>';
+  if(source==='deterministic_fallback'){
+    const title = reason ? ` title="${esc(reason)}"` : '';
+    return `<span class="badge-source badge-source-fallback"${title}>🧩 Built by the system (AI model wasn\u2019t used this time)</span>`;
+  }
   return '';
 }
 
@@ -168,7 +171,7 @@ function findingRow(f, tabMode){
     : `✅ Caught by ${fired.length} rule${fired.length===1?'':'s'}${evaded.length?`, but missed by ${evaded.length} rule${evaded.length===1?'':'s'}`:''}`;
   const genBadge = tabMode==='generation'
     ? '<span class="badge-unverified">💡 New idea — not a reported attack yet</span>' : '';
-  const sourceBadge = tabMode==='generation' ? sourceBadgeHtml(f.generation_source) : '';
+  const sourceBadge = tabMode==='generation' ? sourceBadgeHtml(f.generation_source, f.fallback_reason) : '';
   const delta = f.delta==='new'?'<span class="diff-badge diff-new">NEW</span>'
               : f.delta==='repeat'?'<span class="diff-badge diff-repeat">REPEAT</span>':'';
 

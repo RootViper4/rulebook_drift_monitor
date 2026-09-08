@@ -32,5 +32,16 @@
     "findings": 13,
     "discarded": 1,
     "rulebook_version": "DS-01..DS-40 · 40 rules"
+  },
+  {
+    "run_id": "run-8317b86d",
+    "ts": "2026-09-08T21:17:21",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 13,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-40 · 40 rules"
   }
 ]

@@ -78,6 +78,11 @@ class GapFinding:
     # speculative case used to prove the critic's rejection path runs).
     # Blank for reconciliation-mode findings, where it doesn't apply.
     generation_source: str = ""
+    # Why this slot fell back to a hand-authored scenario instead of a
+    # model-written one — e.g. "model 'x' not found at this provider (404)".
+    # Blank when generation_source is "llm" or "fixed_probe", where the
+    # question does not apply.
+    fallback_reason: str = ""
     # Which capability primitive(s) (CP-01..10) this finding composes, where
     # known. Blank list if not applicable/not identified.
     capability_primitives: list[str] = field(default_factory=list)
@@ -95,6 +100,18 @@ class GapFinding:
     # separate from mitre_atlas so an unverified label is never rendered
     # as a real mapping. Empty for reconciliation findings.
     unverified_atlas: list[str] = field(default_factory=list)
+    # The fixture(s) this finding was actually reproduced against, carried
+    # through from the candidate dict. Reconciliation findings carry one entry
+    # per capability-primitive fixture; generation findings carry the single
+    # scenario fixture the critic re-ran.
+    #
+    # Without this, a finding arriving at the human gate had no evidence
+    # attached, so institutionalising it could not run the deterministic
+    # self-check that is supposed to prove the gap is closed - the fixtures
+    # existed only inside the run and were discarded when the GapFinding was
+    # built. Keeping them here is what lets the analyst act on a finding
+    # later, including after the run has been rehydrated from disk.
+    test_fixtures: list[dict] = field(default_factory=list)
 
 
 @dataclass

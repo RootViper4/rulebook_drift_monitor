@@ -463,5 +463,51 @@
       "actor_org": "FSCA",
       "session_id": "sess-5a44fcf5f9"
     }
+  },
+  {
+    "id": "ae-0455c746",
+    "ts": "2026-09-08T21:16:41",
+    "ts_utc": "2026-09-08T19:16:41Z",
+    "event": "login_success",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "N. Hlophe (FSCA) signed in",
+    "meta": {
+      "actor_username": "n.hlophe",
+      "actor_role": "analyst",
+      "actor_org": "FSCA",
+      "session_id": "sess-7fcb3be670",
+      "role": "analyst"
+    }
+  },
+  {
+    "id": "ae-ad83c09e",
+    "ts": "2026-09-08T21:16:46",
+    "ts_utc": "2026-09-08T19:16:46Z",
+    "event": "run_started",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "actor_username": "",
+      "actor_role": "",
+      "actor_org": "",
+      "session_id": "",
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-80f7a41e",
+    "ts": "2026-09-08T21:17:21",
+    "ts_utc": "2026-09-08T19:17:21Z",
+    "event": "run_finished",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "actor_username": "",
+      "actor_role": "",
+      "actor_org": "",
+      "session_id": "",
+      "findings": 13,
+      "discarded": 1
+    }
   }
 ]

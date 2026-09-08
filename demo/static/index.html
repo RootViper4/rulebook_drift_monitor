@@ -275,6 +275,14 @@ function sourceBadgeHtml(source){
   return '';
 }
 
+function partialCoverageBadgeHtml(f){
+  if(f.fully_verified===false){
+    const fields = (f.unmodeled_fields||[]).join(', ');
+    return `<span class="badge-source badge-source-partial" title="References field(s) not modelled anywhere in the rulebook: ${esc(fields)}">\u26a0\ufe0f Coverage idea, not a fully tested gap</span>`;
+  }
+  return '';
+}
+
 // Collapsed: headline + one-line result summary only - a scannable triage
 // queue. Expanded (click): full plain-language rule-by-rule detail, source
 // links, the editable proposed fix, and the accept/amend/reject controls.
@@ -290,6 +298,7 @@ function findingRow(f, tabMode){
   const genBadge = tabMode==='generation'
     ? '<span class="badge-unverified">💡 New idea — not a reported attack yet</span>' : '';
   const sourceBadge = tabMode==='generation' ? sourceBadgeHtml(f.generation_source) : '';
+  const partialBadge = tabMode==='generation' ? partialCoverageBadgeHtml(f) : '';
   const delta = f.delta==='new'?'<span class="diff-badge diff-new">NEW</span>'
               : f.delta==='repeat'?'<span class="diff-badge diff-repeat">REPEAT</span>':'';
 
@@ -298,7 +307,7 @@ function findingRow(f, tabMode){
       <span class="row-chevron">${open?'▾':'▸'}</span>
       <div class="row-main">
         <div class="row-headline">${delta} ${esc(headline)}</div>
-        <div class="row-sub">${summary} ${genBadge} ${sourceBadge}</div>
+        <div class="row-sub">${summary} ${genBadge} ${sourceBadge} ${partialBadge}</div>
       </div>
       <span class="fid">ref: ${esc(fid)}</span>
     </div>

@@ -99,8 +99,24 @@ class CriticAgent:
         result["verified"] = reproduced and plausible
         if not result["verified"]:
             result["status"] = "discarded"
+            result["fully_verified"] = False
         else:
-            result["status"] = "confirmed"
+            # A generation candidate can be reproducible and plausible while
+            # still referencing field(s) the rulebook has never heard of
+            # (SimulationAgent._sanitize_scenario keeps these separately as
+            # unmodeled_fields rather than rejecting the whole candidate -
+            # see agents/simulation_agent.py). That's a genuine coverage
+            # idea, not nothing, but it must not read to the analyst as an
+            # equally-solid finding as one where every field was tested
+            # against the real rulebook. Downgrade rather than discard: it
+            # still reaches the human gate, just visibly marked.
+            unmodeled_fields = candidate.get("unmodeled_fields") or []
+            if unmodeled_fields:
+                result["status"] = "confirmed_partial_coverage"
+                result["fully_verified"] = False
+            else:
+                result["status"] = "confirmed"
+                result["fully_verified"] = True
         return result
 
     def _get_fixture(self, candidate: dict, fixtures_by_typology: Optional[dict[str, list[dict]]]) -> Optional[dict]:
@@ -116,6 +132,7 @@ class CriticAgent:
         result["reproduced"] = False
         result["plausible"] = False
         result["verified"] = False
+        result["fully_verified"] = False
         result["status"] = "discarded"
         result["evidential_basis"] = result.get("evidential_basis") or reason
         return result

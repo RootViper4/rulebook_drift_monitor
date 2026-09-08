@@ -1,16 +1,23 @@
 {
-  "note": "Synthetic, obviously-fake reconciliation fixtures: one per AI-capability primitive (CP-01..CP-12), run through RuleEvaluationEngine against the full 20-rule corpus (data/rulebook.json) to see which DS rules fire and which the attack slips past. All fixtures reuse fixture field names already present in data/rulebook.json's trigger_schema trees; no new fields were invented in the fixture data itself - where a primitive has no representable field, that is recorded as `missing_fields` on the fixture rather than fabricated. Not real transactions, not real customers. Loaded via agents.loader.load_fixture_set() and scripts/reconcile_capability_primitives.py.",
+  "note": "Synthetic, obviously-fake reconciliation fixtures: one per AI-capability primitive (CP-01..CP-12), run through RuleEvaluationEngine against the full 40-rule corpus (data/rulebook.json) to see which DS rules fire and which the attack slips past. All fixtures reuse fixture field names already present in data/rulebook.json's trigger_schema trees; no new fields were invented in the fixture data itself - where a primitive has no representable field, that is recorded as `missing_fields` on the fixture rather than fabricated. Not real transactions, not real customers. Loaded via agents.loader.load_fixture_set() and scripts/reconcile_capability_primitives.py.",
   "fixtures": [
     {
       "id": "CP-01-liveness-bypass-onboarding",
       "label": "CP-01: real-time deepfake/face-swap liveness bypass at video-KYC onboarding, followed by rapid-drain of a profile-inconsistent deposit",
-      "capability_primitives": ["CP-01"],
-      "expect_fired": ["DS-01", "DS-09"],
+      "capability_primitives": [
+        "CP-01"
+      ],
+      "expect_fired": [
+        "DS-01",
+        "DS-09",
+        "DS-28"
+      ],
       "missing_fields": [],
-      "representation_note": "No field in the corpus targets real-time video/liveness bypass specifically; edited_id_photograph_provided (DS-09) is the closest available proxy (static document/photo manipulation, not a live liveness-detection defeat) - treat the DS-09 catch as a paraphrase-level stretch, not a literal one.",
+      "representation_note": "identity_markers=['edited'] maps directly onto DS-09's accepted value set (forged/deepfake_media/edited/liveness_bypass) - a photo-edit/liveness-bypass is recorded as 'edited', the closest literal value; a dedicated 'liveness_bypass' value already exists in the schema for a future, more precise fixture. DS-28 also fires here (new_account + rapid_withdrawal) - a genuine, expected overlap with DS-01, not a fixture error.",
       "tx": {
-        "edited_id_photograph_provided": true,
-        "forged_document_provided": false,
+        "identity_markers": [
+          "edited"
+        ],
         "new_account": true,
         "customer_profile_consistent": false,
         "rapid_withdrawal": true
@@ -19,81 +26,125 @@
     {
       "id": "CP-02-voice-clone-vishing",
       "label": "CP-02: real-time voice cloning used to impersonate staff / vish a step-up or call-back authorisation",
-      "capability_primitives": ["CP-02"],
+      "capability_primitives": [
+        "CP-02"
+      ],
       "expect_fired": [],
-      "missing_fields": ["callback_verification_bypassed", "voice_authenticated_instruction_used", "staff_impersonation_reported"],
-      "representation_note": "No field anywhere in the 20-rule corpus represents staff impersonation, vishing, or call-back/step-up authentication - this control surface (internal authentication of instructions, not customer transaction behaviour) is entirely absent from the corpus.",
+      "missing_fields": [
+        "callback_verification_bypassed",
+        "voice_authenticated_instruction_used",
+        "staff_impersonation_reported"
+      ],
+      "representation_note": "No field anywhere in the 40-rule corpus represents staff impersonation, vishing, or call-back/step-up authentication - this control surface (internal authentication of instructions, not customer transaction behaviour) is entirely absent from the corpus.",
       "tx": {}
     },
     {
       "id": "CP-03-synthetic-id-documents",
       "label": "CP-03: AI-generated synthetic identity documents used to open an account",
-      "capability_primitives": ["CP-03"],
-      "expect_fired": ["DS-09"],
-      "missing_fields": ["is_pep", "customer_sanctions_list_hit"],
-      "representation_note": "forged_document_provided (DS-09) catches the document-fraud half. The PEP/sanctions-screening half this primitive is meant to stress has no customer-side field in the corpus - DS-16's counterparty_sanctioned is scoped to counterparty wallets/transactions, not the onboarding customer, so it does not cover this half.",
+      "capability_primitives": [
+        "CP-03"
+      ],
+      "expect_fired": [
+        "DS-09"
+      ],
+      "missing_fields": [
+        "is_pep",
+        "customer_sanctions_list_hit"
+      ],
+      "representation_note": "identity_markers=['forged'] fires DS-09 directly (renamed from the old forged_document_provided/edited_id_photograph_provided booleans, which are not fields the rulebook's trigger_schema recognises). The PEP/sanctions-screening half this primitive is meant to stress still has no customer-side field in the corpus - DS-16's counterparty_sanctioned is scoped to counterparty wallets/transactions, not the onboarding customer, so it does not cover this half.",
       "tx": {
-        "forged_document_provided": true,
-        "edited_id_photograph_provided": false
+        "identity_markers": [
+          "forged"
+        ]
       }
     },
     {
       "id": "CP-04-reanimated-stolen-identity",
       "label": "CP-04: photo-enhanced stolen-identity reanimation supported by fake employment records",
-      "capability_primitives": ["CP-04"],
-      "expect_fired": ["DS-09"],
-      "missing_fields": ["employment_record_verified", "vendor_due_diligence_flag"],
-      "representation_note": "edited_id_photograph_provided (DS-09) catches the photo-reanimation half. Employment/vendor due diligence is a distinct control domain (staff/vendor onboarding, not customer AML/KYC) with no field or rule anywhere in the corpus - the fake-employment-record half slips through entirely.",
+      "capability_primitives": [
+        "CP-04"
+      ],
+      "expect_fired": [
+        "DS-09"
+      ],
+      "missing_fields": [
+        "employment_record_verified",
+        "vendor_due_diligence_flag"
+      ],
+      "representation_note": "identity_markers=['edited'] fires DS-09 directly (renamed from the old edited_id_photograph_provided/forged_document_provided booleans, which are not fields the rulebook's trigger_schema recognises). Employment/vendor due diligence is a distinct control domain (staff/vendor onboarding, not customer AML/KYC) with no field or rule anywhere in the corpus - the fake-employment-record half still slips through entirely.",
       "tx": {
-        "edited_id_photograph_provided": true,
-        "forged_document_provided": false
+        "identity_markers": [
+          "edited"
+        ]
       }
     },
     {
       "id": "CP-05-pig-butchering-drip-feed",
       "label": "CP-05: automated multi-language victim engagement (pig-butchering) drip-feeding a scam-victim through repeated transfers to a small counterparty set",
-      "capability_primitives": ["CP-05"],
-      "expect_fired": ["DS-08", "DS-12", "DS-15"],
-      "missing_fields": [],
-      "representation_note": "Caught across three independent mule/scam-victim-profile rules - DS-08 (victim lacks transaction knowledge), DS-12 (victim unfamiliar with VA/custodial-wallet tech), DS-15 (repeated transactions with a subset of counterparties at a loss). No velocity/drip-feed-specific field exists, but the victim-profile signature is well covered.",
+      "capability_primitives": [
+        "CP-05"
+      ],
+      "expect_fired": [
+        "DS-08",
+        "DS-12",
+        "DS-15"
+      ],
+      "missing_fields": [
+        "significant_profit_or_loss (no corresponding rulebook field - profit/loss magnitude is not represented anywhere in the corpus)"
+      ],
+      "representation_note": "Field names renamed to match the rulebook's actual trigger_schema fields: party_lacks_transaction_knowledge -> lacks_transaction_knowledge (DS-08); sender_unfamiliar_with_va_technology + sender_unfamiliar_with_custodial_wallet -> collapsed into the single crypto_naive field DS-12 actually checks; repeated_transactions_with_subset -> clustering (DS-15). Caught across three independent mule/scam-victim-profile rules - DS-08 (victim lacks transaction knowledge), DS-12 (victim crypto-naive), DS-15 (clustering/small counterparty set). significant_profit_or_loss has no matching field anywhere in the corpus and is recorded under missing_fields rather than left in as a fabricated field name.",
       "tx": {
-        "party_lacks_transaction_knowledge": true,
-        "sender_unfamiliar_with_va_technology": true,
-        "sender_unfamiliar_with_custodial_wallet": true,
-        "repeated_transactions_with_subset": true,
-        "significant_profit_or_loss": true
+        "lacks_transaction_knowledge": true,
+        "crypto_naive": true,
+        "clustering": true
       }
     },
     {
       "id": "CP-06-institutional-impersonation",
       "label": "CP-06: AI-generated fake SMS/email impersonating a bank or exchange to redirect a payment",
-      "capability_primitives": ["CP-06"],
+      "capability_primitives": [
+        "CP-06"
+      ],
       "expect_fired": [],
-      "missing_fields": ["payee_name_mismatch", "confirmation_of_payee_failed", "impersonation_message_reported"],
-      "representation_note": "No field anywhere in the corpus represents payee-name verification or confirmation-of-payee outcomes - APP/impersonation fraud of this kind is entirely outside what the 20 rules can see.",
+      "missing_fields": [
+        "payee_name_mismatch",
+        "confirmation_of_payee_failed",
+        "impersonation_message_reported"
+      ],
+      "representation_note": "No field anywhere in the corpus represents payee-name verification or confirmation-of-payee outcomes - APP/impersonation fraud of this kind is entirely outside what the 40 rules can see.",
       "tx": {}
     },
     {
       "id": "CP-07-replica-app-credential-harvest",
       "label": "CP-07: AI-generated replica exchange app harvests credentials, attacker takes over the (existing, not new) account and drains it to an unhosted wallet",
-      "capability_primitives": ["CP-07"],
-      "expect_fired": ["DS-04"],
+      "capability_primitives": [
+        "CP-07"
+      ],
+      "expect_fired": [
+        "DS-04",
+        "DS-26"
+      ],
       "missing_fields": [],
-      "representation_note": "DS-04 (unhosted_wallet) catches the resulting fund-exfiltration flow regardless of app-level compromise. DS-01 does NOT fire here because it is gated on new_account=true - this is an account-takeover of an existing account, not new-account fraud, which is a real blind spot in how DS-01 is scoped, distinct from a corpus-wide gap.",
+      "representation_note": "Value fix, not a field-name fix: unhosted_wallet was set to false, contradicting the fixture's own label ('drains it to an unhosted wallet'), which is why DS-04 never fired. Corrected to true. DS-26 (unhosted_wallet/self_custody) also fires - a genuine overlap with DS-04. NOTE: this fixture is now identical to CP-07-replica-app-unhosted-drain; if a distinct hosted-wallet account-takeover scenario (which DS-04 would genuinely miss) is wanted, this one should be redrafted with unhosted_wallet=false and expect_fired=[] instead - flagging for a decision rather than inventing that scenario unasked.",
       "tx": {
         "new_account": false,
         "customer_profile_consistent": false,
         "rapid_withdrawal": true,
-        "unhosted_wallet": false
+        "unhosted_wallet": true
       }
     },
     {
       "id": "CP-07-replica-app-unhosted-drain",
       "label": "CP-07 variant: harvested-credential takeover where the drain destination is an unhosted wallet",
-      "capability_primitives": ["CP-07"],
-      "expect_fired": ["DS-04"],
+      "capability_primitives": [
+        "CP-07"
+      ],
+      "expect_fired": [
+        "DS-04",
+        "DS-26"
+      ],
       "missing_fields": [],
-      "representation_note": "Companion fixture isolating the unhosted_wallet=true case so DS-04's fire is unambiguous.",
+      "representation_note": "Companion fixture isolating the unhosted_wallet=true case so DS-04's fire is unambiguous. DS-26 (unhosted_wallet/self_custody) also fires on the same field - a genuine overlap, added to expect_fired rather than left as an unexplained extra.",
       "tx": {
         "new_account": false,
         "customer_profile_consistent": false,
@@ -104,9 +155,15 @@
     {
       "id": "CP-08-synthetic-identity-account-reopen",
       "label": "CP-08: synthetic-identity reuse to reopen/unfreeze a previously flagged account, using clean-looking documents and a fresh (non-shared) device/IP specifically to evade cross-account linkage",
-      "capability_primitives": ["CP-08"],
+      "capability_primitives": [
+        "CP-08"
+      ],
       "expect_fired": [],
-      "missing_fields": ["previously_flagged_account_match", "device_fingerprint_matches_frozen_account", "biometric_match_to_blocked_identity"],
+      "missing_fields": [
+        "previously_flagged_account_match",
+        "device_fingerprint_matches_frozen_account",
+        "biometric_match_to_blocked_identity"
+      ],
       "representation_note": "Deliberately modelled as evading DS-06 and DS-09: a competent synthetic-identity kit presents clean, unshared device/IP/credential fingerprints (the corpus has no field for a persistent biometric/device link back to the ORIGINAL frozen account) and documents that pass basic forgery/edit checks. Nothing in the corpus fires. This is the corpus's most direct blind spot for cross-account persistent identity linkage.",
       "tx": {
         "ip_shared_with_other_account": false,
@@ -121,7 +178,9 @@
     {
       "id": "CP-09-ai-recon-targeting",
       "label": "CP-09: AI-assisted reconnaissance and victim targeting (upstream aggravating factor, precedes any transaction)",
-      "capability_primitives": ["CP-09"],
+      "capability_primitives": [
+        "CP-09"
+      ],
       "expect_fired": [],
       "missing_fields": [],
       "representation_note": "Not a transaction-level control surface by the primitive's own description (\"upstream aggravating factor\") - it has no fixture-representable footprint of its own. Recorded here for completeness, not counted as a corpus DRIFT GAP in the same sense as CP-02/CP-06/CP-08: no rule SHOULD be expected to fire directly on reconnaissance activity; it manifests only through the downstream primitives it aggravates (e.g. CP-05).",
@@ -130,7 +189,9 @@
     {
       "id": "CP-10-dark-llm-tooling",
       "label": "CP-10: commoditised dark-LLM tooling (FraudGPT/WormGPT-class) used as a force multiplier across other primitives",
-      "capability_primitives": ["CP-10"],
+      "capability_primitives": [
+        "CP-10"
+      ],
       "expect_fired": [],
       "missing_fields": [],
       "representation_note": "Same treatment as CP-09: the primitive's own description (\"force multiplier, not a control surface\") means it has no transaction-level footprint of its own to fixture - it shows up only via the primitives it accelerates (e.g. CP-03, CP-06). Not counted as a corpus DRIFT GAP in the same sense as the others.",
@@ -139,10 +200,15 @@
     {
       "id": "CP-11-ai-orchestrated-structuring",
       "label": "CP-11: AI-orchestrated structuring - transfer amounts computed to sit just under the reporting threshold",
-      "capability_primitives": ["CP-11"],
-      "expect_fired": ["DS-02"],
+      "capability_primitives": [
+        "CP-11"
+      ],
+      "expect_fired": [
+        "DS-02",
+        "DS-38"
+      ],
       "missing_fields": [],
-      "representation_note": "DS-02's below_threshold trigger is amount-pattern-based, not actor-based, so it fires identically whether a human or an AI planner computed the sub-threshold amounts. The 2020-vintage rule holds up here even though the primitive (AI-computed thresholds, no documented case yet) postdates it.",
+      "representation_note": "DS-02's below_threshold trigger is amount-pattern-based, not actor-based, so it fires identically whether a human or an AI planner computed the sub-threshold amounts. DS-38 (sub-threshold/round amount with no stated economic rationale) also fires on the same below_threshold field with economic_rationale absent - a genuine overlap, added to expect_fired rather than left as an unexplained extra.",
       "tx": {
         "below_threshold": true,
         "high_value": false,
@@ -152,22 +218,27 @@
     {
       "id": "CP-12-ai-mule-network-bulk-accounts",
       "label": "CP-12: AI-automated mule-network / bulk account generation fanning funds in from many bulk-created accounts sharing device/IP fingerprints, then consolidating",
-      "capability_primitives": ["CP-12"],
-      "expect_fired": ["DS-05", "DS-06"],
-      "missing_fields": [],
-      "representation_note": "Caught by both the fan-in/consolidation pattern (DS-05) and the shared-device/IP/credential fingerprint pattern across the bulk-generated accounts (DS-06) - good cross-rule coverage of this primitive.",
+      "capability_primitives": [
+        "CP-12"
+      ],
+      "expect_fired": [
+        "DS-05",
+        "DS-06"
+      ],
+      "missing_fields": [
+        "ip_shared_with_other_account / device_fingerprint_shared_with_other_account (no corresponding rulebook field - only credential sharing, not IP/device fingerprint sharing, is represented)"
+      ],
+      "representation_note": "credentials_shared_with_other_account renamed to shared_credentials, the field DS-06's trigger_schema actually checks - the old name was never recognised by the engine, which is why DS-06 silently failed to fire. Caught by both the fan-in/consolidation pattern (DS-05) and the shared-credentials pattern (DS-06). The IP- and device-fingerprint-sharing signals this primitive also implies have no corresponding field in the corpus and are recorded under missing_fields rather than left in as fabricated field names.",
       "tx": {
         "fan_in": true,
         "multiple_accounts": true,
         "consolidated": true,
-        "ip_shared_with_other_account": true,
-        "device_fingerprint_shared_with_other_account": true,
-        "credentials_shared_with_other_account": true
+        "shared_credentials": true
       }
     },
     {
       "id": "SYN-clean-pass-all-20",
-      "label": "Clean pass: routine, fully-compliant customer/transaction touching every field in the 20-rule corpus - none of the 20 rules should fire",
+      "label": "Clean pass: routine, fully-compliant customer/transaction touching every field in the 40-rule corpus - none of the 40 rules should fire",
       "capability_primitives": [],
       "expect_fired": [],
       "missing_fields": [],

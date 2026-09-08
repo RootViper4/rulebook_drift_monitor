@@ -70,6 +70,9 @@ class LocalLLMClient:
         self._use_hosted = forced_hosted or (creds_present and not forced_local)
         # Resolved lazily so __init__ never does network I/O.
         self._resolved_ollama_model: Optional[str] = None
+        # Reason the most recent complete() returned None, for diagnostics.
+        # None when the last call succeeded or none has been made.
+        self.last_error: Optional[str] = None
 
         # Backwards-compatible public attributes used by other modules
         self.url = self._hosted_url if self._use_hosted else self._ollama_url
@@ -84,6 +87,28 @@ class LocalLLMClient:
         if self._use_hosted:
             return self._check_hosted()
         return self._pick_ollama_model() is not None
+
+    def _check_hosted(self) -> bool:
+        """Lightweight reachability/credential check for the hosted endpoint.
+
+        Mirrors _pick_ollama_model's shape: a short-timeout network call that
+        returns False on ANY failure (missing creds, bad key, network issue,
+        endpoint down) rather than raising, so callers can safely gate on
+        available() before spending a real completion call. Most OpenAI-
+        compatible providers (Groq, OpenRouter, OpenAI) expose GET /models
+        for exactly this purpose.
+        """
+        if not (self._hosted_url and self._hosted_key):
+            return False
+        try:
+            r = requests.get(
+                f"{self._hosted_url}/models",
+                headers={"Authorization": f"Bearer {self._hosted_key}"},
+                timeout=5,
+            )
+            return r.status_code == 200
+        except Exception:
+            return False
 
     def _pick_ollama_model(self) -> Optional[str]:
         """Return the Ollama model the client should use, choosing an
@@ -132,6 +157,8 @@ class LocalLLMClient:
                          max_tokens: int) -> Optional[str]:
         import time
         last_error: Optional[str] = None
+        # Reset per call so `last_error` always describes THIS request.
+        self.last_error = None
         # Hosted providers (esp. free tiers like Groq) rate-limit with bursts;
         # retries + backoff dramatically cut spurious fallback fills in the
         # generation arm. 429/5xx retry after backoff (honouring Retry-After
@@ -159,10 +186,13 @@ class LocalLLMClient:
                     # daily/minute quota is gone - retrying then just stalls
                     # the run and burns the whole budget for nothing. Fail
                     # fast in that case so the composer falls back quickly.
+                    kind = "rate-limited (429)" if r.status_code == 429 else f"server error ({r.status_code})"
                     if r.headers.get("x-should-retry", "").lower() == "false":
+                        self.last_error = f"{kind}; provider said do not retry (quota likely exhausted)"
                         return None
                     retry_after = r.headers.get("Retry-After")
                     sleep_s = float(retry_after) if retry_after else (1.5 * (attempt + 1))
+                    last_error = f"{kind}, retrying after {sleep_s:.1f}s"
                     time.sleep(max(1.0, min(sleep_s, 15.0)))
                     continue
                 r.raise_for_status()
@@ -174,16 +204,19 @@ class LocalLLMClient:
                     out = choice.get("reasoning")
                 if out:
                     return out
-                last_error = "empty response"
+                last_error = "empty response (model returned no content)"
             except Exception as exc:
-                last_error = str(exc)
+                last_error = f"{type(exc).__name__}: {exc}"
                 time.sleep(1.5 * (attempt + 1))
+        self.last_error = last_error or "unknown failure"
         return None
 
     # --- Local Ollama (/api/generate) --------------------------------------
     def _complete_ollama(self, prompt: str, temperature: float,
                          max_tokens: int) -> Optional[str]:
+        self.last_error = None
         if self._pick_ollama_model() is None:
+            self.last_error = "no Ollama model available (server unreachable or no models pulled)"
             return None
         payload = {
             "model": self._ollama_model,
@@ -200,6 +233,10 @@ class LocalLLMClient:
             r = requests.post(f"{self._ollama_url}/api/generate",
                               json=payload, timeout=OLLAMA_TIMEOUT)
             r.raise_for_status()
-            return r.json().get("response") or None
-        except Exception:
+            out = r.json().get("response") or None
+            if not out:
+                self.last_error = "empty response (model returned no content)"
+            return out
+        except Exception as exc:
+            self.last_error = f"{type(exc).__name__}: {exc}"
             return None

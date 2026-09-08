@@ -3,6 +3,7 @@ from __future__ import annotations
 import difflib
 import json
 import re
+import textwrap
 from typing import Any, Callable, Optional
 
 from agents.models import Rule, RuleResult, Typology
@@ -72,6 +73,34 @@ _PLACEHOLDER_KEY_PATTERN = re.compile(r"[<>]")
 # The exact placeholder ATLAS entry from the prompt's JSON template.
 _PLACEHOLDER_ATLAS_VALUE = "resource development"
 
+# The canonical MITRE ATLAS tactic names (atlas.mitre.org). A generated
+# scenario's mitre_atlas entries used to be accepted as free text, so a
+# model could return an ATT&CK tactic that ATLAS does not have (confirmed
+# 2026-09-08: "Obfuscation" came back from a hosted model) and it would
+# flow untouched into the gap report as though it were a real mapping.
+# Entries matching this set are kept in `mitre_atlas`; anything else is
+# kept SEPARATELY as `unverified_atlas` so an unverified label is never
+# presented as a verified mapping. Matching is case-insensitive and
+# tolerates a leading "TAxxxx " id prefix.
+_ATLAS_TACTICS = {
+    "reconnaissance",
+    "resource development",
+    "initial access",
+    "ml model access",
+    "execution",
+    "persistence",
+    "privilege escalation",
+    "defense evasion",
+    "credential access",
+    "discovery",
+    "collection",
+    "ml attack staging",
+    "exfiltration",
+    "impact",
+}
+# Optional "TA0043 " / "TA0002" style id prefix on a tactic name.
+_ATLAS_ID_PREFIX = re.compile(r"^ta\d{4}\s*", re.IGNORECASE)
+
 # A proposed scenario whose name is this similar (0.0-1.0, difflib ratio) to
 # an EXISTING rule's name is treated as "copied the rule back, not a novel
 # gap" and rejected - confirmed happening in practice: the same local model
@@ -87,6 +116,11 @@ _NAME_SIMILARITY_REJECT_THRESHOLD = 0.82
 # near-duplicate it exists to catch, this is the cleanest separating line
 # (that pair scored 0.56 on shared tokens).
 _TECHNIQUE_OVERLAP_REJECT_THRESHOLD = 0.5
+# Deliberately LOWER than the rejection threshold above. This one does not
+# reject anything - it only groups accepted scenarios that appear to be
+# arguing the same underlying rulebook blind spot, so the convergence can
+# be reported. See _detect_convergence().
+_CONVERGENCE_OVERLAP_THRESHOLD = 0.25
 
 
 class SimulationAgent:
@@ -302,12 +336,27 @@ class SimulationAgent:
 
             is_probe = prim.get("_fixed_probe", False)
             source = "fixed_probe" if is_probe else prim.get("_source", "deterministic_fallback")
+            unmodeled_fields = prim.get("unmodeled_fields") or []
             basis = (
                 "speculative self-generated novel path; no published evidence "
                 "yet and no supporting STR material" if prim.get("speculative")
                 else f"{'model-proposed' if source == 'llm' else 'self-generated from AI capability primitives'} "
                      f"(novel, unverified); composes {', '.join(prim.get('capability_primitives', []) or ['unspecified'])}"
             )
+            if unmodeled_fields:
+                basis += (
+                    f"; NOTE: also references field(s) not modelled anywhere in the "
+                    f"rulebook ({', '.join(unmodeled_fields)}) - those describe a "
+                    f"coverage idea the corpus can't test yet, not a verified evasion "
+                    f"of an existing rule"
+                )
+            unverified_atlas = prim.get("unverified_atlas") or []
+            if unverified_atlas:
+                basis += (
+                    f"; ATLAS CAUTION: proposed tactic label(s) "
+                    f"{', '.join(unverified_atlas)} are not recognised MITRE ATLAS "
+                    f"tactics and are recorded as unverified, not as a mapping"
+                )
             findings.append({
                 "typology_id": f"GEN-{idx:02d}",
                 "typology_name": prim["name"],
@@ -317,11 +366,14 @@ class SimulationAgent:
                 "techniques": prim["techniques"],
                 "capability_primitives": prim.get("capability_primitives", []),
                 "mitre_atlas": prim.get("mitre_atlas", []),
+                "unverified_atlas": unverified_atlas,
                 "mode": "generation",
                 "novel": True,
                 "speculative": prim.get("speculative", False),
                 "generation_source": source,
                 "fixture": fixture,
+                "unmodeled_fields": unmodeled_fields,
+                "dropped_mismatched_fields": prim.get("dropped_mismatched_fields") or [],
             })
         return findings
 
@@ -353,7 +405,9 @@ class SimulationAgent:
         if not self.llm or not self.llm.available():
             return [dict(fb, _source="deterministic_fallback") for fb in fallback]
 
-        known_fields = sorted(self._collect_known_fields(rulebook))
+        known_fields_set = self._collect_known_fields(rulebook)
+        known_fields = sorted(known_fields_set)
+        field_domains = self._collect_field_domains(rulebook)
         existing_rule_names = [r.name for r in rulebook]
         scenarios: list[dict] = []
         proposed_names: list[str] = []
@@ -379,14 +433,16 @@ class SimulationAgent:
             for _attempt in range(attempts_per_slot):
                 if _aborted():
                     break
-                prompt = self._build_single_scenario_prompt(rulebook, known_fields, proposed_names)
+                prompt = self._build_single_scenario_prompt(rulebook, known_fields, proposed_scenarios)
                 raw = self.llm.complete(prompt, temperature=0.55, max_tokens=max_tokens)
                 if not raw:
                     continue
                 parsed = self._parse_json_scenarios(raw)
                 if not parsed:
                     continue
-                candidate = self._sanitize_scenario(parsed[0], existing_rule_names)
+                candidate = self._sanitize_scenario(
+                    parsed[0], existing_rule_names, known_fields_set, field_domains
+                )
                 if not candidate:
                     continue
                 if self._name_too_similar(candidate["name"], proposed_names):
@@ -424,6 +480,64 @@ class SimulationAgent:
                 proposed_names.append(fb["name"])
                 proposed_scenarios.append(fb)
         return scenarios
+
+    @staticmethod
+    def _detect_convergence(scenarios: list[dict],
+                            threshold: float = _CONVERGENCE_OVERLAP_THRESHOLD) -> list[dict]:
+        """Group accepted generation-arm scenarios that share enough
+        technique vocabulary to be arguing the same underlying blind spot,
+        and return one entry per group of 2 or more.
+
+        WHY THIS EXISTS: `_techniques_too_similar` is a REJECTION gate at a
+        deliberately high bar (_TECHNIQUE_OVERLAP_REJECT_THRESHOLD) - it
+        stops a slot that is a near-verbatim repeat. It is intentionally
+        not sensitive enough to catch scenarios that are worded quite
+        differently while attacking the same control weakness; measured
+        2026-09-08, three slots describing forged travel-rule attestations,
+        forged invoices and forged bank statements shared only ~10-20% of
+        their technique tokens and all three passed the gate.
+
+        That looser similarity is worth REPORTING even though it is not
+        worth rejecting. When several independently-generated scenarios
+        converge on one mechanism, that is evidence about the rulebook -
+        a blind spot broad enough that the generator keeps rediscovering
+        it from different starting points - and it is a stronger finding
+        than the same scenarios presented as N unrelated novelties. So
+        this runs at a LOWER threshold than the rejection gate, and its
+        output is a signal attached to the run, never a filter.
+
+        Returns a list of {"shared_terms", "scenario_names", "size"},
+        largest group first. Empty list when nothing converges.
+        """
+        groups: list[dict] = []
+        used: set[int] = set()
+        token_sets = [SimulationAgent._technique_tokens(s.get("techniques") or [])
+                      for s in scenarios]
+
+        for i, tokens_i in enumerate(token_sets):
+            if i in used or not tokens_i:
+                continue
+            members = [i]
+            shared = set(tokens_i)
+            for j in range(i + 1, len(token_sets)):
+                if j in used:
+                    continue
+                tokens_j = token_sets[j]
+                if not tokens_j:
+                    continue
+                overlap = len(tokens_i & tokens_j) / min(len(tokens_i), len(tokens_j))
+                if overlap >= threshold:
+                    members.append(j)
+                    shared &= tokens_j
+            if len(members) >= 2:
+                used.update(members)
+                groups.append({
+                    "shared_terms": sorted(shared),
+                    "scenario_names": [scenarios[k].get("name", "(unnamed)") for k in members],
+                    "size": len(members),
+                })
+        groups.sort(key=lambda g: g["size"], reverse=True)
+        return groups
 
     @staticmethod
     def _name_too_similar(name: str, other_names: list[str]) -> bool:
@@ -491,7 +605,6 @@ class SimulationAgent:
             if overlap >= _TECHNIQUE_OVERLAP_REJECT_THRESHOLD:
                 return True
         return False
-        return False
 
     @staticmethod
     def _collect_known_fields(rulebook: list[Rule]) -> set[str]:
@@ -516,7 +629,76 @@ class SimulationAgent:
         return fields
 
     @staticmethod
-    def _build_single_scenario_prompt(rulebook: list[Rule], known_fields: list[str], avoid_names: list[str]) -> str:
+    def _collect_field_domains(rulebook: list[Rule]) -> dict[str, dict]:
+        """Walk every rule's trigger_schema and build a lightweight type/value
+        profile per field: which ops it's ever compared with, and (for
+        eq/in against string literals) which specific string values are
+        actually valid.
+
+        This exists because a field name matching the rulebook's vocabulary
+        is not enough on its own - e.g. counterparty_jurisdiction is only
+        ever compared against string categories ('sanctioned', 'high_risk',
+        'grey_list') via eq/in; a generated fixture setting it to the
+        Python bool True passes the plain field-name check but will never
+        match any of those, so the rule silently never fires and the
+        "gap" that gets reported didn't actually test anything. Checking
+        the field's real domain here catches that before it reaches a
+        finding.
+        """
+        domains: dict[str, dict] = {}
+
+        def _note(field: Any, op: Any, value: Any) -> None:
+            if not isinstance(field, str):
+                return
+            d = domains.setdefault(field, {"ops": set(), "string_values": set()})
+            if isinstance(op, str):
+                d["ops"].add(op)
+            if op in ("eq", "in"):
+                values = value if isinstance(value, list) else [value]
+                for v in values:
+                    if isinstance(v, str):
+                        d["string_values"].add(v.strip().lower())
+
+        def _walk(node: Any) -> None:
+            if not isinstance(node, dict):
+                return
+            if "field" in node:
+                _note(node["field"], node.get("op"), node.get("value"))
+            for key in ("all", "any"):
+                for child in node.get(key, []) or []:
+                    _walk(child)
+            if "not" in node:
+                _walk(node["not"])
+
+        for rule in rulebook:
+            _walk(rule.trigger_schema or {})
+        return domains
+
+    @staticmethod
+    def _field_value_matches_domain(value: Any, domain: Optional[dict]) -> bool:
+        """True if `value` is a shape the rulebook could actually match for
+        a field with this domain profile. No domain (field genuinely
+        unknown) is handled by the caller separately, not here."""
+        if not domain:
+            return True
+        ops = domain["ops"]
+        string_values = domain["string_values"]
+        # Field is only ever compared against specific string categories
+        # (eq/in), never checked for plain truthiness/existence - a bool
+        # or number here can never match and the rule would silently stay
+        # dark on this field regardless of intent.
+        if string_values and not (ops & {"truthy", "exists"}):
+            return isinstance(value, str) and value.strip().lower() in string_values
+        # Field is only ever compared numerically (gte/lte) - a bool
+        # (Python bool is technically an int subclass, so exclude it
+        # explicitly) or string can't be meaningfully compared.
+        if ops and ops <= {"gte", "lte"}:
+            return isinstance(value, (int, float)) and not isinstance(value, bool)
+        return True
+
+    @staticmethod
+    def _build_single_scenario_prompt(rulebook: list[Rule], known_fields: list[str],
+                                      avoid_scenarios: list[dict]) -> str:
         """Deliberately smaller than a "propose 3 at once" prompt: rule
         NAMES + categories only (no full trigger sentences), one scenario
         requested, not three. This is the core of the fix - a batch-of-3
@@ -529,18 +711,61 @@ class SimulationAgent:
         the model the full field vocabulary invited it to enumerate nearly
         every field as false, one per line, burning the entire output token
         budget before it could reach the closing braces - every one of 3
-        test slots was truncated mid-JSON this way. Two changes address it:
-        only a sample of the vocabulary is shown (not the full list, so
-        there is less to imitate), and the instruction below is explicit
-        and repeated about keeping the fixture to a handful of fields."""
+        test slots was truncated mid-JSON this way. The instruction below
+        is therefore explicit and repeated about keeping the fixture to a
+        handful of fields.
+
+        ANCHOR REQUIREMENT (2026-09-08): the earlier version of this prompt
+        showed only a 24-field sample and told the model to "invent a short
+        new field name of your own" whenever nothing fit. Measured against
+        a hosted model, 2 of 3 slots then invented fields the rulebook has
+        never heard of, and one slot invented ALL of them - meaning the
+        deterministic engine tested nothing at all and the "gap" was
+        vacuous (that slot is now rejected outright by _sanitize_scenario).
+        Two changes: the FULL vocabulary is shown (the truncation failure
+        above was on a 1B local model with a 300-token budget; the fix for
+        it is the fixture SIZE cap below, not hiding two-thirds of the
+        vocabulary from the model), and invention is still allowed - it is
+        how a genuinely unmodelled coverage gap gets surfaced, which is the
+        generation arm's whole point - but only ON TOP of at least two real
+        anchor fields, so every scenario is partly testable against the
+        real rulebook rather than free-floating.
+        """
         rule_lines = "\n".join(f"- {r.id} [{r.category}]: {r.name}" for r in rulebook)
         cp_lines = "\n".join(f"- {cp_id}: {desc}" for cp_id, desc in CP_LIBRARY_SUMMARY)
-        # Show at most 24 fields as illustrative examples, not the whole
-        # vocabulary - showing everything measurably caused the model to
-        # try to enumerate everything.
-        sample_fields = known_fields[:24]
-        fields_line = ", ".join(sample_fields)
-        avoid = "; ".join(avoid_names) if avoid_names else "(nothing yet - you're first)"
+        cp_range = f"{CP_LIBRARY_SUMMARY[0][0]} to {CP_LIBRARY_SUMMARY[-1][0]}" if CP_LIBRARY_SUMMARY else "none"
+        # Full vocabulary, wrapped across lines so it reads as a reference
+        # list rather than a template to copy line-by-line.
+        fields_block = textwrap.fill(", ".join(known_fields), width=88)
+
+        # CONVERGENCE, NOT DIVERSITY (2026-09-08): a previous revision of
+        # this prompt carried a long "DIVERSITY REQUIREMENT" block naming
+        # the repetition failure mode and listing alternative lifecycle
+        # stages to attack. Measured against a hosted model over two
+        # revisions it did NOT work - slots kept returning the same
+        # underlying mechanism (AI fabricates a supporting document or
+        # narrative that an authenticity-blind control accepts) under
+        # different names. That block was removed because:
+        #   1. It didn't change behaviour, and
+        #   2. It grew the prompt with every accepted slot (measured
+        #      8.8k -> 9.1k -> 9.3k chars across three slots), which on a
+        #      rate-limited free tier contributed to a slot failing
+        #      outright - so it made runs less reliable for no benefit.
+        # The convergence is now treated as a measurement rather than a
+        # defect: see _detect_convergence() below. Repeated independent
+        # arrival at the same blind spot is evidence about the RULEBOOK
+        # (it checks presence, consistency, thresholds and keywords, but
+        # never authenticity), not a failure of the generator. The
+        # avoid-list is kept, but compact - enough to stop verbatim
+        # repetition without unbounded prompt growth.
+        if avoid_scenarios:
+            avoid_lines = []
+            for s in avoid_scenarios:
+                techniques = ", ".join((s.get("techniques") or [])[:3]) or "(none given)"
+                avoid_lines.append(f"- {s.get('name', '(unnamed)')} ({techniques})")
+            avoid = "\n".join(avoid_lines)
+        else:
+            avoid = "(nothing yet - you're first)"
 
         return f"""You are assisting a financial regulator's horizon-scanning system.
 Propose exactly ONE novel crypto-AML evasion scenario that is NOT already
@@ -552,21 +777,31 @@ WHY, never step-by-step attacker instructions or exploit code.
 EXISTING RULE NAMES (do not restate or paraphrase any of these as a "gap"):
 {rule_lines}
 
-ALREADY PROPOSED THIS RUN (avoid - do not repeat or rephrase):
+ALREADY PROPOSED THIS RUN (do not repeat or rephrase these):
 {avoid}
 
-AI CAPABILITY PRIMITIVES (CP-01 to CP-10 ONLY - never invent another number):
+AI CAPABILITY PRIMITIVES ({cp_range} ONLY - never invent another number):
 {cp_lines}
 
-SOME field names already used in the rulebook, as examples only - NOT a
-checklist to complete (reuse one of these if it genuinely fits; otherwise
-invent a short new field name of your own):
-{fields_line}
+THE COMPLETE LIST OF FIELD NAMES THE RULEBOOK UNDERSTANDS - this is a
+reference list to choose from, NOT a checklist to fill in:
+{fields_block}
 
-CRITICAL - keep the fixture SHORT: include ONLY the 2 to 5 fields that are
-actually true or relevant to YOUR scenario, using real field names that
-describe YOUR specific idea. Do NOT list every field you know about set to
-false - that wastes space and will be rejected.
+HOW TO BUILD THE FIXTURE - this is the part that matters most:
+1. Your fixture MUST include AT LEAST TWO field names taken exactly from
+   the list above. These anchor your scenario to rules that can actually
+   be tested. A fixture with no real field names from that list tests
+   nothing and will be rejected outright.
+2. You MAY then add ONE or TWO invented field names for aspects of your
+   scenario the rulebook genuinely cannot express yet - that is useful, it
+   is how we find coverage gaps. Only invent where nothing in the list
+   fits; check the list properly first.
+3. Most fields above are true/false flags. A few expect a specific text
+   value instead (for example a jurisdiction field expects a category
+   like "sanctioned" or "high_risk", not true) - if you use one of those,
+   give it a sensible text value, not a boolean.
+4. Keep the whole fixture to 3-5 fields total. Do NOT list every field you
+   know about set to false - that wastes space and will be rejected.
 
 Respond with ONLY one JSON object (no array, no markdown fences, no
 commentary). Replace EVERY placeholder value below with your own real
@@ -659,12 +894,36 @@ your answer must use an actual field name, never that literal text."""
             return None
 
     @staticmethod
-    def _sanitize_scenario(item: dict, existing_rule_names: list[str]) -> Optional[dict]:
+    def _sanitize_scenario(item: dict, existing_rule_names: list[str],
+                           known_fields: set[str], field_domains: dict[str, dict]) -> Optional[dict]:
         """Validate and clean one LLM-proposed scenario. Returns None if it
         cannot be turned into something the deterministic engine can use, OR
         if it matches a confirmed failure mode below - NEVER defaults a
         missing/invalid fixture to {}, and never lets a template-copy or
-        restated-rule slip through as if it were a genuine novel finding."""
+        restated-rule slip through as if it were a genuine novel finding.
+
+        Fixture fields are split three ways against the rulebook's real
+        vocabulary (known_fields/field_domains, from
+        _collect_known_fields/_collect_field_domains):
+          - kept fields: in the rulebook's vocabulary AND value-shape-valid
+            for that field (e.g. a string category field gets a string in
+            its known value set, not a bare bool) - these are the only
+            fields that can actually make a rule fire or evade.
+          - unmodeled_fields: field name genuinely not in the rulebook at
+            all. The prompt explicitly allows inventing a field for a
+            coverage idea no rule models yet, so this isn't rejected
+            outright, but it's kept SEPARATE from `fixture` and surfaced
+            on the returned dict so a finding built from it can be labelled
+            as an unmodelled-coverage note rather than a verified gap.
+          - dropped_mismatched_fields: field name IS in the rulebook, but
+            the value doesn't match what that field is ever compared
+            against (wrong type/shape) - these are silently useless to the
+            engine, so they're dropped rather than kept as if meaningful.
+
+        If NOTHING is left in `fixture` after this split, the candidate is
+        rejected (None) exactly like an unparseable response - a finding
+        with zero real, testable fields isn't a gap, it's a fixture bug.
+        """
         name = item.get("name")
         if not isinstance(name, str) or not name.strip():
             return None
@@ -700,15 +959,33 @@ your answer must use an actual field name, never that literal text."""
             return None
 
         fixture: dict[str, Any] = {}
+        unmodeled_fields: list[str] = []
+        dropped_mismatched_fields: list[str] = []
         for k, v in raw_fixture.items():
             if not isinstance(k, str) or not k.strip():
                 continue
+            key = k.strip()
             if not isinstance(v, _ALLOWED_FIXTURE_VALUE_TYPES):
                 continue
             if isinstance(v, str) and len(v) > 200:
                 continue
-            fixture[k.strip()] = v
+            if key not in known_fields:
+                # Not a fixture-format problem - a field the rulebook has
+                # never heard of. Keep it visible as a coverage note, not
+                # as something that drove a "verified" evasion.
+                unmodeled_fields.append(key)
+                continue
+            if not SimulationAgent._field_value_matches_domain(v, field_domains.get(key)):
+                dropped_mismatched_fields.append(key)
+                continue
+            fixture[key] = v
+
         if not fixture:
+            # Nothing left that the deterministic engine can actually test
+            # against - reject outright rather than let a "verified gap"
+            # through that never exercised a real rule. Treated exactly
+            # like an unparseable response: the caller retries this slot
+            # or, failing that, falls back.
             return None
 
         # Only accept capability primitive IDs that actually exist.
@@ -717,16 +994,35 @@ your answer must use an actual field name, never that literal text."""
         if isinstance(raw_cps, list):
             cps = [cp for cp in raw_cps if isinstance(cp, str) and cp in _KNOWN_CP_IDS]
 
-        # Strip the literal placeholder ATLAS value rather than rejecting
-        # the whole scenario over it - ATLAS tagging is supplementary
-        # metadata, not load-bearing for whether a gap is real.
+        # Split ATLAS entries into recognised tactics and unverified ones
+        # rather than accepting all of them as free text. The placeholder
+        # value from the prompt template is dropped entirely. Anything else
+        # that isn't a real ATLAS tactic is preserved separately as
+        # `unverified_atlas` - not silently discarded (the model's intent
+        # may still be informative to a reviewer) but never mixed into
+        # `mitre_atlas`, which downstream code and the UI treat as a
+        # verified mapping.
         raw_atlas = item.get("mitre_atlas")
-        atlas = []
+        atlas: list[str] = []
+        unverified_atlas: list[str] = []
         if isinstance(raw_atlas, list):
-            atlas = [
-                str(a)[:60] for a in raw_atlas
-                if isinstance(a, (str, int, float)) and str(a).strip().lower() != _PLACEHOLDER_ATLAS_VALUE
-            ][:5]
+            for a in raw_atlas[:8]:
+                if not isinstance(a, (str, int, float)):
+                    continue
+                text = str(a).strip()[:60]
+                if not text:
+                    continue
+                normalised = _ATLAS_ID_PREFIX.sub("", text).strip().lower()
+                if normalised == _PLACEHOLDER_ATLAS_VALUE and len(raw_atlas) == 1:
+                    # Sole entry is the untouched prompt placeholder - drop it.
+                    continue
+                if normalised in _ATLAS_TACTICS:
+                    if text not in atlas:
+                        atlas.append(text)
+                elif text not in unverified_atlas:
+                    unverified_atlas.append(text)
+            atlas = atlas[:5]
+            unverified_atlas = unverified_atlas[:5]
 
         speculative = bool(item.get("speculative", False))
 
@@ -735,8 +1031,11 @@ your answer must use an actual field name, never that literal text."""
             "techniques": techniques,
             "capability_primitives": cps,
             "mitre_atlas": atlas,
+            "unverified_atlas": unverified_atlas,
             "fixture": fixture,
             "speculative": speculative,
+            "unmodeled_fields": unmodeled_fields,
+            "dropped_mismatched_fields": dropped_mismatched_fields,
         }
 
     # -- Deterministic fallback (used per-slot when the LLM path fails) --

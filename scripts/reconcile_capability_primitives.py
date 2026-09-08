@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Run each AI-capability-primitive attack fixture (data/fixtures.capability_primitives.json)
-through the full 20-rule corpus (data/rulebook.json) via the deterministic
+through the full 40-rule corpus (data/rulebook.json) via the deterministic
 RuleEvaluationEngine, and print a per-primitive coverage report: which DS rules
 fired (Indicator Matched / Obligation Breached) and which primitives no rule
 catches at all (DRIFT GAP).
@@ -41,7 +41,7 @@ def main():
             by_primitive.setdefault(cp, []).append({**fx, "fired": fired})
 
     print("=" * 100)
-    print("RECONCILIATION ARM: capability-primitive coverage against the 20-rule corpus")
+    print("RECONCILIATION ARM: capability-primitive coverage against the 40-rule corpus")
     print("=" * 100)
 
     drift_gaps = []
@@ -75,7 +75,7 @@ def main():
             drift_gaps.append(cp)
 
     print("\n" + "=" * 100)
-    print("DRIFT GAPS (no rule in the 20-rule corpus fires on this primitive):")
+    print("DRIFT GAPS (no rule in the 40-rule corpus fires on this primitive):")
     if drift_gaps:
         for cp in sorted(set(drift_gaps)):
             print(f"  - {cp}")

@@ -300,6 +300,9 @@ def _finding_json(f, desc_by_id=None):
         # (e.g. cached objects from data/drafted_flags.json predating this change).
         "generation_source": getattr(f, "generation_source", ""),
         "capability_primitives": getattr(f, "capability_primitives", []),
+        "fully_verified": getattr(f, "fully_verified", True),
+        "unmodeled_fields": getattr(f, "unmodeled_fields", []),
+        "unverified_atlas": getattr(f, "unverified_atlas", []),
     }
 
 
@@ -379,6 +382,7 @@ def _state_json():
         "generation_findings": generation_findings,
         "decisions_log": decisions_log,
         "discarded": [_discarded_json(d) for d in (run.discarded if run else [])],
+        "convergence": list(getattr(run, "convergence", []) or []) if run else [],
         "decisions": decisions,
         "audit": list(run.audit) if run else [],
         "log": STORE["log"],

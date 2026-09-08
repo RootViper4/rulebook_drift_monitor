@@ -430,5 +430,114 @@
       "findings": 15,
       "discarded": 1
     }
+  },
+  {
+    "id": "ae-cf768216",
+    "ts": "2026-09-08T05:29:05",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-7d8145fd",
+    "ts": "2026-09-08T05:32:06",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 14 findings to review",
+    "meta": {
+      "findings": 14,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-44cf35b7",
+    "ts": "2026-09-08T05:37:15",
+    "event": "console_reset",
+    "actor": "A. Analyst",
+    "detail": "Console state cleared ; baseline restored",
+    "meta": {}
+  },
+  {
+    "id": "ae-64ff7702",
+    "ts": "2026-09-08T05:48:09",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-ed29ae60",
+    "ts": "2026-09-08T05:48:09",
+    "event": "run_error",
+    "actor": "A. Analyst",
+    "detail": "Run failed: 'LocalLLMClient' object has no attribute '_check_hosted'",
+    "meta": {}
+  },
+  {
+    "id": "ae-bca901bb",
+    "ts": "2026-09-08T06:21:08",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-115d87d8",
+    "ts": "2026-09-08T06:22:13",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "findings": 13,
+      "discarded": 2
+    }
+  },
+  {
+    "id": "ae-98122917",
+    "ts": "2026-09-08T06:37:13",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-dc0d1af6",
+    "ts": "2026-09-08T06:38:29",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 15 findings to review",
+    "meta": {
+      "findings": 15,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-00baa444",
+    "ts": "2026-09-08T06:45:06",
+    "event": "checkpoint_recorded",
+    "actor": "A. Analyst",
+    "detail": "Checkpoint checkpoint-f6bd4ab7 recorded · drift 57.0",
+    "meta": {
+      "run_id": "checkpoint-f6bd4ab7"
+    }
+  },
+  {
+    "id": "ae-f28ad322",
+    "ts": "2026-09-08T06:45:08",
+    "event": "checkpoint_recorded",
+    "actor": "A. Analyst",
+    "detail": "Checkpoint checkpoint-9fe598f2 recorded · drift 57.0",
+    "meta": {
+      "run_id": "checkpoint-9fe598f2"
+    }
   }
 ]

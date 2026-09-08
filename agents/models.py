@@ -81,6 +81,20 @@ class GapFinding:
     # Which capability primitive(s) (CP-01..10) this finding composes, where
     # known. Blank list if not applicable/not identified.
     capability_primitives: list[str] = field(default_factory=list)
+    # False when the critic downgraded this finding because its fixture
+    # referenced field(s) not modelled anywhere in the rulebook
+    # (SimulationAgent._sanitize_scenario's unmodeled_fields) - the finding
+    # still reached the human gate (verified=True), but should be presented
+    # as a coverage idea, not a fully rulebook-tested gap. True for every
+    # reconciliation-mode finding and for generation findings with no
+    # unmodelled fields.
+    fully_verified: bool = True
+    unmodeled_fields: list[str] = field(default_factory=list)
+    # Tactic labels a generation-arm scenario proposed that are NOT
+    # recognised MITRE ATLAS tactics (e.g. an ATT&CK-only term). Kept
+    # separate from mitre_atlas so an unverified label is never rendered
+    # as a real mapping. Empty for reconciliation findings.
+    unverified_atlas: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -95,6 +109,12 @@ class RunState:
     log: list[dict] = field(default_factory=list)
     status: str = "created"
     audit: list[dict] = field(default_factory=list)
+    # Groups of generation-arm scenarios that independently converged on the
+    # same underlying rulebook blind spot (see
+    # SimulationAgent._detect_convergence). Each entry:
+    # {"shared_terms", "scenario_names", "size"}. Empty when the run's novel
+    # scenarios were genuinely distinct.
+    convergence: list[dict] = field(default_factory=list)
 
     def append_log(self, node: str, message: str, **extra: Any) -> None:
         entry = {"node": node, "message": message, **extra}

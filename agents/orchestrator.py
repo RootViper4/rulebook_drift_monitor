@@ -83,12 +83,47 @@ class Orchestrator:
         gen_findings = self.simulation.run_generation(self.rulebook, abort_check=_aborted)
         if _aborted():
             return self._abort(state)
+        gen_source_counts: dict[str, int] = {}
+        for f in gen_findings:
+            src = f.get("generation_source") or "unknown"
+            gen_source_counts[src] = gen_source_counts.get(src, 0) + 1
+        gen_source_summary = ", ".join(
+            f"{count} {src}" for src, count in sorted(gen_source_counts.items())
+        ) or "none"
         state.append_log("simulation",
                          f"Reconciliation produced {len(rec_findings)} gap candidates; "
-                         f"generation produced {len(gen_findings)} novel candidate(s).",
-                         reconciliation=len(rec_findings), generation=len(gen_findings))
+                         f"generation produced {len(gen_findings)} novel candidate(s) "
+                         f"({gen_source_summary}).",
+                         reconciliation=len(rec_findings), generation=len(gen_findings),
+                         generation_sources=gen_source_counts)
         _progress("generate_meta",
                   f"Reconciliation → {len(rec_findings)} candidates · generation → {len(gen_findings)} novel")
+
+        # Convergence signal: when several independently-generated scenarios
+        # argue the same underlying blind spot, that is evidence about the
+        # RULEBOOK's coverage, not a fault in the generator - and it is a
+        # stronger finding than the same scenarios read as unrelated
+        # novelties. Measured across model-authored scenarios only; the
+        # deterministic fallback pool is hand-authored to be distinct, so
+        # including it would report a convergence that says nothing.
+        llm_scenarios = [
+            {"name": f.get("typology_name", ""), "techniques": f.get("techniques", [])}
+            for f in gen_findings if f.get("generation_source") == "llm"
+        ]
+        convergence = self.simulation._detect_convergence(llm_scenarios)
+        state.convergence = convergence
+        if convergence:
+            top = convergence[0]
+            terms = ", ".join(top["shared_terms"][:6]) or "(no shared vocabulary)"
+            state.append_log(
+                "simulation",
+                f"CONVERGENCE SIGNAL: {top['size']} of {len(llm_scenarios)} model-authored "
+                f"scenarios independently describe the same blind spot (shared terms: "
+                f"{terms}). Repeated independent arrival at one weakness is evidence about "
+                f"the rulebook's coverage, not a duplicate finding - review these together.",
+                convergence=convergence)
+            _progress("generate_meta",
+                      f"Convergence: {top['size']} scenarios point at one blind spot")
 
         all_candidates = rec_findings + gen_findings
 
@@ -112,10 +147,14 @@ class Orchestrator:
                 discarded.append(verified)
 
         state.discarded = discarded
+        fully_verified_count = sum(1 for c in confirmed if c.get("fully_verified", True))
+        partial_count = len(confirmed) - fully_verified_count
+        partial_note = f" ({partial_count} flagged as partial-coverage - references fields not in the rulebook)" if partial_count else ""
         state.append_log("critic",
-                         f"Critic confirmed {len(confirmed)} of {len(all_candidates)} candidates; "
-                         f"{len(discarded)} discarded.",
-                         confirmed=len(confirmed), discarded=len(discarded))
+                         f"Critic confirmed {len(confirmed)} of {len(all_candidates)} candidates"
+                         f"{partial_note}; {len(discarded)} discarded.",
+                         confirmed=len(confirmed), discarded=len(discarded),
+                         partial_coverage=partial_count)
         _progress("critic_meta",
                   f"Critic confirmed {len(confirmed)} of {len(all_candidates)} · {len(discarded)} discarded")
 
@@ -195,6 +234,9 @@ class Orchestrator:
                 mode=cand.get("mode", "reconciliation"),
                 generation_source=cand.get("generation_source", ""),
                 capability_primitives=cand.get("capability_primitives", []),
+                fully_verified=cand.get("fully_verified", True),
+                unmodeled_fields=cand.get("unmodeled_fields", []),
+                unverified_atlas=cand.get("unverified_atlas", []),
             )
             state.results.append(funding)
 

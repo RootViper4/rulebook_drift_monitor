@@ -194,6 +194,7 @@
     "rulebook_version": "DS-01..DS-40 · 40 rules"
   },
   {
+<<<<<<< Updated upstream
     "run_id": "run-f255851d",
     "ts": "2026-09-08T05:32:06",
     "kind": "run",
@@ -218,6 +219,10 @@
   {
     "run_id": "run-35b973b9",
     "ts": "2026-09-08T06:38:29",
+=======
+    "run_id": "run-4f81e246",
+    "ts": "2026-09-07T22:52:37",
+>>>>>>> Stashed changes
     "kind": "run",
     "drift_index": 57.0,
     "coverage": 0.452,
@@ -227,6 +232,7 @@
     "rulebook_version": "DS-01..DS-40 · 40 rules"
   },
   {
+<<<<<<< Updated upstream
     "run_id": "checkpoint-f6bd4ab7",
     "ts": "2026-09-08T06:45:06",
     "kind": "checkpoint",
@@ -246,6 +252,38 @@
     "ai_pressure": 0.683,
     "findings": null,
     "discarded": null,
+=======
+    "run_id": "run-945717fc",
+    "ts": "2026-09-07T23:59:28",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 15,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-40 · 40 rules"
+  },
+  {
+    "run_id": "run-cf4bbf4b",
+    "ts": "2026-09-08T00:05:14",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 15,
+    "discarded": 1,
+    "rulebook_version": "DS-01..DS-40 · 40 rules"
+  },
+  {
+    "run_id": "run-4bc1235f",
+    "ts": "2026-09-08T00:22:48",
+    "kind": "run",
+    "drift_index": 57.0,
+    "coverage": 0.452,
+    "ai_pressure": 0.683,
+    "findings": 15,
+    "discarded": 1,
+>>>>>>> Stashed changes
     "rulebook_version": "DS-01..DS-40 · 40 rules"
   }
 ]

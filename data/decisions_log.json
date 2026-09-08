@@ -1,1 +1,254 @@
-[]
+[
+  {
+    "fid": "CP-02",
+    "mode": "reconciliation",
+    "headline": "real-time voice cloning used to impersonate staff / vish a step-up or call-back authorisation",
+    "typology_name": "real-time voice cloning used to impersonate staff / vish a step-up or call-back authorisation",
+    "decision": "accept",
+    "decision_label": "accepted ✓",
+    "rationale": "ok",
+    "analyst": "A. Analyst",
+    "timestamp": "2026-09-08T00:11:02",
+    "fired_rules": [],
+    "evaded_rules": [
+      "DS-39"
+    ],
+    "original_rule_text": "Documented attack 'real-time voice cloning used to impersonate staff / vish a step-up or call-back authorisation' is not adequately detected because the following indicator(s) do not fire: AI-orchestrated synthetic-identity impersonation at onboarding. Draft indicator: assess transactions/onboarding exhibiting this pattern, currently outside explicit coverage of the existing rulebook.",
+    "final_rule_text": "Documented attack 'real-time voice cloning used to impersonate staff / vish a step-up or call-back authorisation' is not adequately detected because the following indicator(s) do not fire: AI-orchestrated synthetic-identity impersonation at onboarding. Draft indicator: assess transactions/onboarding exhibiting this pattern, currently outside explicit coverage of the existing rulebook.",
+    "rule_text_amended": false
+  },
+  {
+    "fid": "CP-01",
+    "mode": "reconciliation",
+    "headline": "real-time deepfake/face-swap liveness bypass at video-KYC onboarding, followed by rapid-drain of a profile-inconsistent deposit",
+    "typology_name": "real-time deepfake/face-swap liveness bypass at video-KYC onboarding",
+    "decision": "reject",
+    "decision_label": "rejected ✗",
+    "rationale": "no",
+    "analyst": "A. Analyst",
+    "timestamp": "2026-09-08T00:11:21",
+    "fired_rules": [
+      "DS-01",
+      "DS-28"
+    ],
+    "evaded_rules": [
+      "DS-09",
+      "DS-23",
+      "DS-24",
+      "DS-27",
+      "DS-35",
+      "DS-39"
+    ],
+    "original_rule_text": "Documented attack 'real-time deepfake/face-swap liveness bypass at video-KYC onboarding' is not adequately detected because the following indicator(s) do not fire: Forged or edited identification documents; Rapid pass-through / layering through multiple hops; Use of anonymity-enhancing technologies (VPN/Tor); Source of funds inconsistent with declared wealth; Suspicious-beneficiary VA wallet with little history; AI-orchestrated synthetic-identity impersonation at onboarding. Draft indicator: assess transactions/onboarding exhibiting this pattern, currently outside explicit coverage of the existing rulebook.",
+    "final_rule_text": "Documented attack 'real-time deepfake/face-swap liveness bypass at video-KYC onboarding' is not adequately detected because the following indicator(s) do not fire: Forged or edited identification documents; Rapid pass-through / layering through multiple hops; Use of anonymity-enhancing technologies (VPN/Tor); Source of funds inconsistent with declared wealth; Suspicious-beneficiary VA wallet with little history; AI-orchestrated synthetic-identity impersonation at onboarding. Draft indicator: assess transactions/onboarding exhibiting this pattern, currently outside explicit coverage of the existing rulebook.",
+    "rule_text_amended": false
+  },
+  {
+    "fid": "CP-03",
+    "mode": "reconciliation",
+    "headline": "AI-generated synthetic identity documents used to open an account",
+    "typology_name": "AI-generated synthetic identity documents used to open an account",
+    "decision": "accept",
+    "decision_label": "accepted ✓",
+    "rationale": "ok",
+    "analyst": "A. Analyst",
+    "timestamp": "2026-09-08T00:14:54",
+    "fired_rules": [],
+    "evaded_rules": [
+      "DS-06",
+      "DS-12",
+      "DS-16",
+      "DS-21",
+      "DS-22",
+      "DS-39"
+    ],
+    "original_rule_text": "Documented attack 'AI-generated synthetic identity documents used to open an account' is not adequately detected because the following indicator(s) do not fire: Credentials or identifiers shared with another account; Sender unfamiliar with VA technology or custodial wallets; Transactions with addresses connected to criminal schemes; Sanctions / targeted financial sanctions screening; Ongoing monitoring of high-risk PEP relationships; AI-orchestrated synthetic-identity impersonation at onboarding. Draft indicator: assess transactions/onboarding exhibiting this pattern, currently outside explicit coverage of the existing rulebook.",
+    "final_rule_text": "Documented attack 'AI-generated synthetic identity documents used to open an account' is not adequately detected because the following indicator(s) do not fire: Credentials or identifiers shared with another account; Sender unfamiliar with VA technology or custodial wallets; Transactions with addresses connected to criminal schemes; Sanctions / targeted financial sanctions screening; Ongoing monitoring of high-risk PEP relationships; AI-orchestrated synthetic-identity impersonation at onboarding. Draft indicator: assess transactions/onboarding exhibiting this pattern, currently outside explicit coverage of the existing rulebook.",
+    "rule_text_amended": false
+  },
+  {
+    "fid": "CP-08",
+    "mode": "reconciliation",
+    "headline": "synthetic-identity reuse to reopen/unfreeze a previously flagged account, using clean-looking documents and a fresh (non-shared) device/IP specifically to evade cross-account linkage",
+    "typology_name": "synthetic-identity reuse to reopen/unfreeze a previously flagged account",
+    "decision": "amend",
+    "decision_label": "amended ✎",
+    "rationale": "no",
+    "analyst": "A. Analyst",
+    "timestamp": "2026-09-08T00:15:08",
+    "fired_rules": [],
+    "evaded_rules": [
+      "DS-06",
+      "DS-21"
+    ],
+    "original_rule_text": "Documented attack 'synthetic-identity reuse to reopen/unfreeze a previously flagged account' is not adequately detected because the following indicator(s) do not fire: Credentials or identifiers shared with another account; Sanctions / targeted financial sanctions screening. Draft indicator: assess transactions/onboarding exhibiting this pattern, currently outside explicit coverage of the existing rulebook.",
+    "final_rule_text": "Documented attack 'synthetic-identity reuse to reopen/unfreeze a previously flagged account' is not adequately detected because the following indicator(s) do not fire: Credentials or identifiers shared with another account; Sanctions / targeted financial sanctions screening. Draft indicator: assess transactions/onboarding exhibiting this pattern, currently outside explicit coverage of the existing rulebook.",
+    "rule_text_amended": false
+  },
+  {
+    "fid": "GEN-02",
+    "mode": "generation",
+    "headline": "Deepfake board-resolution corporate onboarding",
+    "typology_name": "Deepfake board-resolution corporate onboarding",
+    "decision": "accept",
+    "decision_label": "accepted ✓",
+    "rationale": "ok",
+    "analyst": "A. Analyst",
+    "timestamp": "2026-09-08T00:16:06",
+    "fired_rules": [],
+    "evaded_rules": [
+      "DS-01",
+      "DS-06",
+      "DS-09",
+      "DS-27",
+      "DS-28",
+      "DS-35",
+      "DS-39"
+    ],
+    "original_rule_text": "Novel pattern 'Deepfake board-resolution corporate onboarding' evades existing indicators covering Rapid deposit followed by rapid trade or withdrawal; Credentials or identifiers shared with another account; Forged or edited identification documents; Source of funds inconsistent with declared wealth; Rapid accumulation then off-boarding of value; Suspicious-beneficiary VA wallet with little history; AI-orchestrated synthetic-identity impersonation at onboarding; candidate indicator: flag activity exhibiting forged documents, identity fraud, corporate onboarding which current rules do not explicitly detect. Submit for expert plausibility review.",
+    "final_rule_text": "Novel pattern 'Deepfake board-resolution corporate onboarding' evades existing indicators covering Rapid deposit followed by rapid trade or withdrawal; Credentials or identifiers shared with another account; Forged or edited identification documents; Source of funds inconsistent with declared wealth; Rapid accumulation then off-boarding of value; Suspicious-beneficiary VA wallet with little history; AI-orchestrated synthetic-identity impersonation at onboarding; candidate indicator: flag activity exhibiting forged documents, identity fraud, corporate onboarding which current rules do not explicitly detect. Submit for expert plausibility review.",
+    "rule_text_amended": false
+  },
+  {
+    "fid": "CP-04",
+    "mode": "reconciliation",
+    "headline": "photo-enhanced stolen-identity reanimation supported by fake employment records",
+    "typology_name": "photo-enhanced stolen-identity reanimation supported by fake employment records",
+    "decision": "reject",
+    "decision_label": "rejected ✗",
+    "rationale": "ok",
+    "analyst": "A. Analyst",
+    "timestamp": "2026-09-08T00:45:34",
+    "fired_rules": [],
+    "evaded_rules": [
+      "DS-06",
+      "DS-39"
+    ],
+    "original_rule_text": "Documented attack 'photo-enhanced stolen-identity reanimation supported by fake employment records' is not adequately detected because the following indicator(s) do not fire: Credentials or identifiers shared with another account; AI-orchestrated synthetic-identity impersonation at onboarding. Draft indicator: assess transactions/onboarding exhibiting this pattern, currently outside explicit coverage of the existing rulebook.",
+    "final_rule_text": "Documented attack 'photo-enhanced stolen-identity reanimation supported by fake employment records' is not adequately detected because the following indicator(s) do not fire: Credentials or identifiers shared with another account; AI-orchestrated synthetic-identity impersonation at onboarding. Draft indicator: assess transactions/onboarding exhibiting this pattern, currently outside explicit coverage of the existing rulebook.",
+    "rule_text_amended": false
+  },
+  {
+    "fid": "CP-07",
+    "mode": "reconciliation",
+    "headline": "AI-generated replica exchange app harvests credentials, attacker takes over the (existing, not new) account and drains it to an unhosted wallet",
+    "typology_name": "AI-generated replica exchange app harvests credentials",
+    "decision": "reject",
+    "decision_label": "rejected ✗",
+    "rationale": "no",
+    "analyst": "A. Analyst",
+    "timestamp": "2026-09-08T00:46:08",
+    "fired_rules": [
+      "DS-04",
+      "DS-26"
+    ],
+    "evaded_rules": [
+      "DS-12"
+    ],
+    "original_rule_text": "Documented attack 'AI-generated replica exchange app harvests credentials' is not adequately detected because the following indicator(s) do not fire: Sender unfamiliar with VA technology or custodial wallets. Draft indicator: assess transactions/onboarding exhibiting this pattern, currently outside explicit coverage of the existing rulebook.",
+    "final_rule_text": "Documented attack 'AI-generated replica exchange app harvests credentials' is not adequately detected because the following indicator(s) do not fire: Sender unfamiliar with VA technology or custodial wallets. Draft indicator: assess transactions/onboarding exhibiting this pattern, currently outside explicit coverage of the existing rulebook.",
+    "rule_text_amended": false
+  },
+  {
+    "fid": "GEN-01",
+    "mode": "generation",
+    "headline": "AI-driven crypto-AML evasion of high-value transactions",
+    "typology_name": "AI-driven crypto-AML evasion of high-value transactions",
+    "decision": "amend",
+    "decision_label": "amended ✎",
+    "rationale": "ok",
+    "analyst": "A. Analyst",
+    "timestamp": "2026-09-08T00:47:31",
+    "fired_rules": [
+      "DS-39"
+    ],
+    "evaded_rules": [
+      "DS-02",
+      "DS-30"
+    ],
+    "original_rule_text": "Novel pattern 'AI-driven crypto-AML evasion of high-value transactions' evades existing indicators covering Structuring into sub-threshold transfers; High-velocity transfer clustering in a short window; candidate indicator: flag activity exhibiting CP-11, CP-12, CP-10 which current rules do not explicitly detect. Submit for expert plausibility review.",
+    "final_rule_text": "Novel pattern 'AI-driven crypto-AML evasion of high-value transactions' evades existing indicators covering Structuring into sub-threshold transfers; High-velocity transfer clustering in a short window; candidate indicator: flag activity exhibiting CP-11, CP-12, CP-10 which current rules do not explicitly detect. Submit for expert plausibility review.",
+    "rule_text_amended": false
+  },
+  {
+    "fid": "CP-06",
+    "mode": "reconciliation",
+    "headline": "AI-generated fake SMS/email impersonating a bank or exchange to redirect a payment",
+    "typology_name": "AI-generated fake SMS/email impersonating a bank or exchange to redirect a payment",
+    "decision": "accept",
+    "decision_label": "accepted ✓",
+    "rationale": "ok",
+    "analyst": "A. Analyst",
+    "timestamp": "2026-09-08T00:51:30",
+    "fired_rules": [],
+    "evaded_rules": [
+      "DS-39"
+    ],
+    "original_rule_text": "Documented attack 'AI-generated fake SMS/email impersonating a bank or exchange to redirect a payment' is not adequately detected because the following indicator(s) do not fire: AI-orchestrated synthetic-identity impersonation at onboarding. Draft indicator: assess transactions/onboarding exhibiting this pattern, currently outside explicit coverage of the existing rulebook.",
+    "final_rule_text": "Documented attack 'AI-generated fake SMS/email impersonating a bank or exchange to redirect a payment' is not adequately detected because the following indicator(s) do not fire: AI-orchestrated synthetic-identity impersonation at onboarding. Draft indicator: assess transactions/onboarding exhibiting this pattern, currently outside explicit coverage of the existing rulebook.",
+    "rule_text_amended": false
+  },
+  {
+    "fid": "GEN-03",
+    "mode": "generation",
+    "headline": "AI-fabricated Travel Rule originator/beneficiary data",
+    "typology_name": "AI-fabricated Travel Rule originator/beneficiary data",
+    "decision": "amend",
+    "decision_label": "amended ✎",
+    "rationale": "ok",
+    "analyst": "A. Analyst",
+    "timestamp": "2026-09-08T00:52:32",
+    "fired_rules": [],
+    "evaded_rules": [
+      "DS-03",
+      "DS-23",
+      "DS-24",
+      "DS-34",
+      "DS-35"
+    ],
+    "original_rule_text": "Novel pattern 'AI-fabricated Travel Rule originator/beneficiary data' evades existing indicators covering Travel Rule — transmission of originator and beneficiary information; Rapid pass-through / layering through multiple hops; Use of anonymity-enhancing technologies (VPN/Tor); Cross-border transfer with missing originator info; Suspicious-beneficiary VA wallet with little history; candidate indicator: flag activity exhibiting travel rule, originator, beneficiary which current rules do not explicitly detect. Submit for expert plausibility review.",
+    "final_rule_text": "Novel pattern 'AI-fabricated Travel Rule originator/beneficiary data' evades existing indicators covering Travel Rule — transmission of originator and beneficiary information; Rapid pass-through / layering through multiple hops; Use of anonymity-enhancing technologies (VPN/Tor); Cross-border transfer with missing originator info; Suspicious-beneficiary VA wallet with little history; candidate indicator: flag activity exhibiting travel rule, originator, beneficiary which current rules do not explicitly detect. Submit for expert plausibility review.",
+    "rule_text_amended": false
+  },
+  {
+    "fid": "CP-11",
+    "mode": "reconciliation",
+    "headline": "AI-orchestrated structuring - transfer amounts computed to sit just under the reporting threshold",
+    "typology_name": "AI-orchestrated structuring - transfer amounts computed to sit just under the reporting threshold",
+    "decision": "accept",
+    "decision_label": "accepted ✓",
+    "rationale": "ok",
+    "analyst": "A. Analyst",
+    "timestamp": "2026-09-08T01:00:44",
+    "fired_rules": [
+      "DS-02",
+      "DS-38"
+    ],
+    "evaded_rules": [
+      "DS-24"
+    ],
+    "original_rule_text": "Documented attack 'AI-orchestrated structuring - transfer amounts computed to sit just under the reporting threshold' is not adequately detected because the following indicator(s) do not fire: Use of anonymity-enhancing technologies (VPN/Tor). Draft indicator: assess transactions/onboarding exhibiting this pattern, currently outside explicit coverage of the existing rulebook.",
+    "final_rule_text": "Documented attack 'AI-orchestrated structuring - transfer amounts computed to sit just under the reporting threshold' is not adequately detected because the following indicator(s) do not fire: Use of anonymity-enhancing technologies (VPN/Tor). Draft indicator: assess transactions/onboarding exhibiting this pattern, currently outside explicit coverage of the existing rulebook.",
+    "rule_text_amended": false
+  },
+  {
+    "fid": "GEN-05",
+    "mode": "generation",
+    "headline": "AI-tailored PEP-adjacent corporate veil",
+    "typology_name": "AI-tailored PEP-adjacent corporate veil",
+    "decision": "reject",
+    "decision_label": "rejected ✗",
+    "rationale": "ok",
+    "analyst": "A. Analyst",
+    "timestamp": "2026-09-08T01:01:44",
+    "fired_rules": [],
+    "evaded_rules": [
+      "DS-21",
+      "DS-22",
+      "DS-36"
+    ],
+    "original_rule_text": "Novel pattern 'AI-tailored PEP-adjacent corporate veil' evades existing indicators covering Sanctions / targeted financial sanctions screening; Ongoing monitoring of high-risk PEP relationships; Effective beneficial ownership not established; candidate indicator: flag activity exhibiting pep connections, corporate veil, ai-tailored structure which current rules do not explicitly detect. Submit for expert plausibility review.",
+    "final_rule_text": "Novel pattern 'AI-tailored PEP-adjacent corporate veil' evades existing indicators covering Sanctions / targeted financial sanctions screening; Ongoing monitoring of high-risk PEP relationships; Effective beneficial ownership not established; candidate indicator: flag activity exhibiting pep connections, corporate veil, ai-tailored structure which current rules do not explicitly detect. Submit for expert plausibility review.",
+    "rule_text_amended": false
+  }
+]

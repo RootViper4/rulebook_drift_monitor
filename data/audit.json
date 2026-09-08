@@ -432,8 +432,13 @@
     }
   },
   {
+<<<<<<< Updated upstream
     "id": "ae-cf768216",
     "ts": "2026-09-08T05:29:05",
+=======
+    "id": "ae-59f00a5e",
+    "ts": "2026-09-07T21:55:51",
+>>>>>>> Stashed changes
     "event": "run_started",
     "actor": "A. Analyst",
     "detail": "Run triggered (manual)",
@@ -442,6 +447,7 @@
     }
   },
   {
+<<<<<<< Updated upstream
     "id": "ae-7d8145fd",
     "ts": "2026-09-08T05:32:06",
     "event": "run_finished",
@@ -455,14 +461,17 @@
   {
     "id": "ae-44cf35b7",
     "ts": "2026-09-08T05:37:15",
-    "event": "console_reset",
+=======
+    "id": "ae-8f0d8218",
+    "ts": "2026-09-07T22:04:19",
+    "event": "run_aborted",
     "actor": "A. Analyst",
-    "detail": "Console state cleared ; baseline restored",
+    "detail": "Run aborted by analyst",
     "meta": {}
   },
   {
-    "id": "ae-64ff7702",
-    "ts": "2026-09-08T05:48:09",
+    "id": "ae-02af7f08",
+    "ts": "2026-09-07T22:20:02",
     "event": "run_started",
     "actor": "A. Analyst",
     "detail": "Run triggered (manual)",
@@ -471,6 +480,31 @@
     }
   },
   {
+    "id": "ae-9fac9b7a",
+    "ts": "2026-09-07T22:31:27",
+>>>>>>> Stashed changes
+    "event": "console_reset",
+    "actor": "A. Analyst",
+    "detail": "Console state cleared ; baseline restored",
+    "meta": {}
+  },
+  {
+<<<<<<< Updated upstream
+    "id": "ae-64ff7702",
+    "ts": "2026-09-08T05:48:09",
+=======
+    "id": "ae-deab54e3",
+    "ts": "2026-09-07T22:31:27",
+>>>>>>> Stashed changes
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+<<<<<<< Updated upstream
     "id": "ae-ed29ae60",
     "ts": "2026-09-08T05:48:09",
     "event": "run_error",
@@ -481,6 +515,26 @@
   {
     "id": "ae-bca901bb",
     "ts": "2026-09-08T06:21:08",
+=======
+    "id": "ae-7dfe4dd2",
+    "ts": "2026-09-07T22:31:29",
+    "event": "run_aborted",
+    "actor": "A. Analyst",
+    "detail": "Run aborted by analyst",
+    "meta": {}
+  },
+  {
+    "id": "ae-c2c0b592",
+    "ts": "2026-09-07T22:31:38",
+    "event": "console_reset",
+    "actor": "A. Analyst",
+    "detail": "Console state cleared ; baseline restored",
+    "meta": {}
+  },
+  {
+    "id": "ae-ce0ddbc7",
+    "ts": "2026-09-07T22:31:38",
+>>>>>>> Stashed changes
     "event": "run_started",
     "actor": "A. Analyst",
     "detail": "Run triggered (manual)",
@@ -489,6 +543,7 @@
     }
   },
   {
+<<<<<<< Updated upstream
     "id": "ae-115d87d8",
     "ts": "2026-09-08T06:22:13",
     "event": "run_finished",
@@ -502,6 +557,34 @@
   {
     "id": "ae-98122917",
     "ts": "2026-09-08T06:37:13",
+=======
+    "id": "ae-e5a606ed",
+    "ts": "2026-09-07T22:31:40",
+    "event": "run_aborted",
+    "actor": "A. Analyst",
+    "detail": "Run aborted by analyst",
+    "meta": {}
+  },
+  {
+    "id": "ae-56842ad9",
+    "ts": "2026-09-07T22:32:30",
+    "event": "console_reset",
+    "actor": "A. Analyst",
+    "detail": "Console state cleared ; baseline restored",
+    "meta": {}
+  },
+  {
+    "id": "ae-93b9138d",
+    "ts": "2026-09-07T22:34:08",
+    "event": "run_aborted",
+    "actor": "A. Analyst",
+    "detail": "Run aborted by analyst",
+    "meta": {}
+  },
+  {
+    "id": "ae-0ee858e8",
+    "ts": "2026-09-07T22:47:12",
+>>>>>>> Stashed changes
     "event": "run_started",
     "actor": "A. Analyst",
     "detail": "Run triggered (manual)",
@@ -510,8 +593,41 @@
     }
   },
   {
+<<<<<<< Updated upstream
     "id": "ae-dc0d1af6",
     "ts": "2026-09-08T06:38:29",
+=======
+    "id": "ae-54254771",
+    "ts": "2026-09-07T22:48:15",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-765065ca",
+    "ts": "2026-09-07T22:49:00",
+    "event": "run_aborted",
+    "actor": "A. Analyst",
+    "detail": "Run aborted by analyst",
+    "meta": {}
+  },
+  {
+    "id": "ae-9ab3fce0",
+    "ts": "2026-09-07T22:49:06",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-29bdfce3",
+    "ts": "2026-09-07T22:52:37",
+>>>>>>> Stashed changes
     "event": "run_finished",
     "actor": "A. Analyst",
     "detail": "Completed · 15 findings to review",
@@ -521,6 +637,7 @@
     }
   },
   {
+<<<<<<< Updated upstream
     "id": "ae-00baa444",
     "ts": "2026-09-08T06:45:06",
     "event": "checkpoint_recorded",
@@ -538,6 +655,295 @@
     "detail": "Checkpoint checkpoint-9fe598f2 recorded · drift 57.0",
     "meta": {
       "run_id": "checkpoint-9fe598f2"
+=======
+    "id": "ae-6afe79c2",
+    "ts": "2026-09-07T23:55:44",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-3ba9657e",
+    "ts": "2026-09-07T23:59:28",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 15 findings to review",
+    "meta": {
+      "findings": 15,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-0ba25664",
+    "ts": "2026-09-08T00:01:32",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-7fb8928d",
+    "ts": "2026-09-08T00:05:14",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 15 findings to review",
+    "meta": {
+      "findings": 15,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-ab966b14",
+    "ts": "2026-09-08T00:11:02",
+    "event": "finding_decided",
+    "actor": "A. Analyst",
+    "detail": "accepted ✓ CP-02",
+    "meta": {
+      "fid": "CP-02",
+      "decision": "accept",
+      "mode": "reconciliation",
+      "reason": "ok"
+    }
+  },
+  {
+    "id": "ae-60d6c23c",
+    "ts": "2026-09-08T00:11:21",
+    "event": "finding_decided",
+    "actor": "A. Analyst",
+    "detail": "rejected ✗ CP-01",
+    "meta": {
+      "fid": "CP-01",
+      "decision": "reject",
+      "mode": "reconciliation",
+      "reason": "no"
+    }
+  },
+  {
+    "id": "ae-33d31331",
+    "ts": "2026-09-08T00:14:54",
+    "event": "finding_decided",
+    "actor": "A. Analyst",
+    "detail": "accepted ✓ CP-03",
+    "meta": {
+      "fid": "CP-03",
+      "decision": "accept",
+      "mode": "reconciliation",
+      "reason": "ok"
+    }
+  },
+  {
+    "id": "ae-9794a2fd",
+    "ts": "2026-09-08T00:15:08",
+    "event": "finding_decided",
+    "actor": "A. Analyst",
+    "detail": "amended ✎ CP-08",
+    "meta": {
+      "fid": "CP-08",
+      "decision": "amend",
+      "mode": "reconciliation",
+      "reason": "no"
+    }
+  },
+  {
+    "id": "ae-7e0f41e9",
+    "ts": "2026-09-08T00:16:06",
+    "event": "finding_decided",
+    "actor": "A. Analyst",
+    "detail": "accepted ✓ GEN-02",
+    "meta": {
+      "fid": "GEN-02",
+      "decision": "accept",
+      "mode": "generation",
+      "reason": "ok"
+    }
+  },
+  {
+    "id": "ae-4cb6a3cb",
+    "ts": "2026-09-08T00:16:46",
+    "event": "red_team_probe",
+    "actor": "A. Analyst",
+    "detail": "Probe → REJECTED · claim not reproducible (red-team) · victim TYP-001",
+    "meta": {
+      "victim": "TYP-001",
+      "verdict": "REJECTED · claim not reproducible (red-team)"
+    }
+  },
+  {
+    "id": "ae-57b192e4",
+    "ts": "2026-09-08T00:18:07",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-c558ef2f",
+    "ts": "2026-09-08T00:18:07",
+    "event": "run_skip",
+    "actor": "A. Analyst",
+    "detail": "5 already-reviewed/covered typologies excluded",
+    "meta": {
+      "excluded": 5
+    }
+  },
+  {
+    "id": "ae-b2247fb7",
+    "ts": "2026-09-08T00:18:52",
+    "event": "run_aborted",
+    "actor": "A. Analyst",
+    "detail": "Run aborted by analyst",
+    "meta": {}
+  },
+  {
+    "id": "ae-9bbf22c3",
+    "ts": "2026-09-08T00:19:32",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-f522e221",
+    "ts": "2026-09-08T00:19:32",
+    "event": "run_skip",
+    "actor": "A. Analyst",
+    "detail": "5 already-reviewed/covered typologies excluded",
+    "meta": {
+      "excluded": 5
+    }
+  },
+  {
+    "id": "ae-4a07dd53",
+    "ts": "2026-09-08T00:22:48",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 15 findings to review",
+    "meta": {
+      "findings": 15,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-3fdcc6f0",
+    "ts": "2026-09-08T00:45:34",
+    "event": "finding_decided",
+    "actor": "A. Analyst",
+    "detail": "rejected ✗ CP-04",
+    "meta": {
+      "fid": "CP-04",
+      "decision": "reject",
+      "mode": "reconciliation",
+      "reason": "ok"
+    }
+  },
+  {
+    "id": "ae-2cc8c658",
+    "ts": "2026-09-08T00:46:08",
+    "event": "finding_decided",
+    "actor": "A. Analyst",
+    "detail": "rejected ✗ CP-07",
+    "meta": {
+      "fid": "CP-07",
+      "decision": "reject",
+      "mode": "reconciliation",
+      "reason": "no"
+    }
+  },
+  {
+    "id": "ae-0275f413",
+    "ts": "2026-09-08T00:47:31",
+    "event": "finding_decided",
+    "actor": "A. Analyst",
+    "detail": "amended ✎ GEN-01",
+    "meta": {
+      "fid": "GEN-01",
+      "decision": "amend",
+      "mode": "generation",
+      "reason": "ok"
+    }
+  },
+  {
+    "id": "ae-a51cfc93",
+    "ts": "2026-09-08T00:51:30",
+    "event": "finding_decided",
+    "actor": "A. Analyst",
+    "detail": "accepted ✓ CP-06",
+    "meta": {
+      "fid": "CP-06",
+      "decision": "accept",
+      "mode": "reconciliation",
+      "reason": "ok"
+    }
+  },
+  {
+    "id": "ae-1c083eac",
+    "ts": "2026-09-08T00:52:32",
+    "event": "finding_decided",
+    "actor": "A. Analyst",
+    "detail": "amended ✎ GEN-03",
+    "meta": {
+      "fid": "GEN-03",
+      "decision": "amend",
+      "mode": "generation",
+      "reason": "ok"
+    }
+  },
+  {
+    "id": "ae-1d547d6a",
+    "ts": "2026-09-08T00:53:22",
+    "event": "red_team_probe",
+    "actor": "A. Analyst",
+    "detail": "Probe → REJECTED · claim not reproducible (red-team) · victim TYP-001",
+    "meta": {
+      "victim": "TYP-001",
+      "verdict": "REJECTED · claim not reproducible (red-team)"
+    }
+  },
+  {
+    "id": "ae-7347d7b7",
+    "ts": "2026-09-08T01:00:44",
+    "event": "finding_decided",
+    "actor": "A. Analyst",
+    "detail": "accepted ✓ CP-11",
+    "meta": {
+      "fid": "CP-11",
+      "decision": "accept",
+      "mode": "reconciliation",
+      "reason": "ok"
+    }
+  },
+  {
+    "id": "ae-63e44ef2",
+    "ts": "2026-09-08T01:01:44",
+    "event": "finding_decided",
+    "actor": "A. Analyst",
+    "detail": "rejected ✗ GEN-05",
+    "meta": {
+      "fid": "GEN-05",
+      "decision": "reject",
+      "mode": "generation",
+      "reason": "ok"
+    }
+  },
+  {
+    "id": "ae-4a550a33",
+    "ts": "2026-09-08T01:02:46",
+    "event": "red_team_probe",
+    "actor": "A. Analyst",
+    "detail": "Probe → REJECTED · claim not reproducible (red-team) · victim TYP-001",
+    "meta": {
+      "victim": "TYP-001",
+      "verdict": "REJECTED · claim not reproducible (red-team)"
+>>>>>>> Stashed changes
     }
   }
 ]

@@ -8,6 +8,43 @@ A horizon-scanning **agentic system** for the Financial Intelligence Centre (FIC
 
 ---
 
+## Quick start
+
+Requires **Python 3.9+**. From `rulebook_drift_monitor/`:
+
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt --break-system-packages
+pip install python-dotenv --break-system-packages   # optional, see note below
+
+# 2. (Optional) enable a real LLM for the generation arm
+cp .env.example .env
+#   then edit .env - see "Hosted LLM for serverless deployments" below for
+#   the exact variables and a live model name (do NOT use groq/compound-mini
+#   or any "groq/"-prefixed name - Groq's own model IDs have no prefix, and a
+#   prefixed name passes the credential check but 404s on every actual call)
+
+# 3. Run it
+python3 -m demo.web
+# open http://127.0.0.1:5000, sign in with one of the seeded accounts below
+# (e.g. n.hlophe / drift-sentinel-2026), then press "Run a check" on the
+# Run Console.
+```
+
+Skip step 2 entirely for a fully offline demo - the system falls back to
+deterministic scenarios with no LLM configured, so the console never breaks.
+
+> **Note on `python-dotenv`:** `agents/llm_client.py` loads `.env` only if
+> `python-dotenv` is importable, and silently does nothing if it isn't -
+> it is not currently pinned in `requirements.txt`. Install it explicitly
+> (as above) if you're using a `.env` file for hosted LLM credentials, or
+> the file will be read as if it doesn't exist, with no error to say so.
+
+For the CLI report instead of the web UI, or for account setup, see **Run**
+and **Access control and attribution** below.
+
+---
+
 ## What it does (one run)
 
 1. A run is triggered (scheduled / event / manual).
@@ -89,13 +126,12 @@ rulebook_drift_monitor/
 Requires **Python 3.9+**. A local LLM is optional but recommended for drafted red flags.
 
 ```bash
-# 1. Local LLM (Ollama) — optional, free, runs offline
+# 1. Python dependencies (see Quick start above for the exact command)
+
+# 2. Local LLM (Ollama) — optional, free, runs offline
 brew install ollama
 ollama serve &
 ollama pull llama3.2:1b        # or a bigger model if you have RAM/disk
-
-# 2. Python dependencies
-pip install langgraph langchain langchain-openai langchain-community flask
 ```
 
 The system degrades gracefully: if no model is available it uses deterministic drafting templates, so the demo never breaks.
@@ -109,7 +145,7 @@ OpenAI-compatible endpoint; a free Groq key works):
 
 ```
 LLM_BASE_URL=https://api.groq.com/openai/v1
-LLM_MODEL=groq/compound-mini
+LLM_MODEL=compound-beta
 LLM_API_KEY=<your key>
 ```
 
@@ -119,6 +155,14 @@ smallest available one so local just works. Set `LLM_BACKEND=ollama` to force th
 local backend even when hosted credentials are present in `.env` (fully offline demo).
 The hosted endpoint is only used when `LLM_BASE_URL` **and** `LLM_API_KEY` are both set
 and `LLM_BACKEND` is not `ollama`.
+
+**Model name, precisely:** Groq (and most OpenAI-compatible providers) expect a bare
+model id — `compound-beta`, `llama-3.3-70b-versatile` — never a `"groq/"`-prefixed
+name. A prefixed name still passes the `/v1/models` credential check (so the run log
+will say `LLM backend available: True`), but every actual generation call 404s and
+silently falls back to hand-authored scenarios. Confirmed 2026-09-08. If a run's
+generation-arm findings are all `deterministic_fallback` despite `available: True`,
+check this first — the run log now also states the specific reason a slot fell back.
 
 **Speed note:** on CPU-only machines (e.g. Intel Macs) the local `llama3.2:1b`
 generates at ~1 token/sec, so a full run can take several minutes and often
@@ -237,8 +281,15 @@ Vercel: [`docs/accounts.md`](docs/accounts.md).
 > the authority's own identity provider (SAML/OIDC) and delete `demo/auth.py`; nothing else in the
 > app depends on more than `current_user()` returning a record.
 
-**Deploying:** set `SECRET_KEY` in the environment. Without it each process invents its own key at
-start-up, which is fine locally but signs users out whenever a serverless instance recycles.
+**Deploying:** set `SECRET_KEY` in the environment (any random 64-hex string) and redeploy after
+adding it — a new environment variable never applies to a deployment already running. Without it,
+the app now falls back to a key persisted at `data/.session_key` (survives a local restart) or, on
+Vercel with no writable disk, one derived from the deployment id (shared correctly across that
+deployment's instances, but not a secret — do not rely on this in anything beyond a demo). Confirmed
+2026-09-08: the previous behaviour — a fresh random key per process — was the actual cause of a
+sign-in loop on Vercel, where multiple instances signing with different keys meant a session minted
+by one was unreadable by the next. `/api/session-check` reports which key source is in effect and
+names the specific cause if a session isn't sticking.
 
 ---
 

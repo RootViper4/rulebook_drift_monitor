@@ -600,5 +600,19 @@
       "findings": 13,
       "discarded": 1
     }
+  },
+  {
+    "id": "ae-cf392d22",
+    "ts": "2026-09-08T21:54:39",
+    "ts_utc": "2026-09-08T19:54:39Z",
+    "event": "logout",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "N. Hlophe (FSCA) signed out",
+    "meta": {
+      "actor_username": "n.hlophe",
+      "actor_role": "analyst",
+      "actor_org": "FSCA",
+      "session_id": "sess-850e34d4c9"
+    }
   }
 ]

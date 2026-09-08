@@ -10,6 +10,7 @@
     }
   },
   {
+<<<<<<< HEAD
     "id": "ae-6892151c",
     "ts": "2026-09-08T08:51:34",
     "event": "run_skip",
@@ -22,6 +23,271 @@
   {
     "id": "ae-26309352",
     "ts": "2026-09-08T09:00:57",
+=======
+    "id": "ae-3a1eedf8",
+    "ts": "2026-09-07T14:49:26",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-f2114ac0",
+    "ts": "2026-09-07T14:55:05",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-074dd864",
+    "ts": "2026-09-07T14:56:02",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-67daba9e",
+    "ts": "2026-09-07T14:56:02",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "findings": 13,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-5a8f8a8c",
+    "ts": "2026-09-07T14:58:58",
+    "event": "console_reset",
+    "actor": "A. Analyst",
+    "detail": "Console state cleared ; baseline restored",
+    "meta": {}
+  },
+  {
+    "id": "ae-e7993369",
+    "ts": "2026-09-07T14:58:58",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-19c71565",
+    "ts": "2026-09-07T14:59:54",
+    "event": "console_reset",
+    "actor": "A. Analyst",
+    "detail": "Console state cleared ; baseline restored",
+    "meta": {}
+  },
+  {
+    "id": "ae-8b9066e8",
+    "ts": "2026-09-07T14:59:54",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-b5a0f5bb",
+    "ts": "2026-09-07T14:59:54",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "findings": 13,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-8845d5b9",
+    "ts": "2026-09-07T14:59:57",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (documented)",
+    "meta": {
+      "mode": "documented"
+    }
+  },
+  {
+    "id": "ae-de09fc6f",
+    "ts": "2026-09-07T14:59:57",
+    "event": "run_error",
+    "actor": "A. Analyst",
+    "detail": "Run failed: __init__() got an unexpected keyword argument 'trigger_schema'",
+    "meta": {
+      "mode": "documented"
+    }
+  },
+  {
+    "id": "ae-3f3b1b1f",
+    "ts": "2026-09-07T15:00:32",
+    "event": "console_reset",
+    "actor": "A. Analyst",
+    "detail": "Console state cleared ; baseline restored",
+    "meta": {}
+  },
+  {
+    "id": "ae-e851de5b",
+    "ts": "2026-09-07T15:00:33",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (documented)",
+    "meta": {
+      "mode": "documented"
+    }
+  },
+  {
+    "id": "ae-4b5045f0",
+    "ts": "2026-09-07T15:00:33",
+    "event": "run_error",
+    "actor": "A. Analyst",
+    "detail": "Run failed: __init__() got an unexpected keyword argument 'trigger_schema'",
+    "meta": {
+      "mode": "documented"
+    }
+  },
+  {
+    "id": "ae-35c078cf",
+    "ts": "2026-09-07T15:01:20",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-80668562",
+    "ts": "2026-09-07T15:05:00",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "findings": 13,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-3d81111a",
+    "ts": "2026-09-07T15:14:25",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-f1f12fe6",
+    "ts": "2026-09-07T15:17:09",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-d868f788",
+    "ts": "2026-09-07T15:17:56",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-dba3bc3d",
+    "ts": "2026-09-07T15:17:56",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "findings": 13,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-54186218",
+    "ts": "2026-09-07T15:22:02",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "findings": 13,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-d59553c9",
+    "ts": "2026-09-07T16:27:17",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-f009388e",
+    "ts": "2026-09-07T16:31:57",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "findings": 13,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-d06d1b0b",
+    "ts": "2026-09-07T18:38:54",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-47355886",
+    "ts": "2026-09-07T18:39:04",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "findings": 13,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-3abcaf39",
+    "ts": "2026-09-07T18:47:44",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-2e200606",
+    "ts": "2026-09-07T18:50:36",
+>>>>>>> parent of 5a36025c (fixes)
     "event": "run_finished",
     "actor": "A. Analyst",
     "detail": "Completed · 15 findings to review",
@@ -29,5 +295,159 @@
       "findings": 15,
       "discarded": 1
     }
+<<<<<<< HEAD
+=======
+  },
+  {
+    "id": "ae-3689540d",
+    "ts": "2026-09-07T19:05:36",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-200737c4",
+    "ts": "2026-09-07T19:05:36",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 15 findings to review",
+    "meta": {
+      "findings": 15,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-c5d8008e",
+    "ts": "2026-09-07T19:09:04",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-3fa30a56",
+    "ts": "2026-09-07T19:20:04",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 15 findings to review",
+    "meta": {
+      "findings": 15,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-cf768216",
+    "ts": "2026-09-08T05:29:05",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-7d8145fd",
+    "ts": "2026-09-08T05:32:06",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 14 findings to review",
+    "meta": {
+      "findings": 14,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-44cf35b7",
+    "ts": "2026-09-08T05:37:15",
+    "event": "console_reset",
+    "actor": "A. Analyst",
+    "detail": "Console state cleared ; baseline restored",
+    "meta": {}
+  },
+  {
+    "id": "ae-64ff7702",
+    "ts": "2026-09-08T05:48:09",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-ed29ae60",
+    "ts": "2026-09-08T05:48:09",
+    "event": "run_error",
+    "actor": "A. Analyst",
+    "detail": "Run failed: 'LocalLLMClient' object has no attribute '_check_hosted'",
+    "meta": {}
+  },
+  {
+    "id": "ae-bca901bb",
+    "ts": "2026-09-08T06:21:08",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-115d87d8",
+    "ts": "2026-09-08T06:22:13",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "findings": 13,
+      "discarded": 2
+    }
+  },
+  {
+    "id": "ae-98122917",
+    "ts": "2026-09-08T06:37:13",
+    "event": "run_started",
+    "actor": "A. Analyst",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-dc0d1af6",
+    "ts": "2026-09-08T06:38:29",
+    "event": "run_finished",
+    "actor": "A. Analyst",
+    "detail": "Completed · 15 findings to review",
+    "meta": {
+      "findings": 15,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-00baa444",
+    "ts": "2026-09-08T06:45:06",
+    "event": "checkpoint_recorded",
+    "actor": "A. Analyst",
+    "detail": "Checkpoint checkpoint-f6bd4ab7 recorded · drift 57.0",
+    "meta": {
+      "run_id": "checkpoint-f6bd4ab7"
+    }
+  },
+  {
+    "id": "ae-f28ad322",
+    "ts": "2026-09-08T06:45:08",
+    "event": "checkpoint_recorded",
+    "actor": "A. Analyst",
+    "detail": "Checkpoint checkpoint-9fe598f2 recorded · drift 57.0",
+    "meta": {
+      "run_id": "checkpoint-9fe598f2"
+    }
+>>>>>>> parent of 5a36025c (fixes)
   }
 ]

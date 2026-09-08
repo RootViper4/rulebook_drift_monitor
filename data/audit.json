@@ -509,5 +509,96 @@
       "findings": 13,
       "discarded": 1
     }
+  },
+  {
+    "id": "ae-c40cf9cc",
+    "ts": "2026-09-08T21:38:51",
+    "ts_utc": "2026-09-08T19:38:51Z",
+    "event": "logout",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "N. Hlophe (FSCA) signed out",
+    "meta": {
+      "actor_username": "n.hlophe",
+      "actor_role": "analyst",
+      "actor_org": "FSCA",
+      "session_id": "sess-7fcb3be670"
+    }
+  },
+  {
+    "id": "ae-4b039dbf",
+    "ts": "2026-09-08T21:39:02",
+    "ts_utc": "2026-09-08T19:39:02Z",
+    "event": "login_success",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "N. Hlophe (FSCA) signed in",
+    "meta": {
+      "actor_username": "n.hlophe",
+      "actor_role": "analyst",
+      "actor_org": "FSCA",
+      "session_id": "sess-850e34d4c9",
+      "role": "analyst"
+    }
+  },
+  {
+    "id": "ae-158dfbed",
+    "ts": "2026-09-08T21:39:05",
+    "ts_utc": "2026-09-08T19:39:05Z",
+    "event": "run_started",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "actor_username": "",
+      "actor_role": "",
+      "actor_org": "",
+      "session_id": "",
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-6ae9dc2a",
+    "ts": "2026-09-08T21:39:39",
+    "ts_utc": "2026-09-08T19:39:39Z",
+    "event": "run_finished",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "actor_username": "",
+      "actor_role": "",
+      "actor_org": "",
+      "session_id": "",
+      "findings": 13,
+      "discarded": 1
+    }
+  },
+  {
+    "id": "ae-54cd8b91",
+    "ts": "2026-09-08T21:51:03",
+    "ts_utc": "2026-09-08T19:51:03Z",
+    "event": "run_started",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "Run triggered (manual)",
+    "meta": {
+      "actor_username": "",
+      "actor_role": "",
+      "actor_org": "",
+      "session_id": "",
+      "trigger": "manual"
+    }
+  },
+  {
+    "id": "ae-9cb2d534",
+    "ts": "2026-09-08T21:51:37",
+    "ts_utc": "2026-09-08T19:51:37Z",
+    "event": "run_finished",
+    "actor": "N. Hlophe (FSCA)",
+    "detail": "Completed · 13 findings to review",
+    "meta": {
+      "actor_username": "",
+      "actor_role": "",
+      "actor_org": "",
+      "session_id": "",
+      "findings": 13,
+      "discarded": 1
+    }
   }
 ]

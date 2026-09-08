@@ -610,7 +610,11 @@ def _run_worker(trigger: str, actor: str = ""):
     STORE["log"] = []
     # Diff: snapshot which typologies the PREVIOUS completed run flagged.
     _previous = _current_run()
-    STORE["prev_ids"] = [f.typology_id for f in (_previous.results or [])] if _previous else []
+    STORE["prev_ids"] = (
+        [_diff_identity(getattr(f, "mode", "reconciliation"), f.typology_id, f.typology_name)
+         for f in (_previous.results or [])]
+        if _previous else []
+    )
     _audit("run_started", detail=f"Run triggered ({trigger})", meta={"trigger": trigger})
 
     def live_progress(phase: str, message: str):
@@ -722,6 +726,38 @@ def _discarded_json(d):
     }
 
 
+def _diff_identity(mode: str, typology_id: str, typology_name: str) -> str:
+    """The key used to decide NEW vs REPEAT across runs — deliberately NOT
+    always the same thing as the id shown on the row.
+
+    Reconciliation findings (CP-01..CP-12) get their id from a fixed library of
+    documented capability primitives - CP-01 always means the same attack, so
+    the id itself is a stable content identity and is used directly.
+
+    Generation findings do not have that property. GEN-01/GEN-02/GEN-03 are
+    slot POSITIONS assigned by `enumerate(scenarios, 1)` in
+    SimulationAgent.run_generation - slot 1 is always "GEN-01" no matter what
+    the model proposed for it that run. Comparing on typology_id therefore
+    compared "was something in slot 1 last time" rather than "was this
+    scenario seen before", so a genuinely novel finding two runs in a row
+    could land in the same slot and be reported as a repeat of last run's
+    unrelated scenario - and once a run had happened once, this made
+    everything downstream look like nothing was ever new. Confirmed
+    2026-09-08: two runs producing different scenario names in the same slot
+    both showed delta="repeat".
+
+    For generation-mode findings the key is content-derived instead: the
+    scenario's own name, normalised. That correctly calls two runs landing on
+    the same idea (including two identical deterministic-fallback picks,
+    which SHOULD read as repeats) a repeat, and two different ideas that
+    happen to share a slot number NEW, which is the property that actually
+    matters to an analyst deciding what to look at first.
+    """
+    if mode == "generation":
+        return f"generation::{(typology_name or '').strip().lower()}"
+    return typology_id
+
+
 def _state_json():
     run = _current_run()
     decisions = STORE["decisions"]
@@ -735,10 +771,13 @@ def _state_json():
 
     findings = [_finding_json(f, desc_by_id) for f in (run.results if run else [])]
     for f in findings:
-        f["delta"] = "new" if f["typology_id"] not in prev_ids else "repeat"
+        key = _diff_identity(f.get("mode", "reconciliation"), f["typology_id"], f.get("typology_name", ""))
+        f["delta"] = "new" if key not in prev_ids else "repeat"
     diff_new = [f["typology_id"] for f in findings if f["delta"] == "new"]
     diff_repeat = [f["typology_id"] for f in findings if f["delta"] == "repeat"]
-    diff_regressed = [t for t in (prev_ids - {f["typology_id"] for f in findings})]
+    current_keys = {_diff_identity(f.get("mode", "reconciliation"), f["typology_id"], f.get("typology_name", ""))
+                    for f in findings}
+    diff_regressed = [t for t in (prev_ids - current_keys)]
     reviewed = sum(1 for f in findings if f["typology_id"] in decided_fids)
     total = len(findings)
     all_decided = bool(total) and reviewed == total
@@ -1454,7 +1493,10 @@ def api_fraudtest():
             "message": f"Analyst {_actor()} submitted attack test '{label}' ({fid}) · "
                        f"caught {len(fired)} rule(s), slipped past {len(evaded)} · sent to human gate.",
         })
-        STORE["prev_ids"] = STORE.get("prev_ids") or [f.typology_id for f in run.results[:-1]] or []
+        STORE["prev_ids"] = STORE.get("prev_ids") or [
+            _diff_identity(getattr(f, "mode", "reconciliation"), f.typology_id, f.typology_name)
+            for f in run.results[:-1]
+        ] or []
         _audit("attack_submitted",
                detail=f"Attack test '{label}' ({fid}) · caught {len(fired)}, slipped past {len(evaded)}",
                meta={"fid": fid, "label": label, "fired": fired, "evaded": evaded})

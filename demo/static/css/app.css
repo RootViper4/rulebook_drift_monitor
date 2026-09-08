@@ -675,7 +675,122 @@ span.nnum{display:inline-flex;align-items:center;justify-content:center;min-widt
 .done-cta .dc-title{font-weight:800;font-size:15px;color:var(--brand-deep)}
 .done-cta .dc-sub{color:var(--muted);font-size:13px;margin-top:2px}
 .done-cta .btn{margin-left:auto;flex:none}
+/* Pending-decision badge. Hidden by default and only shown once a count has
+   actually been set: the old rule was display:grid, so the empty span the nav
+   renders on every page painted as a filled orange dot until (and only if) a
+   script hid it again. */
 .nav-count{margin-left:auto;background:var(--accent-2);color:#fff;font-size:10.5px;
   font-weight:800;min-width:19px;height:19px;padding:0 5px;border-radius:10px;
-  display:grid;place-items:center;line-height:1}
+  display:none;place-items:center;line-height:1}
+.nav-count.on{display:grid}
 .nav-link.active .nav-count{background:#fff;color:var(--accent)}
+
+/* ==========================================================================
+   Landing page, identity chip and sign-in
+   Added with the public home page and the named-analyst sign-in gate.
+   ========================================================================== */
+
+/* ---------- Small utility button (topbar chip, filter bars) ---------- */
+.btn-tiny{display:inline-flex;align-items:center;gap:6px;background:var(--panel);
+  border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;
+  font-weight:700;color:var(--muted);cursor:pointer;transition:.13s;font-family:inherit}
+.btn-tiny:hover{color:var(--text);border-color:var(--border-2);background:var(--panel-2)}
+
+/* ---------- Identity chip ---------- */
+.analyst-chip .who{display:flex;flex-direction:column;line-height:1.15}
+.analyst-chip .who-sub{font-size:10.5px;font-weight:600;color:var(--dim);text-transform:none}
+.analyst-chip .avatar{flex:none}
+
+/* ---------- Home hero ---------- */
+.home-hero{display:flex;align-items:center;gap:28px;background:var(--panel);
+  border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:30px 30px 28px;margin-bottom:8px}
+.home-hero-text{flex:1;min-width:0}
+.home-hero h1{font-size:27px;font-weight:800;letter-spacing:-.5px;margin:0 0 10px;line-height:1.24}
+.home-hero .sub{color:var(--muted);margin:0;max-width:78ch;font-size:14.8px}
+.home-hero-mark{flex:none;width:132px;height:132px;border-radius:24px;background:var(--panel-2);
+  border:1px solid var(--border);display:grid;place-items:center;padding:16px}
+.home-hero-mark img{width:100%;height:100%;display:block}
+.home-cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+
+/* ---------- Home content blocks ---------- */
+.home-steps{margin:0;padding-left:20px;color:var(--muted);max-width:88ch}
+.home-steps li{margin-bottom:9px}
+.home-steps b{color:var(--text)}
+.pill-soft{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;
+  color:var(--accent);background:var(--accent-soft);border-radius:20px;padding:3px 9px;
+  margin-left:auto}
+.card-pad p{color:var(--muted);max-width:80ch}
+.card-pad p a{color:var(--accent);font-weight:600;text-decoration:underline;text-underline-offset:2px}
+.card-pad p a:hover{color:var(--brand-deep)}
+.src-list{margin:0;padding-left:19px;color:var(--muted);font-size:13.5px}
+.src-list li{margin-bottom:7px}
+.src-list a{color:var(--accent);font-weight:600;text-decoration:underline;text-underline-offset:2px}
+.src-list a:hover{color:var(--brand-deep)}
+
+/* ---------- Team ---------- */
+.team-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(228px,1fr))}
+.team-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:24px 20px 22px;text-align:center}
+.team-photo{width:120px;height:120px;border-radius:50%;object-fit:cover;display:block;
+  margin:0 auto 14px;border:3px solid var(--panel);box-shadow:0 0 0 2px var(--accent-soft),var(--shadow)}
+.team-name{font-weight:800;font-size:15px;letter-spacing:-.2px}
+.team-role{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;
+  color:var(--accent);margin-top:4px}
+.team-org{font-size:12.5px;color:var(--muted);margin-top:3px}
+.team-bio{font-size:12.8px;color:var(--muted);margin:11px 0 0;text-align:left;line-height:1.5}
+
+/* ---------- Sign-in page ---------- */
+.login-shell{min-height:100vh;display:grid;place-items:center;padding:32px 18px;background:var(--bg)}
+.login-card{width:100%;max-width:410px;background:var(--panel);border:1px solid var(--border);
+  border-radius:var(--radius);box-shadow:var(--shadow-lg);padding:28px 26px 22px}
+.login-brand{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.login-logo{width:44px;height:44px;border-radius:12px;background:var(--panel-2);
+  border:1px solid var(--border);display:grid;place-items:center;padding:5px;flex:none}
+.login-logo img{width:100%;height:100%;display:block}
+.login-name{font-weight:800;font-size:17px;letter-spacing:-.2px}
+.login-sub{font-size:11.5px;color:var(--dim)}
+.login-lede{font-size:13.2px;color:var(--muted);margin:0 0 16px}
+.login-label{display:block;font-size:11.5px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.5px;color:var(--dim);margin-bottom:5px}
+.login-input{width:100%;padding:10px 12px;border:1px solid var(--border-2);border-radius:9px;
+  font-size:14px;font-family:inherit;color:var(--text);background:var(--panel);margin-bottom:14px}
+.login-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.login-btn{width:100%;justify-content:center;margin-top:2px}
+.login-error{background:var(--bad-soft);border:1px solid #f0c4b8;color:var(--bad);
+  border-radius:9px;padding:9px 12px;font-size:12.8px;font-weight:600;margin-bottom:14px}
+.login-demo{margin-top:20px;border-top:1px solid var(--border);padding-top:16px}
+.login-demo-title{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--dim)}
+.login-demo-sub{font-size:12px;color:var(--dim);margin:4px 0 10px;line-height:1.45}
+.login-demo-row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;
+  margin-bottom:6px;cursor:pointer;font-family:inherit;transition:.13s}
+.login-demo-row:hover{border-color:var(--accent);background:var(--accent-soft)}
+.login-demo-row .ld-user{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text)}
+.login-demo-row .ld-who{font-size:11.5px;color:var(--muted);min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.login-demo-row .ld-role{margin-left:auto;font-size:10px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.5px;color:var(--dim);background:var(--panel-3);border-radius:20px;padding:2px 8px}
+.login-demo-row .ld-role.can{color:var(--accent);background:var(--accent-soft)}
+.login-demo-pw{font-size:12px;color:var(--muted);margin-top:8px}
+.login-demo-pw code{font-family:var(--mono);background:var(--panel-3);border-radius:5px;padding:1px 6px}
+.login-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;
+  margin-top:18px;padding-top:14px;border-top:1px solid var(--border);
+  font-size:11.5px;color:var(--dim)}
+.login-foot a{color:var(--accent);font-weight:600}
+
+@media(max-width:760px){
+  .home-hero{flex-direction:column;align-items:flex-start;padding:24px 20px}
+  .home-hero-mark{width:96px;height:96px;order:-1}
+  .home-hero h1{font-size:22px}
+}
+.aud-who{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:3px}
+.pill-auth{background:var(--accent-soft);color:var(--accent)}
+
+/* Monogram shown when a team portrait is missing or misnamed — a readable
+   fallback beats a broken-image icon, and it makes the missing file obvious. */
+.team-photo-wrap{position:relative;width:120px;margin:0 auto 14px}
+.team-photo-wrap .team-photo{margin:0}
+.team-photo-fallback{display:none;place-items:center;background:var(--accent-soft);
+  color:var(--accent);font-size:34px;font-weight:800;letter-spacing:.5px}

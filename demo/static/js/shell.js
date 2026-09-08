@@ -7,6 +7,10 @@
    a page does from its name alone. */
 
 const NAV = [
+  { href: 'home.html',      icon: '⌂', label: 'Home',
+    title: 'Drift Sentinel',
+    blurb: 'What this is, who it is for, and who built it' },
+
   { section: 'Check the rulebook' },
   { href: 'index.html',     icon: '▶', label: 'Run a check',
     title: 'Run a check',
@@ -39,8 +43,10 @@ const NAV = [
 ];
 
 function currentPage(){
-  const f = (location.pathname.split('/').pop() || 'index.html');
-  return f === '' ? 'index.html' : f;
+  /* '/' serves the landing page, so an empty filename means home - not the run
+     console, which now lives only at its own /index.html. */
+  const f = (location.pathname.split('/').pop() || 'home.html');
+  return f === '' ? 'home.html' : f;
 }
 
 function renderShell(){

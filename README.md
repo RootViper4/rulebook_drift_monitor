@@ -60,7 +60,11 @@ rulebook_drift_monitor/
 ├── demo/
 │   ├── run.py                # CLI report (python3 -m demo.run)
 │   ├── web.py                # Flask API + async background run worker (threaded, aborts cleanly)
+│   ├── auth.py               # named-analyst accounts: PBKDF2 hashing, roles, lockout
 │   └── static/
+│       ├── home.html         # public landing page (the problem, the regulators, the team)
+│       ├── login.html        # sign-in gate for everything else
+│       ├── img/team/         # team portraits used on the landing page
 │       ├── index.html        # Run Console (animated pipeline, live trace, review tabs, diff badges, institute button, probe, dossier export)
 │       ├── dashboard.html    # Dashboard (KPIs, rulebook profile, evasion heatmap, amendments, forecast snapshot, reset)
 │       ├── rules.html        # Rules Catalog (search/filter browse + detail drawer, ✦ badges for instituted rules)
@@ -70,7 +74,8 @@ rulebook_drift_monitor/
 ├── scripts/
 │   ├── export_live.py        # export the current run to live_run.json (for the handout PDF)
 │   ├── seed_history.py       # seed data/run_history.json with 7 measured prior review states
-│   └── seed_drafted_flags.py # produce data/drafted_flags.json via the live LLM (slow, one-off)
+│   ├── seed_drafted_flags.py # produce data/drafted_flags.json via the live LLM (slow, one-off)
+│   └── manage_users.py       # add / list / re-password / re-role / remove console accounts
 ├── docs/
 │   ├── make_handout.py       # builds the meeting-handout PDF (incl. live output + forecast section)
 │   └── Rulebook_Drift_Monitor_Meeting_Handout.pdf
@@ -142,10 +147,12 @@ python3 -m demo.web                # open http://127.0.0.1:5000
 
 ## Web platform (professional UI)
 
-Four pages, single Flask server, professional light-enterprise design (sidebar nav, no gradients):
+Nine pages, single Flask server, professional light-enterprise design (sidebar nav, no gradients). The landing page and the sign-in page are public; every other page and every API route requires a signed-in analyst:
 
 | Page | Route | Purpose |
 |------|-------|---------|
+| Home | `/` or `/home.html` | **Public.** What the system does, why the FATF (2020) indicator set and FIC Directive 9 leave a gap, who the target regulators are, what is in the prototype, and the team |
+| Sign in | `/login.html` | **Public.** Username + password gate; everything below requires a session |
 | Dashboard | `/dashboard.html` | KPIs (coverage, drift index, verified gaps, AI-evasion pressure), rulebook profile, rule-mix & AI break-downs, **typology × category evasion heatmap**, institutionalised-indicator strip, forecast snapshot, architecture strip, reset state |
 | Run Console | `/index.html` | Animated async pipeline with per-claim/per-finding live progress, findings tabs (All/Accepted/Amended/Rejected/Undecided), **NEW/REPEAT diff vs last run**, Accept/Amend/Reject, **Institute rule** (the amendment loop), **red-team probe panel**, **compliance dossier export (JSON/PDF)**, decision-aware status, reset + clean abort |
 | Rules Catalog | `/rules.html` | Search/filter browse of all DS rules with the full schema in a detail drawer + **✦ instituted** badges and amendments banner |
@@ -170,11 +177,77 @@ The same affordance demonstrates governance: no rule enters the rulebook without
 
 ---
 
+## Access control and attribution
+
+The concept note promises two things that need an identity to hang off: nothing enters guidance
+without **a named analyst** deciding, and the gap report — which is an attack map — is
+**access-restricted**. `demo/auth.py` plus the session layer in `demo/web.py` implement both.
+
+| Control | How it is implemented |
+|---------|----------------------|
+| **Sign-in gate** | Only `/` (landing page) and `/login.html` are public. Every other page redirects to the sign-in page, and every API route returns `401` without a session — so an anonymous visitor never receives the console shell, let alone a finding. |
+| **Named attribution** | Each decision, institution, run, red-team probe and dossier export records the analyst's display name, username, organisation, role, session id, and both local and UTC timestamps, in `data/decisions_log.json` and the append-only `data/audit.json`. |
+| **Least privilege** | Two roles. `analyst` may run checks and accept / amend / reject / institute; `observer` may read the console and the paper trail but not act. A blocked attempt is itself written to the trail as `access_denied`. |
+| **Credential handling** | Passwords are stored only as PBKDF2-HMAC-SHA256 digests (240,000 iterations, per-user random salt) and compared in constant time. An unknown username and a wrong password return the same message and take the same time, so the endpoint cannot be used to enumerate accounts. |
+| **Brute force** | Five failed attempts lock an account for 15 minutes. |
+| **Session hygiene** | `HttpOnly`, `SameSite=Lax`, 8-hour lifetime, `Secure` when deployed. The session id and CSRF token are rotated on sign-in, and every state-changing call must echo the session's CSRF token. |
+| **Sign-in events** | `login_success`, `login_failed`, `logout`, `access_denied` and `dossier_exported` appear on the Paper trail page under *Sign-ins & access*. |
+
+### Accounts
+
+The store lives at `data/users.json` and is seeded on first start with three demo accounts that
+mirror the end-users in the concept note:
+
+| Username | Who | Role |
+|----------|-----|------|
+| `n.hlophe` | N. Hlophe · FSCA · supervision specialist | analyst |
+| `g.kana` | G. Kana · FIC · typologies analyst | analyst |
+| `e.reddy` | E. Reddy · UNISA · domain reviewer | observer (read-only) |
+
+All three use the password `drift-sentinel-2026` unless `DRIFT_DEMO_PASSWORD` is set before first
+start. The login page lists them **only** while those seeded accounts are still in place, and
+clicking a row fills the form for you.
+
+### Adding, changing and removing accounts
+
+`scripts/manage_users.py` is the account admin. Passwords are prompted for rather than passed as
+arguments, so they stay out of shell history:
+
+```bash
+python3 -m scripts.manage_users list
+python3 -m scripts.manage_users add m.mohlerepe --name "M. Mohlerepe" \
+        --org Cenfri --title "AI builder" --role analyst
+python3 -m scripts.manage_users passwd n.hlophe          # rotate a password
+python3 -m scripts.manage_users role e.reddy analyst     # promote a read-only account
+python3 -m scripts.manage_users remove g.kana            # refuses to delete the last analyst
+```
+
+Changes take effect on the next sign-in; there is nothing to restart. Removing an account does not
+touch the audit trail — decisions that person already made stay attributed to them, which is the
+point of an append-only record.
+
+To seed a deployment with real accounts and no demo ones: set `DRIFT_DEMO_PASSWORD` to something
+only you know before the first start (so the seeded accounts are not guessable), add the real
+accounts with `add`, then `remove` the three demo accounts.
+
+Full walkthrough, including non-interactive provisioning and the read-only-filesystem caveat on
+Vercel: [`docs/accounts.md`](docs/accounts.md).
+
+> This is prototype-grade identity for a demonstrator. A production deployment would federate to
+> the authority's own identity provider (SAML/OIDC) and delete `demo/auth.py`; nothing else in the
+> app depends on more than `current_user()` returning a record.
+
+**Deploying:** set `SECRET_KEY` in the environment. Without it each process invents its own key at
+start-up, which is fine locally but signs users out whenever a serverless instance recycles.
+
+---
+
 ## Mandatory guardrails (demonstrated)
 
 | Guardrail | How it is implemented |
 |-----------|----------------------|
 | **Human-in-the-loop** | Hard approval gate: analyst accepts / amends / rejects every drafted red flag; web UI implements this. |
+| **Named, authenticated analyst** | Sign-in required; the person's account, role, organisation, session and timestamp are stamped onto every decision. Read-only accounts cannot decide. See *Access control and attribution* above. |
 | **Auditability & traceability** | Structured state store + append-only audit trail linking each gap to its evidence, rules, ATLAS mapping and the adjudicating analyst. |
 | **Safety & governance controls** | Independent critic discards implausible/non-reproducible findings; institutionalisation requires an analyst decision + deterministic reproduction self-check; generation held at the level of regulatory indicators, not operational attack detail. |
 | **Cyber risk management** | Permissioned tool access; confined to the rulebook/typology corpora; all data public or synthetic (no personal data). **Live adversarial probe** (`agents/probe.py`) injects a poisoned typology (prompt-injection payload + over-claimed evasion set) and shows the critic rejecting the attack in the Run Console. |

@@ -1,0 +1,29 @@
+{
+  "n.hlophe": {
+    "username": "n.hlophe",
+    "display_name": "N. Hlophe",
+    "organisation": "FSCA",
+    "title": "Supervision specialist · FinTech",
+    "role": "analyst",
+    "password_hash": "pbkdf2_sha256$240000$3dde0d68806e5ecfcf4f8801ab9328bd$d3e7d7424c2e599fefcb4adf990379d6de5f0d4db933d4b42c16d0588130e829",
+    "created": "2026-09-08T13:29:03"
+  },
+  "g.kana": {
+    "username": "g.kana",
+    "display_name": "G. Kana",
+    "organisation": "FIC",
+    "title": "Typologies analyst",
+    "role": "analyst",
+    "password_hash": "pbkdf2_sha256$240000$c0f9ad4bbfa3f0eb8f93d9268a74c638$898ab424a6fb183b36e6e629f89ab9908da99afef2970af57af96f9237bfab2e",
+    "created": "2026-09-08T13:29:04"
+  },
+  "e.reddy": {
+    "username": "e.reddy",
+    "display_name": "E. Reddy",
+    "organisation": "UNISA",
+    "title": "Domain reviewer",
+    "role": "observer",
+    "password_hash": "pbkdf2_sha256$240000$6e3ee3319cd412101f9007ec2c4ca1d4$049b87588ac59616b2e38cb9c97f60fb146495e826f897425f31dc66463debf5",
+    "created": "2026-09-08T13:29:04"
+  }
+}

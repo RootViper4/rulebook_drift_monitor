@@ -33,6 +33,7 @@
         <button class="tab" data-ev="decision" onclick="setEv('decision')">Decisions</button>
         <button class="tab" data-ev="institute" onclick="setEv('institute')">Institutions</button>
         <button class="tab" data-ev="probe" onclick="setEv('probe')">Red-team probes</button>
+        <button class="tab" data-ev="auth" onclick="setEv('auth')">Sign-ins &amp; access</button>
         <button class="tab" data-ev="risk" onclick="setEv('risk')">Other</button>
         <div style="margin-left:auto;font-size:12px;color:var(--muted)"><b id="audCount">0</b> events</div>
       </div>
@@ -59,6 +60,11 @@ const EVENT_META = {
   attack_submitted:{l:'Attack test',    k:'probe', c:'var(--muted)'},
   checkpoint_recorded:{l:'Checkpoint',  k:'risk', c:'var(--accent-2)'},
   console_reset:   {l:'Console reset',  k:'risk', c:'var(--muted)'},
+  login_success:   {l:'Signed in',      k:'auth', c:'var(--accent)'},
+  login_failed:    {l:'Sign-in failed', k:'auth', c:'#e25563'},
+  logout:          {l:'Signed out',     k:'auth', c:'var(--muted)'},
+  access_denied:   {l:'Access denied',  k:'auth', c:'#e25563'},
+  dossier_exported:{l:'Dossier export', k:'auth', c:'var(--accent-2)'},
 };
 function evDefault(e){ return EVENT_META[e] || {l:e, k:'risk', c:'var(--muted)'}; }
 
@@ -82,6 +88,11 @@ function renderAudit(){
     if(e.event==='rule_instituted') extra = `<div class="aud-reason">Reason: “${esc(meta.reason||'')}” · now covers ${esc(meta.fid||'')}</div>`;
     if(e.event==='red_team_probe') extra = `<div class="aud-reason">Victim ${esc(meta.victim||'')}</div>`;
     if(e.event==='run_finished') extra = `<div class="aud-reason">${esc(meta.findings||0)} finding(s) to review</div>`;
+    if(e.event==='access_denied') extra = `<div class="aud-reason">Blocked: a read-only account tried to act on ${esc(meta.path||'a protected action')}</div>`;
+    /* The account and session behind an action matter as much as the display
+       name, so surface them wherever the trail recorded them. */
+    const who = [meta.actor_username, meta.actor_role, meta.session_id].filter(Boolean).join(' · ');
+    if(who) extra += `<div class="aud-who">${esc(who)}</div>`;
     return `<div class="aud-line">
       <div class="aud-dot" style="background:${m.c}"></div>
       <div class="aud-body">

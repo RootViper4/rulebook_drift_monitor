@@ -6,12 +6,14 @@ Run:
 """
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import hmac
 import json
 import os
 import secrets
 import sys
+import tempfile
 import threading
 import time
 import uuid
@@ -152,6 +154,9 @@ STORE = {
     "log": [],
     "abort": False,         # request the background worker to stop cleanly
     "storage": "writable",  # flipped to "readonly" if disk writes are refused
+    "run_source": "memory",  # "memory" | "snapshot" — where the current run came from
+    "snapshot_mtime": None,  # guards against re-reading an unchanged snapshot
+    "snapshot_disabled": False,  # set when the run could not be written down
 }
 
 # Pipeline steps shown in the animation, in order.
@@ -426,6 +431,174 @@ def _record_history(run=None, kind: str = "run", note: str = "", findings: int =
 # ---------------------------------------------------------------------------
 # Background run worker
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Run persistence
+#
+# A completed run used to live only in STORE, a module-level dict. That is one
+# process’s memory, and it made the run console and the review queue quietly
+# dependent on being served by the same process for the life of the review: the
+# check would finish with findings on screen, and "Decisions waiting for you"
+# would be empty, because the process answering that request had never seen the
+# run. A restart, a second worker, or a serverless instance recycling all
+# produced the same silent emptiness — no error, just nothing to decide.
+#
+# So every completed run is now written to disk and rehydrated on demand. The
+# snapshot is the run, not a summary of it: findings, discarded candidates,
+# audit trail and convergence groups all round-trip, so a rehydrated run
+# supports deciding, instituting and the dossier export exactly as a live one
+# does.
+#
+# Scope, stated plainly: this fixes restarts and multiple workers on one host.
+# It does not make state shared across serverless instances, because each
+# instance has its own /tmp. That needs an external store and is a separate
+# piece of work.
+# ---------------------------------------------------------------------------
+RUN_SNAPSHOT_NAME = "last_run.json"
+
+
+def _snapshot_paths() -> list:
+    """Where a run snapshot may live, in order of preference.
+
+    `data/` first so a snapshot sits with the rest of the demo state and
+    survives a machine restart; the system temp directory second, for hosts
+    that mount the project read-only.
+    """
+    return [os.path.join(DATA_DIR, RUN_SNAPSHOT_NAME),
+            os.path.join(tempfile.gettempdir(), f"drift_sentinel_{RUN_SNAPSHOT_NAME}")]
+
+
+def _save_run_snapshot(state) -> bool:
+    """Persist a completed run. Returns False if nowhere was writable."""
+    payload = {
+        "saved_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "saved_by_instance": INSTANCE_ID,
+        "analyst": STORE.get("analyst", ""),
+        "prev_ids": list(STORE.get("prev_ids") or []),
+        "log": list(STORE.get("log") or []),
+        "started_at": STORE.get("started_at"),
+        "run": state.dict(),
+    }
+    for path in _snapshot_paths():
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False)
+            try:
+                STORE["snapshot_mtime"] = os.path.getmtime(path)
+            except OSError:
+                STORE["snapshot_mtime"] = None
+            return True
+        except (OSError, IOError, TypeError, ValueError):
+            continue
+    # Nowhere was writable. Stop reading snapshots too: an older file may still
+    # be on disk, and rehydrating from it would replace the run this process is
+    # holding with a stale one — worse than not persisting at all.
+    STORE["storage"] = "readonly"
+    STORE["snapshot_disabled"] = True
+    return False
+
+
+def _clear_run_snapshot() -> None:
+    """Remove the snapshot so a reset or an abort does not resurrect a run."""
+    removed_all = True
+    for path in _snapshot_paths():
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+        except OSError:
+            removed_all = False
+    STORE["snapshot_mtime"] = None
+    # A snapshot we cannot delete would come straight back on the next read.
+    if not removed_all:
+        STORE["snapshot_disabled"] = True
+
+
+def _read_run_snapshot() -> Optional[tuple]:
+    """Return `(payload, mtime)` for the first readable snapshot, else None."""
+    for path in _snapshot_paths():
+        try:
+            mtime = os.path.getmtime(path)
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f), mtime
+        except (OSError, ValueError):
+            continue
+    return None
+
+
+def _build_dataclass(cls, data):
+    """Rebuild a dataclass from a dict, ignoring fields it no longer has.
+
+    Tolerating unknown keys matters: a snapshot written before a schema change
+    should degrade to a readable run, not raise and lose the queue entirely.
+    """
+    if not isinstance(data, dict):
+        return None
+    names = {f.name for f in dataclasses.fields(cls)}
+    return cls(**{k: v for k, v in data.items() if k in names})
+
+
+def _rebuild_run(data: dict):
+    """Turn a snapshot dict back into a RunState with real dataclass members."""
+    from agents.models import GapFinding, RunState, Rule, Typology
+    if not isinstance(data, dict) or not data.get("run_id"):
+        return None
+    try:
+        state = RunState(
+            run_id=data["run_id"],
+            rulebook_version=data.get("rulebook_version", ""),
+            status=data.get("status", "awaiting_human_approval"),
+            discarded=list(data.get("discarded") or []),
+            log=list(data.get("log") or []),
+            audit=list(data.get("audit") or []),
+            convergence=list(data.get("convergence") or []),
+        )
+        state.rulebook = [r for r in (_build_dataclass(Rule, d) for d in (data.get("rulebook") or [])) if r]
+        state.typologies = [t for t in (_build_dataclass(Typology, d) for d in (data.get("typologies") or [])) if t]
+        state.results = [g for g in (_build_dataclass(GapFinding, d) for d in (data.get("results") or [])) if g]
+        return state
+    except (TypeError, KeyError, ValueError):
+        return None
+
+
+def _current_run():
+    """The run this request should work against.
+
+    Prefers what is already in memory; falls back to the snapshot on disk when
+    this process has never held a run, or when another process has written a
+    newer one. Every read of the current run goes through here — that is what
+    keeps the run console and the review queue looking at the same thing.
+    """
+    if STORE["running"] or STORE.get("snapshot_disabled"):
+        return STORE["run"]
+
+    found = _read_run_snapshot()
+    if found is None:
+        return STORE["run"]
+    payload, mtime = found
+
+    # Already loaded this exact snapshot: nothing to do.
+    if STORE["run"] is not None and STORE.get("snapshot_mtime") == mtime:
+        return STORE["run"]
+
+    state = _rebuild_run(payload.get("run") or {})
+    if state is None:
+        return STORE["run"]
+
+    STORE["run"] = state
+    STORE["snapshot_mtime"] = mtime
+    STORE["run_source"] = ("memory" if payload.get("saved_by_instance") == INSTANCE_ID
+                           else "snapshot")
+    STORE["prev_ids"] = list(payload.get("prev_ids") or [])
+    if payload.get("analyst"):
+        STORE["analyst"] = payload["analyst"]
+    if not STORE.get("log"):
+        STORE["log"] = list(payload.get("log") or [])
+    if STORE.get("started_at") is None:
+        STORE["started_at"] = payload.get("started_at")
+    return state
+
+
 def _run_worker(trigger: str, actor: str = ""):
     # The worker runs outside the request context, so the analyst who pressed
     # the button is captured here and used for every entry the run writes.
@@ -436,7 +609,8 @@ def _run_worker(trigger: str, actor: str = ""):
     STORE["started_at"] = time.time()
     STORE["log"] = []
     # Diff: snapshot which typologies the PREVIOUS completed run flagged.
-    STORE["prev_ids"] = [f.typology_id for f in (STORE["run"].results or [])] if STORE["run"] else []
+    _previous = _current_run()
+    STORE["prev_ids"] = [f.typology_id for f in (_previous.results or [])] if _previous else []
     _audit("run_started", detail=f"Run triggered ({trigger})", meta={"trigger": trigger})
 
     def live_progress(phase: str, message: str):
@@ -465,18 +639,32 @@ def _run_worker(trigger: str, actor: str = ""):
                                  "message": "Run aborted by analyst before completion."})
             STORE["run"] = None
             STORE["decisions"] = {}
+            _clear_run_snapshot()
             _audit("run_aborted", detail="Run aborted by analyst")
         else:
             STORE["run"] = state
             STORE["decisions"] = {}
             STORE["log"] = list(state.audit) if state else []
+            STORE["run_source"] = "memory"
+            STORE["snapshot_disabled"] = False
             _record_history(state)
+            # Write the run down before telling anyone it finished. The review
+            # queue reads this, so a run that is not persisted is a run that
+            # can vanish between the console and the decision page.
+            if not _save_run_snapshot(state):
+                STORE["log"].append({
+                    "node": "orchestrator",
+                    "message": ("Findings could not be written to disk — they will be lost if this "
+                                "process restarts. Decide them in this session."),
+                    "ts": time.strftime("%H:%M:%S"),
+                })
             _audit("run_finished",
                    detail=f"Completed · {len(state.results)} findings to review",
                    meta={"findings": len(state.results), "discarded": len(state.discarded or [])})
     except Exception as exc:
         STORE["log"].append({"node": "error", "message": f"Run failed: {exc}"})
         STORE["run"] = None
+        _clear_run_snapshot()
         _audit("run_error", detail=f"Run failed: {exc}")
     finally:
         STORE["abort"] = False
@@ -530,7 +718,7 @@ def _discarded_json(d):
 
 
 def _state_json():
-    run = STORE["run"]
+    run = _current_run()
     decisions = STORE["decisions"]
     inst = amendments.load_instituted()
     covered = sorted(inst.get("covered", {}).keys())
@@ -583,6 +771,10 @@ def _state_json():
         "started_at": STORE["started_at"],
         "serverless": SERVERLESS,
         "storage": STORE.get("storage", "writable"),
+        # "memory" when this process ran the check itself, "snapshot" when it
+        # rehydrated the run from disk. Useful when a queue looks unexpectedly
+        # empty: it says whether the run was found at all.
+        "run_source": STORE.get("run_source", "memory") if run is not None else "none",
         "analyst": _actor(),
         "user": current_user(),
         "can_decide": bool(current_user() and current_user().get("role") == auth.ROLE_ANALYST),
@@ -916,7 +1108,7 @@ def _run_summary(state, exp_mode: str) -> Optional[dict]:
 @app.route("/api/compare")
 @require_login
 def api_compare():
-    run = STORE["run"]
+    run = _current_run()
     return jsonify({
         "documented": _run_summary(run, "reconciliation"),
         "generated": _run_summary(run, "generation"),
@@ -975,7 +1167,7 @@ def api_decide():
         "amend": "Returned for amendment.",
         "reject": "Rejected; not promoted.",
     }[decision]
-    run = STORE["run"]
+    run = _current_run()
     finding = next((f for f in (run.results if run else []) if f.typology_id == fid), None)
     mode = getattr(finding, "mode", "reconciliation") if finding else "reconciliation"
     desc_by_id = {t.id: t.description for t in load_typologies()}
@@ -1036,7 +1228,7 @@ def api_institute():
     fid = data.get("fid")
     if not fid:
         return jsonify({"error": "bad request"}), 400
-    run = STORE["run"]
+    run = _current_run()
     finding = next((f for f in (run.results if run else []) if f.typology_id == fid), None)
     if finding is None:
         return jsonify({"error": "finding not found"}), 404
@@ -1097,6 +1289,7 @@ def api_reset():
     STORE["log"] = []
     STORE["started_at"] = None
     STORE["prev_ids"] = []
+    _clear_run_snapshot()
     # Roll the rulebook back to the shipped DS-01..DS-40 baseline (demo idempotency).
     restored = amendments.restore_baseline()
     _audit("console_reset", detail="Console state cleared ; baseline restored")
@@ -1146,7 +1339,7 @@ def api_fraudtest():
     committed = None
     if data.get("commit"):
         fid = "UX-" + uuid.uuid4().hex[:8]
-        run = STORE["run"]
+        run = _current_run()
         if run is None:
             run = RunState(run_id=f"run-{uuid.uuid4().hex[:8]}",
                            rulebook_version=by_id["DS-01"].source if "DS-01" in by_id else "DS rulebook",
@@ -1181,6 +1374,7 @@ def api_fraudtest():
         _audit("attack_submitted",
                detail=f"Attack test '{label}' ({fid}) · caught {len(fired)}, slipped past {len(evaded)}",
                meta={"fid": fid, "label": label, "fired": fired, "evaded": evaded})
+        _save_run_snapshot(run)
         committed = fid
 
     verdict = (
@@ -1309,7 +1503,7 @@ def api_dossier_pdf():
 
 
 def _build_dossier() -> dict:
-    run = STORE["run"]
+    run = _current_run()
     decisions = STORE["decisions"]
     fc = _forecast_snapshot()
     findings = _state_json()["findings"]

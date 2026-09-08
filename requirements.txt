@@ -5,3 +5,4 @@ langchain-community>=0.3
 flask>=2.3
 requests>=2.31
 reportlab>=4.0
+python-dotenv>=1.0

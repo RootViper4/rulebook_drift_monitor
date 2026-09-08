@@ -6,6 +6,7 @@ Run:
 """
 from __future__ import annotations
 
+import hashlib
 import hmac
 import json
 import os
@@ -33,31 +34,113 @@ from demo import auth
 
 app = Flask(__name__, static_folder=None)
 
-# ---------------------------------------------------------------------------
-# Session security
-#
-# SECRET_KEY must be set in any deployment that runs more than one instance
-# (Vercel), otherwise each cold start invents a new key and signs users out.
-# Locally an ephemeral key is fine and keeps first-run friction at zero.
-# ---------------------------------------------------------------------------
-app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
-app.config.update(
-    SESSION_COOKIE_HTTPONLY=True,      # not reachable from JavaScript
-    SESSION_COOKIE_SAMESITE="Lax",     # blocks cross-site POSTs carrying the cookie
-    SESSION_COOKIE_SECURE=bool(os.environ.get("VERCEL") or os.environ.get("HTTPS_ONLY")),
-    PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
-)
-
 BASE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(BASE, "static")
 DATA_DIR = os.path.join(os.path.dirname(BASE), "data")
 HISTORY_PATH = os.path.join(DATA_DIR, "run_history.json")
 DECISIONS_LOG_PATH = os.path.join(DATA_DIR, "decisions_log.json")
 AUDIT_PATH = os.path.join(DATA_DIR, "audit.json")
+SESSION_KEY_PATH = os.path.join(DATA_DIR, ".session_key")
+
+
+def _env_flag(name: str) -> bool:
+    """True only for an affirmative value.
+
+    `bool(os.environ.get(name))` is true for "0" and "false" as well, which is
+    how a deployment ends up with Secure cookies on a plain-HTTP host and an
+    unexplainable sign-in loop. Read the value, do not just test for presence.
+    """
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes", "on")
+
 
 # Vercel/serverless mode: runs complete synchronously inside the request and
 # disk state only lives for the life of the function instance.
-SERVERLESS = os.environ.get("SERVERLESS", "") == "1" or os.environ.get("VERCEL", "") == "1"
+SERVERLESS = _env_flag("SERVERLESS") or _env_flag("VERCEL")
+
+# Identifies this process/instance. Two requests reporting different ids means
+# the host is load-balancing across instances, which is what makes a shared
+# signing key non-negotiable.
+INSTANCE_ID = f"inst-{uuid.uuid4().hex[:8]}"
+
+# Unsigned breadcrumb dropped at sign-in and read only by /api/session-check.
+SIGNIN_MARKER_COOKIE = "ds_signin_marker"
+
+
+# ---------------------------------------------------------------------------
+# Session security
+#
+# The session cookie is signed with `app.secret_key`. If two processes sign
+# with different keys, a cookie minted by one is unreadable by the other: the
+# user signs in, the next request lands elsewhere, the session looks empty and
+# they are bounced back to the login page. That is the sign-in loop, and the
+# old code invited it by generating a fresh random key whenever SECRET_KEY was
+# unset. Resolution order below is deliberate:
+#
+#   1. SECRET_KEY from the environment  - the correct answer for a deployment.
+#   2. data/.session_key on disk        - survives a local restart, so a stale
+#                                         browser tab is not silently signed out.
+#   3. Derived from the deployment id   - read-only serverless filesystem: every
+#                                         instance of the same deployment derives
+#                                         the same key, so sessions are portable
+#                                         across instances and cold starts.
+#   4. Random, this process only        - last resort, and it says so out loud.
+#
+# Step 3 is a prototype accommodation, not a security design: the seed is not
+# secret, so a determined attacker who knows it could forge a session cookie.
+# It is here so a missing environment variable degrades to "works" instead of
+# "unusable", on a demonstrator holding only synthetic data. Set SECRET_KEY.
+# ---------------------------------------------------------------------------
+def _resolve_secret_key() -> tuple[str, str]:
+    """Return `(key, source)` — see the resolution order above."""
+    explicit = os.environ.get("SECRET_KEY", "").strip()
+    if explicit:
+        return explicit, "environment"
+
+    try:
+        with open(SESSION_KEY_PATH, "r", encoding="utf-8") as f:
+            saved = f.read().strip()
+        if len(saved) >= 32:
+            return saved, "key file"
+    except OSError:
+        pass
+
+    deployment = (os.environ.get("VERCEL_DEPLOYMENT_ID")
+                  or os.environ.get("VERCEL_GIT_COMMIT_SHA")
+                  or os.environ.get("VERCEL_URL")
+                  or "")
+    if deployment:
+        derived = hashlib.sha256(f"drift-sentinel-session::{deployment}".encode("utf-8")).hexdigest()
+        return derived, "derived from deployment id"
+
+    fresh = secrets.token_hex(32)
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(SESSION_KEY_PATH, "w", encoding="utf-8") as f:
+            f.write(fresh)
+        return fresh, "key file (created)"
+    except OSError:
+        return fresh, "ephemeral (this process only)"
+
+
+SECRET_KEY, SECRET_KEY_SOURCE = _resolve_secret_key()
+app.secret_key = SECRET_KEY
+
+# A Secure cookie is dropped by the browser on plain HTTP, so this must track
+# the scheme the app is actually served over — not merely whether some Vercel
+# variable happens to exist. ALLOW_INSECURE_COOKIE is the escape hatch for
+# running a serverless-mode build locally over http://.
+COOKIE_SECURE = (_env_flag("HTTPS_ONLY") or SERVERLESS) and not _env_flag("ALLOW_INSECURE_COOKIE")
+
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,      # not reachable from JavaScript
+    SESSION_COOKIE_SAMESITE="Lax",     # blocks cross-site POSTs carrying the cookie
+    SESSION_COOKIE_SECURE=COOKIE_SECURE,
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
+)
+
+if SECRET_KEY_SOURCE.startswith("ephemeral"):
+    print("[drift-sentinel] WARNING: no SECRET_KEY and data/ is not writable. "
+          "Sessions will not survive a restart or a second instance — set SECRET_KEY.")
 
 # In-memory store.
 STORE = {
@@ -650,7 +733,20 @@ def api_login():
     STORE["analyst"] = _actor()
     _audit("login_success", detail=f"{_actor()} signed in",
            meta={"role": record.get("role", "")})
-    return jsonify({"ok": True, "user": session["user"], "csrf": token})
+
+    response = jsonify({"ok": True, "user": session["user"], "csrf": token})
+    # Diagnostic breadcrumb, carrying no authority of its own: it records only
+    # that a sign-in happened here and when. If this comes back on a later
+    # request while the signed session does not, the session cookie is being
+    # rejected rather than never issued — which is the difference between "you
+    # never signed in" and "the signing keys do not match". /api/session-check
+    # is the only reader; nothing in the app trusts it.
+    response.set_cookie(
+        SIGNIN_MARKER_COOKIE, f"{INSTANCE_ID}@{session['signed_in_at']}",
+        max_age=int(timedelta(hours=8).total_seconds()),
+        httponly=True, samesite="Lax", secure=COOKIE_SECURE,
+    )
+    return response
 
 
 @app.route("/api/logout", methods=["POST"])
@@ -658,7 +754,75 @@ def api_logout():
     if current_user() is not None:
         _audit("logout", detail=f"{_actor()} signed out")
     session.clear()
-    return jsonify({"ok": True})
+    response = jsonify({"ok": True})
+    response.delete_cookie(SIGNIN_MARKER_COOKIE)
+    return response
+
+
+@app.route("/api/session-check")
+def api_session_check():
+    """Why a sign-in did not stick. Open this straight after signing in.
+
+    A sign-in loop has three possible causes and this separates them:
+
+    * No cookie comes back at all -> the browser is not storing or not sending
+      it. `cookie_secure` true on an http:// request is the usual reason: the
+      browser drops a Secure cookie on a plain connection, silently.
+    * The sign-in marker comes back but the signed session does not -> this
+      process cannot verify a cookie another process signed. Compare
+      `secret_key_source` and `secret_key_fingerprint`, and watch `instance`
+      change between reloads. Set SECRET_KEY.
+    * Both come back and `authenticated` is still false -> the session survived
+      but holds no user, so the sign-in itself did not write to it.
+
+    Nothing secret is returned. The fingerprint is a truncated digest of the
+    signing key: enough to tell two keys apart, not enough to reconstruct one.
+    """
+    cookie_name = app.config.get("SESSION_COOKIE_NAME") or "session"
+    session_cookie = bool(request.cookies.get(cookie_name))
+    marker = request.cookies.get(SIGNIN_MARKER_COOKIE, "")
+    authenticated = current_user() is not None
+    return jsonify({
+        "verdict": _session_verdict(session_cookie, marker, authenticated),
+        "authenticated": authenticated,
+        "instance": INSTANCE_ID,
+        "serverless": SERVERLESS,
+        "secret_key_source": SECRET_KEY_SOURCE,
+        "secret_key_fingerprint": hashlib.sha256(SECRET_KEY.encode("utf-8")).hexdigest()[:12],
+        "cookie_name": cookie_name,
+        "session_cookie_received": session_cookie,
+        "signin_marker": marker or None,
+        "cookie_secure": bool(app.config.get("SESSION_COOKIE_SECURE")),
+        "cookie_samesite": app.config.get("SESSION_COOKIE_SAMESITE"),
+        "request_scheme": request.scheme,
+        "session_holds_user": bool(session.get("user")),
+        "server_time": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    })
+
+
+def _session_verdict(session_cookie: bool, marker: str, authenticated: bool) -> str:
+    """One plain sentence naming the fault, for whoever is looking at this."""
+    if authenticated:
+        return "Signed in, and this instance can read the session. Nothing wrong here."
+
+    if app.config.get("SESSION_COOKIE_SECURE") and request.scheme != "https":
+        return ("Cookies are marked Secure but this request arrived over http, so the browser "
+                "discards the session cookie on sight. Serve over https, or set "
+                "ALLOW_INSECURE_COOKIE=1 for local use.")
+
+    if marker:
+        signed_in_on = marker.split("@")[0]
+        if signed_in_on != INSTANCE_ID:
+            return (f"A sign-in happened on {signed_in_on} but this is {INSTANCE_ID}, and the "
+                    "session it issued is not readable here — the two processes are signing with "
+                    f"different keys (current source: {SECRET_KEY_SOURCE}). Set SECRET_KEY in the "
+                    "environment so every instance shares one, then redeploy.")
+        return ("A sign-in happened on this instance but the session no longer holds a user. "
+                "The process most likely restarted, or the session expired.")
+
+    if session_cookie:
+        return "A session cookie arrived but carries no signed-in user — nobody has signed in on this browser yet."
+    return "No session cookie and no sign-in marker: nobody has signed in from this browser yet."
 
 
 @app.route("/<page>.html")

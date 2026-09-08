@@ -16,7 +16,7 @@ const SESSION = { authenticated:false, checked:false, user:null, csrf:'',
                  demoAccounts:[], demoPassword:'' };
 const PUBLIC_PAGES = ['home.html', 'login.html'];
 /* Endpoints that work without a session. Everything else is gated. */
-const OPEN_ENDPOINTS = ['/api/me', '/api/login', '/api/logout'];
+const OPEN_ENDPOINTS = ['/api/me', '/api/login', '/api/logout', '/api/session-check'];
 
 /* One in-flight identity check per page load. Several page scripts call
    refresh() the moment they load, so without this they would each fire a
@@ -30,7 +30,43 @@ function ensureSession(){
 
 function currentPageName(){ return location.pathname.split('/').pop() || 'home.html'; }
 function isPublicPage(){ return PUBLIC_PAGES.includes(currentPageName()); }
-function goToLogin(){ location.href = 'login.html?next=' + encodeURIComponent(currentPageName()); }
+
+/* ---------- Sign-in loop breaker ---------------------------------------
+   If the server keeps reporting "not signed in" immediately after a sign-in
+   that succeeded, bouncing to the login page forever hides the actual fault
+   and looks, to whoever is watching, like the app is broken for no reason.
+   Count the bounces within this tab; after two, stop redirecting and say what
+   is wrong instead. A visible error beats an invisible loop, especially in
+   front of an audience. */
+const BOUNCE_KEY = 'ds_auth_bounces';
+function bounceCount(){ return Number(sessionStorage.getItem(BOUNCE_KEY) || 0); }
+function noteBounce(){ sessionStorage.setItem(BOUNCE_KEY, String(bounceCount() + 1)); }
+function clearBounces(){ sessionStorage.removeItem(BOUNCE_KEY); }
+
+function goToLogin(){
+  if(bounceCount() >= 2){ showSessionStuck(); return; }
+  noteBounce();
+  location.href = 'login.html?next=' + encodeURIComponent(currentPageName());
+}
+
+/* Replaces the page with a plain explanation and a link to the server-side
+   diagnostic, rather than bouncing a third time. */
+function showSessionStuck(){
+  clearBounces();
+  document.body.innerHTML =
+    '<div class="login-shell"><div class="login-card">' +
+      '<div class="login-name">Sign-in is not sticking</div>' +
+      '<p class="login-lede">The sign-in succeeded, but the next request came back as signed out, ' +
+      'so this page stopped redirecting rather than looping. That is almost always the session ' +
+      'cookie: either the browser is not storing it, or the server process that received it ' +
+      'signed it with a different key.</p>' +
+      '<p class="login-lede">Open <a href="/api/session-check">/api/session-check</a> — the ' +
+      '<code>verdict</code> field names the cause. If it mentions a different key, set ' +
+      '<code>SECRET_KEY</code> in the deployment environment and redeploy.</p>' +
+      '<div class="login-foot"><a href="login.html">Try signing in again</a>' +
+      '<span>Prototype · synthetic data only</span></div>' +
+    '</div></div>';
+}
 
 async function api(path, opts = {}){
   /* Wait for the identity check before touching a gated endpoint, and skip the
@@ -97,6 +133,7 @@ function renderUserChip(){
 
 async function signOut(){
   try{ await api('/api/logout', {method:'POST', body:'{}'}); }catch(e){}
+  clearBounces();
   location.href = 'login.html';
 }
 
@@ -324,6 +361,7 @@ async function bootSession(){
     if(!isPublicPage()) goToLogin();   // the server redirects too; this covers a cached page
     return;                            // public page: no polling of gated endpoints
   }
+  clearBounces();                      // a page loaded signed in: the session is sticking
   setPendingBadge(0);                 // start hidden until a real count arrives
   refreshStatusPill();
   setInterval(()=>{ if(!location.pathname.endsWith('index.html')) refreshStatusPill(); }, 4000);

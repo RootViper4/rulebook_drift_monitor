@@ -53,7 +53,10 @@
    is accepted, so ?next= cannot be used to bounce a signed-in analyst offsite. */
 function nextPage(){
   const raw = new URLSearchParams(location.search).get('next') || 'index.html';
-  return /^[a-z0-9_-]+\.html$/i.test(raw) ? raw : 'index.html';
+  /* ?next=login.html would send a signed-in analyst straight back here, which
+     is a sign-in loop of its own making. Never land on the login page. */
+  if(!/^[a-z0-9_-]+\.html$/i.test(raw) || raw.toLowerCase() === 'login.html') return 'index.html';
+  return raw;
 }
 
 function showError(msg){
@@ -70,6 +73,19 @@ async function submitLogin(){
   btn.disabled = true; btn.textContent = 'Signing in…';
   try{
     await api('/api/login', {method:'POST', body:JSON.stringify({username, password})});
+
+    /* The credentials were accepted — but that only proves the password was
+       right, not that the session survived the round trip. Ask the server who
+       it thinks we are before navigating. Confirming here turns a silent
+       bounce back to this page into a message that names the cause. */
+    await loadSession();
+    if(!SESSION.authenticated){
+      showError('Your credentials were accepted, but the session did not stick — the browser ' +
+                'or the server did not keep the sign-in cookie. Open /api/session-check for the cause.');
+      btn.disabled = false; btn.textContent = 'Sign in';
+      return;
+    }
+    clearBounces();
     location.href = nextPage();
   }catch(e){
     showError(e.message || 'Sign-in failed.');
@@ -105,7 +121,14 @@ $('loginBtn').onclick = submitLogin;
 });
 
 loadSession().then(() => {
-  if(SESSION.authenticated){ location.href = nextPage(); return; }
+  /* Already signed in: forward to the page that was asked for. Unless we have
+     been bounced here repeatedly, in which case forwarding again just resumes
+     the loop — show what is wrong instead. */
+  if(SESSION.authenticated){
+    if(bounceCount() >= 2){ showSessionStuck(); return; }
+    location.href = nextPage();
+    return;
+  }
   renderDemoAccounts();
 });
 </script>
